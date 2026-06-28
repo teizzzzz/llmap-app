@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../api.dart';
 import '../models.dart';
 import 'crop_screen.dart';
+import 'map_screen.dart';
 
 /// 採集ホーム：地区コード・連番を管理し、採集済み sign を一覧／CSV导出。
 class HomeScreen extends StatefulWidget {
@@ -105,6 +106,19 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _editArea,
             icon: const Icon(Icons.place_outlined),
             label: Text('$_area  #$_nextSeq'),
+          ),
+          IconButton(
+            onPressed: _signs.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MapScreen(
+                            signs: _signs, schema: widget.schema),
+                      ),
+                    ),
+            icon: const Icon(Icons.map_outlined),
+            tooltip: '地図预览',
           ),
           IconButton(
             onPressed: _signs.isEmpty || _busy ? null : _export,
