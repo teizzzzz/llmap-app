@@ -70,12 +70,19 @@ class BackendApi {
     required String fileName,
     String provider = 'claude',
     List<String> fields = const [],
+    CropRegion? crop,
   }) async {
     final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/ai'))
       ..fields['provider'] = provider
       ..fields['fields'] = fields.join(',')
       ..files.add(http.MultipartFile.fromBytes('photo', photoBytes,
           filename: fileName));
+    if (crop != null) {
+      req.fields['crop_x'] = '${crop.x}';
+      req.fields['crop_y'] = '${crop.y}';
+      req.fields['crop_w'] = '${crop.w}';
+      req.fields['crop_h'] = '${crop.h}';
+    }
     final resp = await http.Response.fromStream(await req.send());
     if (resp.statusCode != 200) {
       throw Exception('ai 失敗: ${resp.statusCode} ${resp.body}');

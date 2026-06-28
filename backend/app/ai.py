@@ -45,6 +45,25 @@ def build_prompt(fields: Optional[list[str]] = None) -> str:
     )
 
 
+def crop_image(data: bytes, x: float, y: float, w: float, h: float) -> bytes:
+    """相対座標(0..1)の矩形で画像を切り出して JPEG バイト列を返す。"""
+    img = Image.open(io.BytesIO(data))
+    img = ImageOps.exif_transpose(img)
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    W, H = img.size
+    left = max(0, int(x * W))
+    top = max(0, int(y * H))
+    right = min(W, int((x + w) * W))
+    bottom = min(H, int((y + h) * H))
+    if right - left < 2 or bottom - top < 2:
+        return data  # 無効な矩形は全景のまま
+    cropped = img.crop((left, top, right, bottom))
+    buf = io.BytesIO()
+    cropped.save(buf, "JPEG", quality=90)
+    return buf.getvalue()
+
+
 def image_to_base64(data: bytes, max_size: int = 1024, quality: int = 75) -> str:
     """§9 のAI判定推奨: 最大辺1024 / quality75。"""
     img = Image.open(io.BytesIO(data))

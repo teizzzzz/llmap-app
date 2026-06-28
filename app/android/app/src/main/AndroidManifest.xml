@@ -1,8 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- backend(http) との通信に必要 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="llmap_app"
+        android:label="LLMap"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+        <!-- usesCleartextTraffic: LAN内の http://<PC IP>:8000 へ接続するため許可 -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

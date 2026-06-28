@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'models.dart';
 import 'screens/home_screen.dart';
+import 'settings.dart';
 
 void main() {
   runApp(const LLMapApp());
@@ -40,12 +41,26 @@ class _BootState extends State<_Boot> {
   @override
   void initState() {
     super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    api.baseUrl = await loadBaseUrl();
     _load();
   }
 
   void _load() => setState(() {
         _future = api.schema();
       });
+
+  Future<void> _editUrl() async {
+    final v = await showBackendUrlDialog(context, api.baseUrl);
+    if (v != null && v.isNotEmpty) {
+      await saveBaseUrl(v);
+      api.baseUrl = v;
+      _load();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +88,19 @@ class _BootState extends State<_Boot> {
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 16),
-                  FilledButton(onPressed: _load, child: const Text('再試行')),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _editUrl,
+                        icon: const Icon(Icons.settings),
+                        label: const Text('URL設定'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                          onPressed: _load, child: const Text('再試行')),
+                    ],
+                  ),
                 ],
               ),
             ),

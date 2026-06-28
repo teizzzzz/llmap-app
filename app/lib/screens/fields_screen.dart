@@ -31,15 +31,24 @@ class FieldsScreen extends StatefulWidget {
 class _FieldsScreenState extends State<FieldsScreen> {
   bool _aiBusy = false;
 
+  CropRegion? _regionFor(Sign sign) {
+    final suffix = sign.id.split('-').last; // AREA-SNNN-suffix
+    for (final r in widget.regions) {
+      if (r.suffix == suffix) return r;
+    }
+    return null;
+  }
+
   Future<void> _runAi(Sign sign) async {
     setState(() => _aiBusy = true);
     try {
-      // Phase 1 は全景画像で判定（Phase 3 で框选ごとに切り出して送る）。
+      // 框选ごとに全景から切り出して判定（sign単位で正確に）。
       final fields = await widget.api.ai(
         photoBytes: widget.imageBytes,
         fileName: widget.fileName,
         provider: 'claude',
         fields: widget.schema.aiFields,
+        crop: _regionFor(sign),
       );
       setState(() {
         fields.forEach((k, v) {
@@ -76,6 +85,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
             schema: widget.schema,
             aiBusy: _aiBusy,
             onAi: () => _runAi(sign),
+            onApprove: () => setState(() => sign.set('_status', 'reviewed')),
             onChanged: () => setState(() {}),
           ),
         ],
@@ -97,6 +107,7 @@ class _SignCard extends StatelessWidget {
   final AppSchema schema;
   final bool aiBusy;
   final VoidCallback onAi;
+  final VoidCallback onApprove;
   final VoidCallback onChanged;
 
   const _SignCard({
@@ -104,6 +115,7 @@ class _SignCard extends StatelessWidget {
     required this.schema,
     required this.aiBusy,
     required this.onAi,
+    required this.onApprove,
     required this.onChanged,
   });
 
@@ -122,10 +134,19 @@ class _SignCard extends StatelessWidget {
                   child: Text(sign.id,
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
+                _statusBadge(sign.status),
+                const SizedBox(width: 6),
                 OutlinedButton.icon(
                   onPressed: aiBusy ? null : onAi,
                   icon: const Icon(Icons.auto_awesome, size: 16),
                   label: const Text('AI识别'),
+                ),
+                const SizedBox(width: 6),
+                FilledButton.icon(
+                  onPressed:
+                      sign.status == 'reviewed' ? null : onApprove,
+                  icon: const Icon(Icons.verified, size: 16),
+                  label: const Text('承認'),
                 ),
               ],
             ),
@@ -139,6 +160,32 @@ class _SignCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _statusBadge(String status) {
+    final color = {
+          'pending': Colors.grey,
+          'ai': Colors.blue,
+          'modified': Colors.orange,
+          'reviewed': Colors.green,
+        }[status] ??
+        Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(status, style: TextStyle(fontSize: 11, color: color)),
+    );
+  }
+
+  // 編集が入ったら reviewed/ai から modified に落とす（AIが上書きしないよう分層）。
+  void _markEdited() {
+    if (sign.status == 'reviewed' || sign.status == 'ai') {
+      sign.set('_status', 'modified');
+    }
   }
 
   Widget _fieldEditor(String field) {
@@ -162,6 +209,7 @@ class _SignCard extends StatelessWidget {
               .toList(),
           onChanged: (v) {
             sign.set(field, v ?? '');
+            _markEdited();
             onChanged();
           },
         ),
@@ -176,7 +224,10 @@ class _SignCard extends StatelessWidget {
           isDense: true,
           border: const OutlineInputBorder(),
         ),
-        onChanged: (v) => sign.set(field, v),
+        onChanged: (v) {
+          sign.set(field, v);
+          _markEdited();
+        },
       ),
     );
   }

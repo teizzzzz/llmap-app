@@ -42,6 +42,8 @@ dependencies:
   # Map preview (Leaflet-equivalent) — used from Phase 2
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+  # Persist backend URL (needed on Android: point to PC's LAN IP)
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:

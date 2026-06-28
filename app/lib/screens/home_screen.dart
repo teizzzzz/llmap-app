@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../api.dart';
 import '../models.dart';
+import '../settings.dart';
 import 'crop_screen.dart';
 import 'map_screen.dart';
 
@@ -71,6 +72,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _editUrl() async {
+    final v = await showBackendUrlDialog(context, widget.api.baseUrl);
+    if (v != null && v.isNotEmpty) {
+      await saveBaseUrl(v);
+      widget.api.baseUrl = v;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('保存しました（次回起動から有効）')),
+        );
+      }
+    }
+  }
+
   Future<void> _editArea() async {
     final ctrl = TextEditingController(text: _area);
     final v = await showDialog<String>(
@@ -124,6 +138,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _signs.isEmpty || _busy ? null : _export,
             icon: const Icon(Icons.download),
             tooltip: 'CSV导出',
+          ),
+          IconButton(
+            onPressed: _editUrl,
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: '后端URL設定',
           ),
         ],
       ),
