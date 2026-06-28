@@ -5,14 +5,16 @@ Phase 0: EXIF/GPS抽出・字段规整・AI判定・CSV互換を提供。
 """
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from . import ai
+from . import ai, storage
 from .csv_io import signs_to_csv
 from .exif import extract_exif, normalize_datetime
 from .schema import (
@@ -75,7 +77,8 @@ async def extract(
         raise HTTPException(400, f"crops の解析に失敗: {e}")
 
     pid = photo_id(area, _yyyymmdd(captured), seq)
-    pano_name = f"{pid}.jpg"
+    # 全景を永続保存（後で CSV+写真 を一括エクスポートするため）
+    pano_name = storage.save_panorama(pid, data)
 
     if not regions:
         regions = [CropRegion(suffix="a", x=0, y=0, w=1, h=1)]
@@ -83,7 +86,11 @@ async def extract(
     signs: list[Sign] = []
     for r in regions:
         is_full = r.w >= 0.999 and r.h >= 0.999
-        fname = pano_name if is_full else f"{pid}-{r.suffix}.jpg"
+        if is_full:
+            fname = pano_name
+        else:
+            # 裁切写真も保存し、ファイル名を CSV と一致させる
+            fname = storage.save_crop(pid, r.suffix, data, r.x, r.y, r.w, r.h)
         signs.append(Sign(
             SignID=sign_id(area, seq, r.suffix),
             写真ID=pid,
@@ -141,6 +148,49 @@ def export(signs: list[dict]):
         content=body,
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="llmap_export.csv"'},
+    )
+
+
+@app.post("/export_bundle")
+def export_bundle(signs: list[dict]):
+    """CSV と参照写真を 1つの ZIP にまとめて返す（一括エクスポート）。
+    data.csv ＋ photos/<写真ファイル名/全景写真ファイル名> を同梱する。
+    後続の一括プレビューや DB 統合の交換フォーマットとして使う。"""
+    models = [Sign(**s) for s in signs]
+    csv_bytes = signs_to_csv(models).encode("utf-8-sig")
+
+    wanted: set[str] = set()
+    for s in models:
+        for key in ("写真ファイル名", "全景写真ファイル名"):
+            name = s.model_dump(by_alias=True).get(key) or ""
+            if name:
+                wanted.add(name)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("data.csv", csv_bytes)
+        added, missing = 0, []
+        for name in sorted(wanted):
+            if storage.exists(name):
+                zf.write(storage.photo_path(name), f"photos/{name}")
+                added += 1
+            else:
+                missing.append(name)
+        # 何が入っていないかを残しておく（無音の欠落を避ける）
+        manifest = (
+            f"records: {len(models)}\n"
+            f"photos_included: {added}\n"
+            f"photos_missing: {len(missing)}\n"
+            + "".join(f"  - {m}\n" for m in missing)
+        )
+        zf.writestr("MANIFEST.txt", manifest)
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="llmap_export.zip"'
+        },
     )
 
 

@@ -102,8 +102,14 @@ class _FieldsScreenState extends State<FieldsScreen> {
     }
   }
 
-  void _skip() => _advance();
+  /// 暂存: AI識別も手動入力もせず、そのまま入库（status は pending のまま）。
+  /// 後で一括AI識別/修正するための「とりあえず保存」。
+  void _skip() {
+    _saved.add(_current);
+    _advance();
+  }
 
+  /// 入力済みとして保存（pending なら modified に昇格）。
   void _save() {
     if (_current.status == 'pending') _current.set('_status', 'modified');
     _saved.add(_current);
@@ -176,21 +182,28 @@ class _FieldsScreenState extends State<FieldsScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              OutlinedButton.icon(
-                onPressed: _aiBusy ? null : _skip,
-                icon: const Icon(Icons.skip_next),
-                label: const Text('スキップ'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
+              // 暂存（スキップ）= 入力せずそのまま入库。一番大きい主ボタン。
+              SizedBox(
+                width: double.infinity,
+                height: 54,
                 child: FilledButton.icon(
+                  onPressed: _aiBusy ? null : _skip,
+                  icon: Icon(_isLast ? Icons.check : Icons.skip_next),
+                  label: Text(_isLast ? '暂存して完了' : '暂存して次へ',
+                      style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // 入力済みとして保存（副ボタン）。
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
                   onPressed: _aiBusy ? null : _save,
-                  icon: Icon(_isLast ? Icons.check : Icons.arrow_forward),
-                  label: Text(_isLast
-                      ? '保存して地図へ'
-                      : '保存して次へ（${_index + 2}/$total）'),
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(_isLast ? '入力して保存・完了' : '入力して保存・次へ'),
                 ),
               ),
             ],

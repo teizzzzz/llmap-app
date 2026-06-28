@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
 import '../capture.dart';
@@ -102,15 +104,30 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// CSV＋写真を ZIP で一括エクスポート。モバイルは共有シート、
+  /// デスクトップは Downloads に保存。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
     setState(() => _busy = true);
     try {
-      final path = await widget.api.exportCsv(_signs);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('CSV を保存しました: $path')),
+      final zipPath = await widget.api.exportBundle(_signs);
+      if (!mounted) return;
+      if (isMobile) {
+        await Share.shareXFiles(
+          [XFile(zipPath)],
+          text: 'LLMap export (${_signs.length} 件)',
         );
+      } else {
+        final dir = Platform.environment['USERPROFILE'] ??
+            Directory.systemTemp.path;
+        final dest = File('$dir/Downloads/llmap_export.zip');
+        await dest.parent.create(recursive: true);
+        await File(zipPath).copy(dest.path);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('一括エクスポート: ${dest.path}')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

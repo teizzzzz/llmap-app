@@ -110,4 +110,20 @@ class BackendApi {
     await out.writeAsBytes(r.bodyBytes);
     return out.path;
   }
+
+  /// CSV＋写真を ZIP で一時ファイルに保存し、パスを返す。
+  /// 保存先(共有/移動)は呼び出し側がプラットフォームに応じて決める。
+  Future<String> exportBundle(List<Sign> signs) async {
+    final r = await http.post(
+      Uri.parse('$baseUrl/export_bundle'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(signs.map((s) => s.toJson()).toList()),
+    );
+    if (r.statusCode != 200) {
+      throw Exception('export_bundle 失敗: ${r.statusCode}');
+    }
+    final out = File('${Directory.systemTemp.path}/llmap_export.zip');
+    await out.writeAsBytes(r.bodyBytes);
+    return out.path;
+  }
 }
