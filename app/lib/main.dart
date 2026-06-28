@@ -43,7 +43,9 @@ class _BootState extends State<_Boot> {
     _load();
   }
 
-  void _load() => setState(() => _future = api.schema());
+  void _load() => setState(() {
+        _future = api.schema();
+      });
 
   @override
   Widget build(BuildContext context) {
