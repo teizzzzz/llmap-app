@@ -44,3 +44,40 @@ AI判定を使う場合は環境変数で API key を渡す（CSV/コードに�
 export ANTHROPIC_API_KEY=sk-...
 export GEMINI_API_KEY=...
 ```
+
+## app 起動（Windows）
+
+```bash
+cd app
+flutter run -d windows
+```
+
+backend が別PC/ポートの場合は、アプリ右上の歯車（または起動エラー画面の「URL設定」）で
+`http://<host>:8000` を設定（保存され次回起動から有効）。
+
+## Android APK ビルド
+
+⚠️ **重要**: Flutter の release(AOT) ビルドは**非ASCIIパスで失敗する**。このリポジトリは
+`f:\11_近期着手\...` という日本語/中国語パス配下にあるため、APK は ASCII パスにコピーしてビルドする。
+
+```bash
+# 1) ソースを ASCII パスへコピー（ビルド成果物は除外）
+robocopy app C:\llmap_build\app /E /XD build .dart_tool .gradle /XF *.apk
+
+# 2) ASCII パスでビルド
+cd C:\llmap_build\app
+flutter build apk --release
+#   -> build\app\outputs\flutter-apk\app-release.apk
+
+# 3) APK を回収（成果物は dist/ に置く。git 管理外）
+```
+
+最新ビルド: `dist/LLMap-v1.0-release.apk`（約50MB, arm/arm64/x64 同梱の universal APK）。
+
+### Android 実機で使う
+
+1. 同じ Wi-Fi 上の PC で backend を `--host 0.0.0.0` 起動。
+2. APK を端末にインストール（提供元不明アプリを許可）。
+3. アプリの「URL設定」に `http://<PCのLAN IP>:8000` を入力（例 `http://192.168.1.5:8000`）。
+   - エミュレータの場合は `http://10.0.2.2:8000`。
+4. 写真は「ギャラリーから取り込み」。実機カメラ直撮り/実時GPSは今後の対応。
