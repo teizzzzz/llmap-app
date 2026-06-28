@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>言語景観の写真を撮影するためにカメラを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>既存の写真から言語景観を取り込むために写真ライブラリにアクセスします。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>撮影地点を記録するために位置情報を使用します。</string>
 </dict>
 </plist>

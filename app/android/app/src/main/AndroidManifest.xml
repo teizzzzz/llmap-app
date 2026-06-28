@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- backend(http) との通信に必要 -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- カメラ直撮り -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- 実時GPS -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="LLMap"
         android:name="${applicationName}"

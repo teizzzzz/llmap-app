@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../api.dart';
+import '../capture.dart';
 import '../models.dart';
 import '../settings.dart';
 import 'crop_screen.dart';
@@ -24,11 +24,11 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _busy = false;
 
   Future<void> _startCapture() async {
-    final picker = ImagePicker();
-    // Windows: ファイル選択ダイアログ。モバイルでは後で camera に差し替え。
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
+    // モバイル: カメラ/ギャラリー選択。デスクトップ: ファイル取り込み。
+    final shot = await capturePhoto(context);
+    if (shot == null) return;
+    // 撮影時の実時GPS（EXIFが無い場合の fallback。backendはEXIF優先）。
+    final gps = await currentGps();
     if (!mounted) return;
 
     final result = await Navigator.push<List<Sign>>(
@@ -37,10 +37,12 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => CropScreen(
           api: widget.api,
           schema: widget.schema,
-          imageBytes: bytes,
-          fileName: picked.name,
+          imageBytes: shot.bytes,
+          fileName: shot.fileName,
           area: _area,
           seq: _nextSeq,
+          fallbackLat: gps?.lat,
+          fallbackLng: gps?.lng,
         ),
       ),
     );

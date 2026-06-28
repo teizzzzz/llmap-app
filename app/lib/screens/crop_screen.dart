@@ -16,6 +16,8 @@ class CropScreen extends StatefulWidget {
   final String fileName;
   final String area;
   final int seq;
+  final double? fallbackLat;
+  final double? fallbackLng;
 
   const CropScreen({
     super.key,
@@ -25,6 +27,8 @@ class CropScreen extends StatefulWidget {
     required this.fileName,
     required this.area,
     required this.seq,
+    this.fallbackLat,
+    this.fallbackLng,
   });
 
   @override
@@ -45,6 +49,8 @@ class _CropScreenState extends State<CropScreen> {
         area: widget.area,
         seq: widget.seq,
         crops: _regions,
+        fallbackLat: widget.fallbackLat,
+        fallbackLng: widget.fallbackLng,
       );
       if (!mounted) return;
       final result = await Navigator.push<List<Sign>>(
