@@ -107,13 +107,15 @@ async def ai_judge(
     photo: UploadFile = File(...),
     provider: str = Form("claude"),
     fields: str = Form(""),
+    api_key: Optional[str] = Form(None),
     crop_x: Optional[float] = Form(None),
     crop_y: Optional[float] = Form(None),
     crop_w: Optional[float] = Form(None),
     crop_h: Optional[float] = Form(None),
 ):
     """1枚をAI判定し字段dictを返す（⑥のAI部分）。
-    crop_* が揃っていれば全景からその矩形を切り出してから判定する。"""
+    crop_* が揃っていれば全景からその矩形を切り出してから判定する。
+    api_key 未指定時は環境変数を使う。"""
     data = await photo.read()
     if None not in (crop_x, crop_y, crop_w, crop_h) and not (
         crop_w >= 0.999 and crop_h >= 0.999
@@ -121,7 +123,8 @@ async def ai_judge(
         data = ai.crop_image(data, crop_x, crop_y, crop_w, crop_h)
     field_list = [f for f in fields.split(",") if f.strip()] or None
     try:
-        result = ai.judge(data, provider=provider, fields=field_list)
+        result = ai.judge(data, provider=provider, fields=field_list,
+                          api_key=api_key or None)
     except RuntimeError as e:
         raise HTTPException(400, str(e))
     except Exception as e:

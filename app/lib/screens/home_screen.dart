@@ -9,6 +9,7 @@ import '../models.dart';
 import '../settings.dart';
 import '../version.dart';
 import 'crop_screen.dart';
+import 'edit_sign_screen.dart';
 import 'map_screen.dart';
 
 /// 採集ホーム：地区コード・連番を管理し、採集済み sign を一覧／CSV导出。
@@ -28,11 +29,15 @@ class _HomeScreenState extends State<HomeScreen>
   int _nextSeq = 1;
   bool _busy = false;
   bool _opening = false; // 二重起動防止
+  AiConfig _ai = AiConfig();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    loadAiConfig().then((c) {
+      if (mounted) setState(() => _ai = c);
+    });
     // カメラ起動中に Android が Activity を破棄して写真が失われる事象の復旧。
     _recoverLostData();
   }
@@ -82,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen>
             fileName: fileName,
             area: _area,
             seq: _nextSeq,
+            aiConfig: _ai,
           ),
         ),
       );
@@ -116,16 +122,38 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _editUrl() async {
-    final v = await showBackendUrlDialog(context, widget.api.baseUrl);
-    if (v != null && v.isNotEmpty) {
-      await saveBaseUrl(v);
-      widget.api.baseUrl = v;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存しました（次回起動から有効）')),
-        );
-      }
+  Future<void> _openSettings() async {
+    final result = await Navigator.push<({String baseUrl, AiConfig ai})>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(baseUrl: widget.api.baseUrl, ai: _ai),
+      ),
+    );
+    if (result == null) return;
+    await saveBaseUrl(result.baseUrl);
+    await saveAiConfig(result.ai);
+    widget.api.baseUrl = result.baseUrl;
+    if (mounted) {
+      setState(() => _ai = result.ai);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('設定を保存しました（URL変更は次回起動から有効）')),
+      );
+    }
+  }
+
+  Future<void> _editSign(int i) async {
+    final r = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            EditSignScreen(sign: _signs[i], schema: widget.schema),
+      ),
+    );
+    if (!mounted) return;
+    if (r == 'deleted') {
+      setState(() => _signs.removeAt(i));
+    } else if (r == 'saved') {
+      setState(() {});
     }
   }
 
@@ -198,9 +226,9 @@ class _HomeScreenState extends State<HomeScreen>
             tooltip: 'CSV导出',
           ),
           IconButton(
-            onPressed: _editUrl,
+            onPressed: _openSettings,
             icon: const Icon(Icons.settings_outlined),
-            tooltip: '后端URL設定',
+            tooltip: '設定',
           ),
         ],
       ),
@@ -214,12 +242,42 @@ class _HomeScreenState extends State<HomeScreen>
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (_, i) {
                 final s = _signs[i];
-                return ListTile(
-                  leading: CircleAvatar(child: Text('${i + 1}')),
-                  title: Text(s.name.isEmpty ? '(名称未入力)' : s.name),
-                  subtitle: Text(
-                      '${s.id} · ${s.mainLang} · ${s.lat ?? '—'}, ${s.lng ?? '—'}'),
-                  trailing: _StatusChip(status: s.status),
+                return Dismissible(
+                  key: ValueKey('${s.id}-$i'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  confirmDismiss: (_) async => await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('削除確認'),
+                      content: Text('${s.id} を削除しますか？'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('取消')),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('削除'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  onDismissed: (_) => setState(() => _signs.removeAt(i)),
+                  child: ListTile(
+                    leading: CircleAvatar(child: Text('${i + 1}')),
+                    title: Text(s.name.isEmpty ? '(名称未入力)' : s.name),
+                    subtitle: Text(
+                        '${s.id} · ${s.mainLang} · ${s.lat ?? '—'}, ${s.lng ?? '—'}'),
+                    trailing: _StatusChip(status: s.status),
+                    onTap: () => _editSign(i),
+                  ),
                 );
               },
             ),

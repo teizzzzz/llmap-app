@@ -71,12 +71,14 @@ class BackendApi {
     String provider = 'claude',
     List<String> fields = const [],
     CropRegion? crop,
+    String apiKey = '',
   }) async {
     final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/ai'))
       ..fields['provider'] = provider
       ..fields['fields'] = fields.join(',')
       ..files.add(http.MultipartFile.fromBytes('photo', photoBytes,
           filename: fileName));
+    if (apiKey.isNotEmpty) req.fields['api_key'] = apiKey;
     if (crop != null) {
       req.fields['crop_x'] = '${crop.x}';
       req.fields['crop_y'] = '${crop.y}';

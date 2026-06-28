@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../capture.dart';
 import '../models.dart';
+import '../settings.dart';
 import '../widgets/box_selector.dart';
 import 'fields_screen.dart';
 
@@ -17,6 +18,7 @@ class CropScreen extends StatefulWidget {
   final String fileName;
   final String area;
   final int seq;
+  final AiConfig aiConfig;
 
   const CropScreen({
     super.key,
@@ -26,6 +28,7 @@ class CropScreen extends StatefulWidget {
     required this.fileName,
     required this.area,
     required this.seq,
+    required this.aiConfig,
   });
 
   @override
@@ -69,6 +72,7 @@ class _CropScreenState extends State<CropScreen> {
             fileName: widget.fileName,
             signs: signs,
             regions: _regions,
+            aiConfig: widget.aiConfig,
           ),
         ),
       );

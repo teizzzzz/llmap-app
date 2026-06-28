@@ -4,8 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../models.dart';
+import '../settings.dart';
+import '../widgets/crop_preview.dart';
+import '../widgets/sign_form.dart';
 
-/// 字段入力画面（⑥手動／AI）。schema.enums からフォームを自動生成。
+/// 字段入力ウィザード（⑥）。框选した sign を1つずつ入力する。
+/// 上=框选プレビュー、下=入力。各 sign で skip / 保存 を選び次へ。
+/// AI が有効なら各 sign に入った時点で自動識別する。
 class FieldsScreen extends StatefulWidget {
   final BackendApi api;
   final AppSchema schema;
@@ -13,6 +18,7 @@ class FieldsScreen extends StatefulWidget {
   final String fileName;
   final List<Sign> signs;
   final List<CropRegion> regions;
+  final AiConfig aiConfig;
 
   const FieldsScreen({
     super.key,
@@ -22,6 +28,7 @@ class FieldsScreen extends StatefulWidget {
     required this.fileName,
     required this.signs,
     required this.regions,
+    required this.aiConfig,
   });
 
   @override
@@ -29,37 +36,19 @@ class FieldsScreen extends StatefulWidget {
 }
 
 class _FieldsScreenState extends State<FieldsScreen> {
-  bool _aiBusy = false;
-  final _pageCtrl = PageController();
   int _index = 0;
+  bool _aiBusy = false;
+  final List<Sign> _saved = [];
+  final Set<int> _aiDone = {};
 
   @override
-  void dispose() {
-    _pageCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _maybeAutoAi();
   }
 
+  Sign get _current => widget.signs[_index];
   bool get _isLast => _index >= widget.signs.length - 1;
-
-  void _goNext() {
-    if (_isLast) {
-      _save();
-    } else {
-      _pageCtrl.nextPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
-  void _goPrev() {
-    if (_index > 0) {
-      _pageCtrl.previousPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
-  }
 
   CropRegion? _regionFor(Sign sign) {
     final suffix = sign.id.split('-').last; // AREA-SNNN-suffix
@@ -69,17 +58,25 @@ class _FieldsScreenState extends State<FieldsScreen> {
     return null;
   }
 
+  Future<void> _maybeAutoAi() async {
+    if (!widget.aiConfig.enabled) return;
+    if (_aiDone.contains(_index)) return;
+    _aiDone.add(_index);
+    await _runAi(_current);
+  }
+
   Future<void> _runAi(Sign sign) async {
     setState(() => _aiBusy = true);
     try {
-      // 框选ごとに全景から切り出して判定（sign単位で正確に）。
       final fields = await widget.api.ai(
         photoBytes: widget.imageBytes,
         fileName: widget.fileName,
-        provider: 'claude',
+        provider: widget.aiConfig.provider,
         fields: widget.schema.aiFields,
         crop: _regionFor(sign),
+        apiKey: widget.aiConfig.apiKey,
       );
+      if (!mounted) return;
       setState(() {
         fields.forEach((k, v) {
           if (v != null && v.toString().isNotEmpty) sign.set(k, v.toString());
@@ -96,18 +93,28 @@ class _FieldsScreenState extends State<FieldsScreen> {
     }
   }
 
-  void _save() {
-    for (final s in widget.signs) {
-      if (s.status == 'pending') s.set('_status', 'modified');
+  void _advance() {
+    if (_isLast) {
+      Navigator.pop(context, _saved);
+    } else {
+      setState(() => _index++);
+      _maybeAutoAi();
     }
-    Navigator.pop(context, widget.signs);
+  }
+
+  void _skip() => _advance();
+
+  void _save() {
+    if (_current.status == 'pending') _current.set('_status', 'modified');
+    _saved.add(_current);
+    _advance();
   }
 
   @override
   Widget build(BuildContext context) {
     final total = widget.signs.length;
-    final current = widget.signs[_index];
-    final suffix = current.id.split('-').last;
+    final sign = _current;
+    final suffix = sign.id.split('-').last;
     return Scaffold(
       appBar: AppBar(
         title: Text('字段入力  $suffix  (${_index + 1}/$total)'),
@@ -120,182 +127,75 @@ class _FieldsScreenState extends State<FieldsScreen> {
                 ),
               )
             : null,
-      ),
-      body: PageView.builder(
-        controller: _pageCtrl,
-        itemCount: total,
-        onPageChanged: (i) => setState(() => _index = i),
-        itemBuilder: (_, i) {
-          final sign = widget.signs[i];
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(12),
-            child: _SignCard(
-              sign: sign,
-              schema: widget.schema,
-              aiBusy: _aiBusy,
-              onAi: () => _runAi(sign),
-              onApprove: () =>
-                  setState(() => sign.set('_status', 'reviewed')),
-              onChanged: () => setState(() {}),
+        actions: [
+          if (widget.aiConfig.enabled)
+            IconButton(
+              tooltip: 'AI再識別',
+              onPressed: _aiBusy ? null : () => _runAi(sign),
+              icon: const Icon(Icons.auto_awesome),
             ),
-          );
-        },
+        ],
+      ),
+      body: Stack(
+        children: [
+          ListView(
+            // sign が変わるたびにフォーム(controller)を作り直す
+            key: ValueKey(sign.id),
+            padding: const EdgeInsets.all(12),
+            children: [
+              // 上: 框选プレビュー
+              CropPreview(
+                imageBytes: widget.imageBytes,
+                region: _regionFor(sign),
+              ),
+              const SizedBox(height: 12),
+              // 下: 入力
+              SignForm(
+                sign: sign,
+                schema: widget.schema,
+                onChanged: () => setState(() {}),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
+          if (_aiBusy)
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: Chip(
+                avatar: SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                label: Text('AI識別中…'),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              if (_index > 0)
-                OutlinedButton.icon(
-                  onPressed: _goPrev,
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('前へ'),
-                ),
-              if (_index > 0) const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _aiBusy ? null : _skip,
+                icon: const Icon(Icons.skip_next),
+                label: const Text('スキップ'),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: _goNext,
+                  onPressed: _aiBusy ? null : _save,
                   icon: Icon(_isLast ? Icons.check : Icons.arrow_forward),
                   label: Text(_isLast
                       ? '保存して地図へ'
-                      : '次の景観へ（${_index + 2}/$total）'),
+                      : '保存して次へ（${_index + 2}/$total）'),
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SignCard extends StatelessWidget {
-  final Sign sign;
-  final AppSchema schema;
-  final bool aiBusy;
-  final VoidCallback onAi;
-  final VoidCallback onApprove;
-  final VoidCallback onChanged;
-
-  const _SignCard({
-    required this.sign,
-    required this.schema,
-    required this.aiBusy,
-    required this.onAi,
-    required this.onApprove,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(sign.id,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                _statusBadge(sign.status),
-                const SizedBox(width: 6),
-                OutlinedButton.icon(
-                  onPressed: aiBusy ? null : onAi,
-                  icon: const Icon(Icons.auto_awesome, size: 16),
-                  label: const Text('AI识别'),
-                ),
-                const SizedBox(width: 6),
-                FilledButton.icon(
-                  onPressed:
-                      sign.status == 'reviewed' ? null : onApprove,
-                  icon: const Icon(Icons.verified, size: 16),
-                  label: const Text('承認'),
-                ),
-              ],
-            ),
-            Text('GPS: ${sign.lat ?? '—'}, ${sign.lng ?? '—'}  ·  '
-                '採集: ${sign.get('採集日時').isEmpty ? '—' : sign.get('採集日時')}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const Divider(),
-            for (final field in schema.editableFields)
-              _fieldEditor(field),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statusBadge(String status) {
-    final color = {
-          'pending': Colors.grey,
-          'ai': Colors.blue,
-          'modified': Colors.orange,
-          'reviewed': Colors.green,
-        }[status] ??
-        Colors.grey;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(status, style: TextStyle(fontSize: 11, color: color)),
-    );
-  }
-
-  // 編集が入ったら reviewed/ai から modified に落とす（AIが上書きしないよう分層）。
-  void _markEdited() {
-    if (sign.status == 'reviewed' || sign.status == 'ai') {
-      sign.set('_status', 'modified');
-    }
-  }
-
-  Widget _fieldEditor(String field) {
-    final options = schema.enums[field];
-    final value = sign.get(field);
-    if (options != null) {
-      final items = [...options];
-      if (value.isNotEmpty && !items.contains(value)) items.insert(0, value);
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: DropdownButtonFormField<String>(
-          initialValue: value.isEmpty ? null : value,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: field,
-            isDense: true,
-            border: const OutlineInputBorder(),
-          ),
-          items: items
-              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-              .toList(),
-          onChanged: (v) {
-            sign.set(field, v ?? '');
-            _markEdited();
-            onChanged();
-          },
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: TextFormField(
-        initialValue: value,
-        decoration: InputDecoration(
-          labelText: field,
-          isDense: true,
-          border: const OutlineInputBorder(),
-        ),
-        onChanged: (v) {
-          sign.set(field, v);
-          _markEdited();
-        },
       ),
     );
   }

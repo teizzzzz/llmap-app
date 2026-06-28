@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -81,10 +79,11 @@ class _MapScreenState extends State<MapScreen> {
             ),
             children: [
               TileLayer(
-                // CARTO Voyager: クリーンで読みやすいベースマップ
+                // CARTO Positron(light_all): mapv2.0 と同じ淡色クリーンタイル
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
+                maxZoom: 19,
                 retinaMode: RetinaMode.isHighDensity(context),
                 userAgentPackageName: 'com.llmap.llmap_app',
               ),
@@ -93,9 +92,8 @@ class _MapScreenState extends State<MapScreen> {
                   for (final s in located)
                     Marker(
                       point: LatLng(s.lat!, s.lng!),
-                      width: 44,
-                      height: 52,
-                      alignment: Alignment.topCenter,
+                      width: 40,
+                      height: 40,
                       child: GestureDetector(
                         onTap: () {
                           setState(() => _selected = s);
@@ -149,7 +147,8 @@ Color parseHexColor(String h) {
   return Color(int.parse(h, radix: 16));
 }
 
-/// 言語別色のピン。中央に框选 suffix(a,b,c…) を表示。
+/// mapv2.0/index.html と同じ、白縁＋淡い影のクリーンな円ドット。
+/// 同一写真の複数 sign は座標が重なるため、中央に suffix(a,b,c…) を小さく表示。
 class MapPin extends StatelessWidget {
   final Color color;
   final String label;
@@ -163,59 +162,34 @@ class MapPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = selected ? 40.0 : 32.0;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2.5),
-            boxShadow: const [
-              BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: selected ? 18 : 14,
-            ),
-          ),
+    final size = selected ? 24.0 : 16.0;
+    return Center(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+              color: selected ? const Color(0xFF111827) : Colors.white,
+              width: 2),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x52111827), blurRadius: 7, offset: Offset(0, 2)),
+          ],
         ),
-        // 下向きの小さな尖り（ピン先）
-        Transform.translate(
-          offset: const Offset(0, -4),
-          child: CustomPaint(
-            size: const Size(12, 8),
-            painter: _PinTip(color),
-          ),
-        ),
-      ],
+        child: selected
+            ? Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold))
+            : null,
+      ),
     );
   }
-}
-
-class _PinTip extends CustomPainter {
-  final Color color;
-  _PinTip(this.color);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = ui.Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..close();
-    canvas.drawPath(p, Paint()..color = color);
-  }
-
-  @override
-  bool shouldRepaint(_PinTip old) => old.color != color;
 }
 
 class _Attribution extends StatelessWidget {

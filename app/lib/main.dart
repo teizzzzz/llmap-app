@@ -54,12 +54,19 @@ class _BootState extends State<_Boot> {
       });
 
   Future<void> _editUrl() async {
-    final v = await showBackendUrlDialog(context, api.baseUrl);
-    if (v != null && v.isNotEmpty) {
-      await saveBaseUrl(v);
-      api.baseUrl = v;
-      _load();
-    }
+    final ai = await loadAiConfig();
+    if (!mounted) return;
+    final result = await Navigator.push<({String baseUrl, AiConfig ai})>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(baseUrl: api.baseUrl, ai: ai),
+      ),
+    );
+    if (result == null) return;
+    await saveBaseUrl(result.baseUrl);
+    await saveAiConfig(result.ai);
+    api.baseUrl = result.baseUrl;
+    _load();
   }
 
   @override
