@@ -1,0 +1,183 @@
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+
+import '../api.dart';
+import '../models.dart';
+
+/// 字段入力画面（⑥手動／AI）。schema.enums からフォームを自動生成。
+class FieldsScreen extends StatefulWidget {
+  final BackendApi api;
+  final AppSchema schema;
+  final Uint8List imageBytes;
+  final String fileName;
+  final List<Sign> signs;
+  final List<CropRegion> regions;
+
+  const FieldsScreen({
+    super.key,
+    required this.api,
+    required this.schema,
+    required this.imageBytes,
+    required this.fileName,
+    required this.signs,
+    required this.regions,
+  });
+
+  @override
+  State<FieldsScreen> createState() => _FieldsScreenState();
+}
+
+class _FieldsScreenState extends State<FieldsScreen> {
+  bool _aiBusy = false;
+
+  Future<void> _runAi(Sign sign) async {
+    setState(() => _aiBusy = true);
+    try {
+      // Phase 1 は全景画像で判定（Phase 3 で框选ごとに切り出して送る）。
+      final fields = await widget.api.ai(
+        photoBytes: widget.imageBytes,
+        fileName: widget.fileName,
+        provider: 'claude',
+        fields: widget.schema.aiFields,
+      );
+      setState(() {
+        fields.forEach((k, v) {
+          if (v != null && v.toString().isNotEmpty) sign.set(k, v.toString());
+        });
+        sign.set('_status', 'ai');
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('AI识别失败: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _aiBusy = false);
+    }
+  }
+
+  void _save() {
+    for (final s in widget.signs) {
+      if (s.status == 'pending') s.set('_status', 'modified');
+    }
+    Navigator.pop(context, widget.signs);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('字段入力 (${widget.signs.length})')),
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          for (final sign in widget.signs) _SignCard(
+            sign: sign,
+            schema: widget.schema,
+            aiBusy: _aiBusy,
+            onAi: () => _runAi(sign),
+            onChanged: () => setState(() {}),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(12),
+        child: FilledButton.icon(
+          onPressed: _save,
+          icon: const Icon(Icons.check),
+          label: const Text('保存して地図へ'),
+        ),
+      ),
+    );
+  }
+}
+
+class _SignCard extends StatelessWidget {
+  final Sign sign;
+  final AppSchema schema;
+  final bool aiBusy;
+  final VoidCallback onAi;
+  final VoidCallback onChanged;
+
+  const _SignCard({
+    required this.sign,
+    required this.schema,
+    required this.aiBusy,
+    required this.onAi,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(sign.id,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                OutlinedButton.icon(
+                  onPressed: aiBusy ? null : onAi,
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label: const Text('AI识别'),
+                ),
+              ],
+            ),
+            Text('GPS: ${sign.lat ?? '—'}, ${sign.lng ?? '—'}  ·  '
+                '採集: ${sign.get('採集日時').isEmpty ? '—' : sign.get('採集日時')}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            const Divider(),
+            for (final field in schema.editableFields)
+              _fieldEditor(field),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldEditor(String field) {
+    final options = schema.enums[field];
+    final value = sign.get(field);
+    if (options != null) {
+      final items = [...options];
+      if (value.isNotEmpty && !items.contains(value)) items.insert(0, value);
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: DropdownButtonFormField<String>(
+          initialValue: value.isEmpty ? null : value,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: field,
+            isDense: true,
+            border: const OutlineInputBorder(),
+          ),
+          items: items
+              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .toList(),
+          onChanged: (v) {
+            sign.set(field, v ?? '');
+            onChanged();
+          },
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: TextFormField(
+        initialValue: value,
+        decoration: InputDecoration(
+          labelText: field,
+          isDense: true,
+          border: const OutlineInputBorder(),
+        ),
+        onChanged: (v) => sign.set(field, v),
+      ),
+    );
+  }
+}
