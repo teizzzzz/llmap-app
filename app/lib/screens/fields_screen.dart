@@ -30,6 +30,36 @@ class FieldsScreen extends StatefulWidget {
 
 class _FieldsScreenState extends State<FieldsScreen> {
   bool _aiBusy = false;
+  final _pageCtrl = PageController();
+  int _index = 0;
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _isLast => _index >= widget.signs.length - 1;
+
+  void _goNext() {
+    if (_isLast) {
+      _save();
+    } else {
+      _pageCtrl.nextPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _goPrev() {
+    if (_index > 0) {
+      _pageCtrl.previousPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   CropRegion? _regionFor(Sign sign) {
     final suffix = sign.id.split('-').last; // AREA-SNNN-suffix
@@ -75,27 +105,65 @@ class _FieldsScreenState extends State<FieldsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final total = widget.signs.length;
+    final current = widget.signs[_index];
+    final suffix = current.id.split('-').last;
     return Scaffold(
-      appBar: AppBar(title: Text('字段入力 (${widget.signs.length})')),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          for (final sign in widget.signs) _SignCard(
-            sign: sign,
-            schema: widget.schema,
-            aiBusy: _aiBusy,
-            onAi: () => _runAi(sign),
-            onApprove: () => setState(() => sign.set('_status', 'reviewed')),
-            onChanged: () => setState(() {}),
-          ),
-        ],
+      appBar: AppBar(
+        title: Text('字段入力  $suffix  (${_index + 1}/$total)'),
+        bottom: total > 1
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(4),
+                child: LinearProgressIndicator(
+                  value: (_index + 1) / total,
+                  minHeight: 4,
+                ),
+              )
+            : null,
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(12),
-        child: FilledButton.icon(
-          onPressed: _save,
-          icon: const Icon(Icons.check),
-          label: const Text('保存して地図へ'),
+      body: PageView.builder(
+        controller: _pageCtrl,
+        itemCount: total,
+        onPageChanged: (i) => setState(() => _index = i),
+        itemBuilder: (_, i) {
+          final sign = widget.signs[i];
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: _SignCard(
+              sign: sign,
+              schema: widget.schema,
+              aiBusy: _aiBusy,
+              onAi: () => _runAi(sign),
+              onApprove: () =>
+                  setState(() => sign.set('_status', 'reviewed')),
+              onChanged: () => setState(() {}),
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              if (_index > 0)
+                OutlinedButton.icon(
+                  onPressed: _goPrev,
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('前へ'),
+                ),
+              if (_index > 0) const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _goNext,
+                  icon: Icon(_isLast ? Icons.check : Icons.arrow_forward),
+                  label: Text(_isLast
+                      ? '保存して地図へ'
+                      : '次の景観へ（${_index + 2}/$total）'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

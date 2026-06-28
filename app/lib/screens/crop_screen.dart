@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../capture.dart';
 import '../models.dart';
 import '../widgets/box_selector.dart';
 import 'fields_screen.dart';
@@ -16,8 +17,6 @@ class CropScreen extends StatefulWidget {
   final String fileName;
   final String area;
   final int seq;
-  final double? fallbackLat;
-  final double? fallbackLng;
 
   const CropScreen({
     super.key,
@@ -27,8 +26,6 @@ class CropScreen extends StatefulWidget {
     required this.fileName,
     required this.area,
     required this.seq,
-    this.fallbackLat,
-    this.fallbackLng,
   });
 
   @override
@@ -38,10 +35,19 @@ class CropScreen extends StatefulWidget {
 class _CropScreenState extends State<CropScreen> {
   List<CropRegion> _regions = [];
   bool _busy = false;
+  // 撮影時GPSを画面表示中に非ブロッキングで取得（EXIF無し時の fallback）。
+  Future<({double lat, double lng})?>? _gpsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _gpsFuture = currentGps();
+  }
 
   Future<void> _next() async {
     setState(() => _busy = true);
     try {
+      final gps = await _gpsFuture;
       // 框选が無ければ全景1枚として扱う（backend 側でも空なら full 扱い）。
       final signs = await widget.api.extract(
         photoBytes: widget.imageBytes,
@@ -49,8 +55,8 @@ class _CropScreenState extends State<CropScreen> {
         area: widget.area,
         seq: widget.seq,
         crops: _regions,
-        fallbackLat: widget.fallbackLat,
-        fallbackLng: widget.fallbackLng,
+        fallbackLat: gps?.lat,
+        fallbackLng: gps?.lng,
       );
       if (!mounted) return;
       final result = await Navigator.push<List<Sign>>(

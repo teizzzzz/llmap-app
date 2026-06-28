@@ -39,12 +39,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // 2件の座標ありマーカー
-    expect(find.byIcon(Icons.location_on), findsNWidgets(2));
+    expect(find.byType(MapPin), findsNWidgets(2));
     // 座標なし警告
     expect(find.textContaining('座標なし 1 件'), findsOneWidget);
 
     // マーカータップで詳情カード
-    await tester.tap(find.byIcon(Icons.location_on).first);
+    await tester.tap(find.byType(MapPin).first);
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('HAS-S00'), findsWidgets);
   });

@@ -1,9 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../api.dart';
 import '../capture.dart';
 import '../models.dart';
 import '../settings.dart';
+import '../version.dart';
 import 'crop_screen.dart';
 import 'map_screen.dart';
 
@@ -17,40 +21,78 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver {
   final List<Sign> _signs = [];
   String _area = 'HAS';
   int _nextSeq = 1;
   bool _busy = false;
+  bool _opening = false; // 二重起動防止
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // カメラ起動中に Android が Activity を破棄して写真が失われる事象の復旧。
+    _recoverLostData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _recoverLostData();
+  }
+
+  /// 撮影直後に Activity 再生成で失われた写真を image_picker から復旧。
+  Future<void> _recoverLostData() async {
+    if (!isMobile) return;
+    final lost = await ImagePicker().retrieveLostData();
+    if (lost.isEmpty || lost.file == null) return;
+    final x = lost.file!;
+    final bytes = await x.readAsBytes();
+    if (!mounted) return;
+    _openCrop(bytes, x.name);
+  }
 
   Future<void> _startCapture() async {
+    if (_opening) return;
     // モバイル: カメラ/ギャラリー選択。デスクトップ: ファイル取り込み。
     final shot = await capturePhoto(context);
-    if (shot == null) return;
-    // 撮影時の実時GPS（EXIFが無い場合の fallback。backendはEXIF優先）。
-    final gps = await currentGps();
-    if (!mounted) return;
+    if (shot == null || !mounted) return;
+    _openCrop(shot.bytes, shot.fileName);
+  }
 
-    final result = await Navigator.push<List<Sign>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CropScreen(
-          api: widget.api,
-          schema: widget.schema,
-          imageBytes: shot.bytes,
-          fileName: shot.fileName,
-          area: _area,
-          seq: _nextSeq,
-          fallbackLat: gps?.lat,
-          fallbackLng: gps?.lng,
+  /// 框选画面へ。GPS は CropScreen 側で非ブロッキング取得する。
+  Future<void> _openCrop(Uint8List bytes, String fileName) async {
+    if (_opening) return;
+    _opening = true;
+    try {
+      final result = await Navigator.push<List<Sign>>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CropScreen(
+            api: widget.api,
+            schema: widget.schema,
+            imageBytes: bytes,
+            fileName: fileName,
+            area: _area,
+            seq: _nextSeq,
+          ),
         ),
-      ),
-    );
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _signs.addAll(result);
-        _nextSeq++;
-      });
+      );
+      if (result != null && result.isNotEmpty && mounted) {
+        setState(() {
+          _signs.addAll(result);
+          _nextSeq++;
+        });
+      }
+    } finally {
+      _opening = false;
     }
   }
 
@@ -116,7 +158,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LLMap 採集'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('LLMap 採集'),
+            Text(kAppVersion,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                )),
+          ],
+        ),
         actions: [
           TextButton.icon(
             onPressed: _editArea,

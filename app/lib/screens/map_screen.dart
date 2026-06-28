@@ -1,10 +1,12 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models.dart';
 
-/// 地図预览（⑤⑦）。保存済み sign を言語別色で点表示し、タップで詳情。
+/// 地図预览（⑤⑦）。保存済み sign を言語別色のピンで表示し、タップで詳情。
 class MapScreen extends StatefulWidget {
   final List<Sign> signs;
   final AppSchema schema;
@@ -15,6 +17,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  final _map = MapController();
   Sign? _selected;
 
   List<Sign> get _located =>
@@ -22,15 +25,36 @@ class _MapScreenState extends State<MapScreen> {
 
   LatLng get _center {
     final pts = _located;
-    if (pts.isEmpty) return const LatLng(35.6021, 139.7011); // 既定: 東京近辺
+    if (pts.isEmpty) return const LatLng(35.6021, 139.7011);
     final lat = pts.map((s) => s.lat!).reduce((a, b) => a + b) / pts.length;
     final lng = pts.map((s) => s.lng!).reduce((a, b) => a + b) / pts.length;
     return LatLng(lat, lng);
   }
 
-  Color _langColor(String lang) {
-    final hex = widget.schema.languageColors[lang] ?? '#888888';
-    return parseHexColor(hex);
+  Color _langColor(String lang) =>
+      parseHexColor(widget.schema.languageColors[lang] ?? '#888888');
+
+  String _suffixOf(Sign s) => s.id.split('-').last;
+
+  void _recenter() {
+    final pts = _located;
+    if (pts.isEmpty) return;
+    if (pts.length == 1) {
+      _map.move(LatLng(pts.first.lat!, pts.first.lng!), 17);
+      return;
+    }
+    var minLa = pts.first.lat!, maxLa = pts.first.lat!;
+    var minLn = pts.first.lng!, maxLn = pts.first.lng!;
+    for (final s in pts) {
+      minLa = s.lat! < minLa ? s.lat! : minLa;
+      maxLa = s.lat! > maxLa ? s.lat! : maxLa;
+      minLn = s.lng! < minLn ? s.lng! : minLn;
+      maxLn = s.lng! > maxLn ? s.lng! : maxLn;
+    }
+    _map.fitCamera(CameraFit.bounds(
+      bounds: LatLngBounds(LatLng(minLa, minLn), LatLng(maxLa, maxLn)),
+      padding: const EdgeInsets.all(60),
+    ));
   }
 
   @override
@@ -38,24 +62,18 @@ class _MapScreenState extends State<MapScreen> {
     final located = _located;
     final skipped = widget.signs.length - located.length;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('地図预览'),
-        bottom: skipped > 0
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(24),
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.amber.shade100,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  child: Text('座標なし $skipped 件は地図に表示されません',
-                      style: const TextStyle(fontSize: 12)),
-                ),
-              )
-            : null,
-      ),
+      appBar: AppBar(title: const Text('地図预览')),
+      floatingActionButton: located.isEmpty
+          ? null
+          : FloatingActionButton.small(
+              onPressed: _recenter,
+              tooltip: '全体表示',
+              child: const Icon(Icons.center_focus_strong),
+            ),
       body: Stack(
         children: [
           FlutterMap(
+            mapController: _map,
             options: MapOptions(
               initialCenter: _center,
               initialZoom: located.isEmpty ? 12 : 16,
@@ -63,46 +81,59 @@ class _MapScreenState extends State<MapScreen> {
             ),
             children: [
               TileLayer(
+                // CARTO Voyager: クリーンで読みやすいベースマップ
                 urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.llmap.app',
+                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
+                retinaMode: RetinaMode.isHighDensity(context),
+                userAgentPackageName: 'com.llmap.llmap_app',
               ),
               MarkerLayer(
                 markers: [
                   for (final s in located)
                     Marker(
                       point: LatLng(s.lat!, s.lng!),
-                      width: 34,
-                      height: 34,
+                      width: 44,
+                      height: 52,
+                      alignment: Alignment.topCenter,
                       child: GestureDetector(
-                        onTap: () => setState(() => _selected = s),
-                        child: Icon(
-                          Icons.location_on,
+                        onTap: () {
+                          setState(() => _selected = s);
+                          _map.move(LatLng(s.lat!, s.lng!), _map.camera.zoom);
+                        },
+                        child: MapPin(
                           color: _langColor(s.mainLang),
-                          size: _selected == s ? 40 : 34,
-                          shadows: const [
-                            Shadow(blurRadius: 2, color: Colors.black54),
-                          ],
+                          label: _suffixOf(s),
+                          selected: identical(_selected, s),
                         ),
                       ),
                     ),
                 ],
               ),
+              const _Attribution(),
             ],
           ),
+          if (skipped > 0)
+            Positioned(
+              top: 8,
+              left: 8,
+              right: 8,
+              child: _InfoBanner(text: '座標なし $skipped 件は地図に表示されません'),
+            ),
           Positioned(
-            left: 8,
-            bottom: 8,
-            child: _LegendCard(schema: widget.schema, hex: parseHexColor),
+            left: 12,
+            bottom: 12,
+            child: _LegendCard(schema: widget.schema),
           ),
           if (_selected != null)
             Positioned(
-              left: 8,
-              right: 8,
-              bottom: 8,
+              left: 12,
+              right: 12,
+              bottom: 12,
               child: _DetailCard(
                 sign: _selected!,
                 color: _langColor(_selected!.mainLang),
+                suffix: _suffixOf(_selected!),
                 onClose: () => setState(() => _selected = null),
               ),
             ),
@@ -118,31 +149,150 @@ Color parseHexColor(String h) {
   return Color(int.parse(h, radix: 16));
 }
 
+/// 言語別色のピン。中央に框选 suffix(a,b,c…) を表示。
+class MapPin extends StatelessWidget {
+  final Color color;
+  final String label;
+  final bool selected;
+  const MapPin({
+    super.key,
+    required this.color,
+    required this.label,
+    this.selected = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final size = selected ? 40.0 : 32.0;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: const [
+              BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: selected ? 18 : 14,
+            ),
+          ),
+        ),
+        // 下向きの小さな尖り（ピン先）
+        Transform.translate(
+          offset: const Offset(0, -4),
+          child: CustomPaint(
+            size: const Size(12, 8),
+            painter: _PinTip(color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PinTip extends CustomPainter {
+  final Color color;
+  _PinTip(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(p, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_PinTip old) => old.color != color;
+}
+
+class _Attribution extends StatelessWidget {
+  const _Attribution();
+  @override
+  Widget build(BuildContext context) {
+    return const Align(
+      alignment: Alignment.bottomRight,
+      child: Padding(
+        padding: EdgeInsets.only(right: 4, bottom: 2),
+        child: Text('© OpenStreetMap · © CARTO',
+            style: TextStyle(fontSize: 9, color: Colors.black54)),
+      ),
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  final String text;
+  const _InfoBanner({required this.text});
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(8),
+      color: Colors.amber.shade100,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.info_outline, size: 16, color: Colors.brown),
+            const SizedBox(width: 6),
+            Flexible(child: Text(text, style: const TextStyle(fontSize: 12))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LegendCard extends StatelessWidget {
   final AppSchema schema;
-  final Color Function(String) hex;
-  const _LegendCard({required this.schema, required this.hex});
+  const _LegendCard({required this.schema});
 
   @override
   Widget build(BuildContext context) {
     final entries = schema.languageColors.entries.toList();
     if (entries.isEmpty) return const SizedBox.shrink();
-    return Card(
-      color: Colors.white.withValues(alpha: 0.9),
+    return Material(
+      elevation: 3,
+      borderRadius: BorderRadius.circular(10),
+      color: Colors.white.withValues(alpha: 0.92),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final e in entries)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.circle, size: 12, color: hex(e.value)),
-                  const SizedBox(width: 4),
-                  Text(e.key, style: const TextStyle(fontSize: 11)),
-                ],
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: parseHexColor(e.value),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(e.key, style: const TextStyle(fontSize: 11)),
+                  ],
+                ),
               ),
           ],
         ),
@@ -154,77 +304,130 @@ class _LegendCard extends StatelessWidget {
 class _DetailCard extends StatelessWidget {
   final Sign sign;
   final Color color;
+  final String suffix;
   final VoidCallback onClose;
   const _DetailCard({
     required this.sign,
     required this.color,
+    required this.suffix,
     required this.onClose,
   });
 
   @override
   Widget build(BuildContext context) {
     String v(String k) => sign.get(k).isEmpty ? '—' : sign.get(k);
-    return Card(
-      elevation: 6,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Material(
+      elevation: 8,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 言語色のヘッダ
+          Container(
+            color: color,
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            child: Row(
               children: [
-                Icon(Icons.location_on, color: color, size: 18),
-                const SizedBox(width: 6),
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.white,
+                  child: Text(suffix,
+                      style: TextStyle(
+                          color: color, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    sign.name.isEmpty ? sign.id : sign.name,
+                    sign.name.isEmpty ? '(名称未入力)' : sign.name,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16),
                   ),
                 ),
                 IconButton(
                   onPressed: onClose,
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close, color: Colors.white),
                   visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
-            Text(sign.id,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const Divider(),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _kv('主要言語', v('主要言語')),
-                _kv('補助言語', v('補助言語')),
-                _kv('設置主体', v('設置主体')),
-                _kv('担体類型', v('担体類型')),
-                _kv('来源類型', v('来源類型')),
-                _kv('多言語関係', v('多言語関係')),
+                Row(
+                  children: [
+                    Text(sign.id,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.grey)),
+                    const Spacer(),
+                    _StatusChip(sign.status),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 6,
+                  children: [
+                    _kv('主要言語', v('主要言語')),
+                    _kv('補助言語', v('補助言語')),
+                    _kv('設置主体', v('設置主体')),
+                    _kv('担体類型', v('担体類型')),
+                    _kv('来源類型', v('来源類型')),
+                    _kv('多言語関係', v('多言語関係')),
+                  ],
+                ),
+                if (sign.get('備考').isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('備考: ${sign.get('備考')}',
+                      style: const TextStyle(fontSize: 12)),
+                ],
               ],
             ),
-            if (sign.get('備考').isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text('備考: ${sign.get('備考')}',
-                  style: const TextStyle(fontSize: 12)),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _kv(String k, String val) => RichText(
-        text: TextSpan(
-          style: const TextStyle(fontSize: 12, color: Colors.black87),
-          children: [
-            TextSpan(
-                text: '$k: ',
-                style: const TextStyle(color: Colors.grey)),
-            TextSpan(text: val),
-          ],
+  Widget _kv(String k, String val) => SizedBox(
+        width: 150,
+        child: RichText(
+          text: TextSpan(
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+            children: [
+              TextSpan(text: '$k\n', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+              TextSpan(text: val, style: const TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
         ),
       );
+}
+
+class _StatusChip extends StatelessWidget {
+  final String status;
+  const _StatusChip(this.status);
+  @override
+  Widget build(BuildContext context) {
+    final color = {
+          'pending': Colors.grey,
+          'ai': Colors.blue,
+          'modified': Colors.orange,
+          'reviewed': Colors.green,
+        }[status] ??
+        Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(status, style: TextStyle(fontSize: 11, color: color)),
+    );
+  }
 }
