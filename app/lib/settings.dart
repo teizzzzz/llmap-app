@@ -146,7 +146,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            const Text('キーは端末内にのみ保存され、判定時に后端へ送られます。',
+            const Text('キーは端末内にのみ保存され、判定時に各社AI(Claude/Gemini)へ'
+                '直接送信されます（PC不要）。',
                 style: TextStyle(fontSize: 11, color: Colors.grey)),
           ],
           const SizedBox(height: 24),

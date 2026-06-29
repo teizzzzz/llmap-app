@@ -9,6 +9,7 @@ import '../api.dart';
 import '../capture.dart';
 import '../models.dart';
 import '../settings.dart';
+import '../store.dart';
 import '../version.dart';
 import 'crop_screen.dart';
 import 'edit_sign_screen.dart';
@@ -40,8 +41,28 @@ class _HomeScreenState extends State<HomeScreen>
     loadAiConfig().then((c) {
       if (mounted) setState(() => _ai = c);
     });
+    // 端末内に保存した採集記録を復元（アプリ再起動後もデータが残る）。
+    _loadSaved();
     // カメラ起動中に Android が Activity を破棄して写真が失われる事象の復旧。
     _recoverLostData();
+  }
+
+  /// 端末内の保存データを読み込み、一覧・地区・連番を復元する。
+  Future<void> _loadSaved() async {
+    final p = await LocalStore.instance.loadProject();
+    if (p == null || !mounted) return;
+    setState(() {
+      _signs
+        ..clear()
+        ..addAll(p.signs);
+      _area = p.area;
+      _nextSeq = p.nextSeq;
+    });
+  }
+
+  /// 現在の採集記録とセッション（地区/連番）を端末に保存する。
+  void _persist() {
+    LocalStore.instance.saveProject(_signs, _area, _nextSeq);
   }
 
   @override
@@ -98,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen>
           _signs.addAll(result);
           _nextSeq++;
         });
+        _persist();
       }
     } finally {
       _opening = false;
@@ -110,7 +132,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (_signs.isEmpty) return;
     setState(() => _busy = true);
     try {
-      final zipPath = await widget.api.exportBundle(_signs);
+      // 端末内の写真と記録から ZIP を生成（後端不要／PC off 可）。
+      final zipPath =
+          await LocalStore.instance.buildBundle(_signs, widget.schema.csvHeader);
       if (!mounted) return;
       if (isMobile) {
         await Share.shareXFiles(
@@ -169,8 +193,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     if (r == 'deleted') {
       setState(() => _signs.removeAt(i));
+      _persist();
     } else if (r == 'saved') {
       setState(() {});
+      _persist();
     }
   }
 
@@ -196,7 +222,10 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
     );
-    if (v != null && v.trim().isNotEmpty) setState(() => _area = v.trim());
+    if (v != null && v.trim().isNotEmpty) {
+      setState(() => _area = v.trim());
+      _persist();
+    }
   }
 
   @override
@@ -286,7 +315,10 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                   ),
-                  onDismissed: (_) => setState(() => _signs.removeAt(i)),
+                  onDismissed: (_) {
+                    setState(() => _signs.removeAt(i));
+                    _persist();
+                  },
                   child: ListTile(
                     leading: CircleAvatar(child: Text('${i + 1}')),
                     title: Text(s.name.isEmpty ? '(名称未入力)' : s.name),

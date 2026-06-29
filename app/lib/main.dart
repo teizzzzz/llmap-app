@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'models.dart';
+import 'schema_defaults.dart';
 import 'screens/home_screen.dart';
 import 'settings.dart';
 
@@ -50,8 +51,18 @@ class _BootState extends State<_Boot> {
   }
 
   void _load() => setState(() {
-        _future = api.schema();
+        _future = _resolveSchema();
       });
+
+  /// 後端 /schema を取得。繋がらなければ端末内の既定スキーマで起動する
+  /// （PC off でも保存データの閲覧・採集・書き出しを止めない）。
+  Future<AppSchema> _resolveSchema() async {
+    try {
+      return await api.schema();
+    } catch (_) {
+      return defaultSchema();
+    }
+  }
 
   Future<void> _editUrl() async {
     final ai = await loadAiConfig();

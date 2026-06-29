@@ -2,9 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../api.dart';
+import '../ai.dart' as ai;
 import '../models.dart';
 import '../settings.dart';
+import '../store.dart';
 import '../widgets/crop_preview.dart';
 import '../widgets/sign_form.dart';
 
@@ -12,20 +13,16 @@ import '../widgets/sign_form.dart';
 /// 上=框选プレビュー、下=入力。各 sign で skip / 保存 を選び次へ。
 /// AI が有効なら各 sign に入った時点で自動識別する。
 class FieldsScreen extends StatefulWidget {
-  final BackendApi api;
   final AppSchema schema;
   final Uint8List imageBytes;
-  final String fileName;
   final List<Sign> signs;
   final List<CropRegion> regions;
   final AiConfig aiConfig;
 
   const FieldsScreen({
     super.key,
-    required this.api,
     required this.schema,
     required this.imageBytes,
-    required this.fileName,
     required this.signs,
     required this.regions,
     required this.aiConfig,
@@ -68,12 +65,15 @@ class _FieldsScreenState extends State<FieldsScreen> {
   Future<void> _runAi(Sign sign) async {
     setState(() => _aiBusy = true);
     try {
-      final fields = await widget.api.ai(
-        photoBytes: widget.imageBytes,
-        fileName: widget.fileName,
+      // 端末に保存済みの裁切写真を読み、無ければ全景にフォールバック。
+      final name = sign.get('写真ファイル名');
+      final f = LocalStore.instance.photoFile(name);
+      final bytes =
+          await f.exists() ? await f.readAsBytes() : widget.imageBytes;
+      final fields = await ai.judge(
+        photoBytes: bytes,
         provider: widget.aiConfig.provider,
         fields: widget.schema.aiFields,
-        crop: _regionFor(sign),
         apiKey: widget.aiConfig.apiKey,
       );
       if (!mounted) return;

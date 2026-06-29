@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0-beta+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.12.2
@@ -48,6 +48,12 @@ dependencies:
   geolocator: ^13.0.1
   # Share/save the exported zip (Android: system share sheet)
   share_plus: ^10.0.0
+  # Local-first storage (C plan): app documents dir for records + photos
+  path_provider: ^2.1.4
+  # Client-side image crop (replaces backend /extract cropping)
+  image: ^4.2.0
+  # Build the export ZIP on-device (replaces backend /export_bundle)
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:
