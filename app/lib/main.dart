@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'l10n/app_localizations.dart';
 import 'models.dart';
 import 'schema_defaults.dart';
 import 'screens/home_screen.dart';
@@ -10,7 +11,10 @@ import 'theme/tokens.dart';
 import 'version.dart';
 import 'widgets/ll/ll.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // 保存済みの言語設定を反映（null=システムに従う）。
+  localeNotifier.value = await loadLocale();
   runApp(const LLMapApp());
 }
 
@@ -19,11 +23,17 @@ class LLMapApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'LLMap 採集',
-      debugShowCheckedModeBanner: false,
-      theme: lingscapeTheme(),
-      home: const _Boot(),
+    return ValueListenableBuilder<Locale?>(
+      valueListenable: localeNotifier,
+      builder: (context, locale, _) => MaterialApp(
+        title: 'LLMap',
+        debugShowCheckedModeBanner: false,
+        theme: lingscapeTheme(),
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const _Boot(),
+      ),
     );
   }
 }
@@ -82,6 +92,7 @@ class _BootState extends State<_Boot> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return FutureBuilder<AppSchema>(
       future: _future,
       builder: (context, snap) {
@@ -94,7 +105,7 @@ class _BootState extends State<_Boot> {
                 children: [
                   Text('LLMap', style: AppText.pageTitle()),
                   const SizedBox(height: 6),
-                  Text('语言景观采集 · $kAppVersion', style: AppText.caption()),
+                  Text('${t.appTagline} · $kAppVersion', style: AppText.caption()),
                   const SizedBox(height: 28),
                   const SizedBox(
                     width: 26,
@@ -119,16 +130,16 @@ class _BootState extends State<_Boot> {
                     const Icon(Icons.cloud_off,
                         size: 44, color: AppColors.textSecondary),
                     const SizedBox(height: 12),
-                    Text('暂时无法读取配置', style: AppText.sectionTitle()),
+                    Text(t.bootOfflineTitle, style: AppText.sectionTitle()),
                     const SizedBox(height: 6),
-                    Text('已使用本地默认设置，可正常采集。',
+                    Text(t.bootOfflineBody,
                         textAlign: TextAlign.center, style: AppText.caption()),
                     const SizedBox(height: 20),
                     LLPrimaryButton(
-                        label: '重试', expand: false, onPressed: _load),
+                        label: t.retry, expand: false, onPressed: _load),
                     const SizedBox(height: 8),
                     LLSecondaryButton(
-                        label: '设置', expand: false, onPressed: _editUrl),
+                        label: t.settings, expand: false, onPressed: _editUrl),
                   ],
                 ),
               ),

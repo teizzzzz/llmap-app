@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
 import '../capture.dart';
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../settings.dart';
 import '../store.dart';
@@ -165,26 +166,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showSavedDialog() => showLLDialog(
-        context,
-        icon: Icons.check_rounded,
-        iconColor: AppColors.success,
-        title: '已保存到本地项目',
-        message: '照片记录已保存到当前项目中。\n你可以稍后导出 CSV 和照片压缩包，用于整理、备份或进一步分析。',
-        primaryLabel: '返回地图',
-      );
+  Future<void> _showSavedDialog() {
+    final t = AppLocalizations.of(context);
+    return showLLDialog(
+      context,
+      icon: Icons.check_rounded,
+      iconColor: AppColors.success,
+      title: t.savedTitle,
+      message: t.savedBody,
+      primaryLabel: t.backToMap,
+    );
+  }
 
   /// CSV＋写真を ZIP で一括エクスポート（端末内生成・進捗ダイアログ表示）。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
+    final t = AppLocalizations.of(context);
     final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
     final sw = Stopwatch()..start();
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => LLProgressDialog(
-        title: '正在导出数据…',
-        unit: ' 张照片',
+        title: t.exporting,
+        unit: t.unitPhotos,
         progress: progress,
       ),
     );
@@ -203,8 +208,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       Navigator.pop(context); // 進捗ダイアログを閉じる
       if (isMobile) {
-        await Share.shareXFiles([XFile(zipPath)],
-            text: 'LLMap 导出（${_signs.length} 条）');
+        await Share.shareXFiles([XFile(zipPath)], text: 'LLMap');
       } else {
         final dir =
             Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
@@ -213,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await File(zipPath).copy(dest.path);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('已导出：${dest.path}')),
+            SnackBar(content: Text(t.exportedTo(dest.path))),
           );
         }
       }
@@ -221,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) {
         Navigator.pop(context); // 進捗ダイアログを閉じる
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('导出失败：$e')));
+            .showSnackBar(SnackBar(content: Text(t.exportFailed('$e'))));
       }
     } finally {
       progress.dispose();
@@ -242,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) {
       setState(() => _ai = result.ai);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('设置已保存（URL 变更将在下次启动生效）')),
+        SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
       );
     }
   }
@@ -286,11 +290,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _editArea() async {
+    final t = AppLocalizations.of(context);
     final ctrl = TextEditingController(text: _area);
     final v = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('地区代码（3 字符）'),
+        title: Text(t.areaDialogTitle),
         content: TextField(
           controller: ctrl,
           maxLength: 3,
@@ -299,11 +304,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('取消')),
+              onPressed: () => Navigator.pop(context), child: Text(t.cancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, ctrl.text.toUpperCase()),
-              child: const Text('确定')),
+              child: Text(t.confirm)),
         ],
       ),
     );
@@ -346,70 +350,74 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showInfoMenu() {
-    showLLBottomSheet(context, title: '菜单', children: [
+    final t = AppLocalizations.of(context);
+    showLLBottomSheet(context, title: t.menu, children: [
       LLSheetTile(
           icon: Icons.info_outline,
-          label: '关于 LLMap',
+          label: t.aboutApp,
           onTap: () {
             Navigator.pop(context);
             _showAbout();
           }),
       LLSheetTile(
           icon: Icons.school_outlined,
-          label: '使用教程',
+          label: t.tutorial,
           onTap: () {
             Navigator.pop(context);
-            _showTodo('使用教程');
+            _showTodo(t.tutorial);
           }),
       LLSheetTile(
           icon: Icons.lightbulb_outline,
-          label: '采集技巧',
+          label: t.tips,
           onTap: () {
             Navigator.pop(context);
-            _showTodo('采集技巧');
+            _showTodo(t.tips);
           }),
       LLSheetTile(
           icon: Icons.tune,
-          label: '项目设置',
+          label: t.projectSettings,
           onTap: () {
             Navigator.pop(context);
             _openSettings();
           }),
       LLSheetTile(
           icon: Icons.download_outlined,
-          label: '导出数据',
+          label: t.exportData,
           onTap: () {
             Navigator.pop(context);
             _export();
           }),
       LLSheetTile(
           icon: Icons.close,
-          label: '取消',
+          label: t.cancel,
           color: AppColors.textSecondary,
           showChevron: false,
           onTap: () => Navigator.pop(context)),
     ]);
   }
 
-  void _showAbout() => showLLDialog(
-        context,
-        icon: Icons.travel_explore,
-        title: '关于 LLMap',
-        message: '语言景观采集工具 · $kAppVersion\n本地优先：照片与记录都保存在本机，'
-            '可随时导出 CSV 和照片压缩包。云端同步为未来计划。',
-        primaryLabel: '好的',
-      );
+  void _showAbout() {
+    final t = AppLocalizations.of(context);
+    showLLDialog(
+      context,
+      icon: Icons.travel_explore,
+      title: t.aboutApp,
+      message: t.aboutBody(kAppVersion),
+      primaryLabel: t.ok,
+    );
+  }
 
   void _showTodo(String name) => showLLDialog(
         context,
         icon: Icons.construction_outlined,
         title: name,
-        message: '功能开发中，敬请期待。',
-        primaryLabel: '好的',
+        message: AppLocalizations.of(context).comingSoon,
+        primaryLabel: AppLocalizations.of(context).ok,
       );
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final media = MediaQuery.of(context);
     final located = _located;
     final topInset = media.padding.top;
@@ -456,9 +464,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             right: 0,
             child: Center(
               child: LLSegmentedControl<LLMapLayer>(
-                segments: const [
-                  LLSegment(LLMapLayer.map, '地图'),
-                  LLSegment(LLMapLayer.satellite, '卫星'),
+                segments: [
+                  LLSegment(LLMapLayer.map, t.layerMap),
+                  LLSegment(LLMapLayer.satellite, t.layerSatellite),
                 ],
                 selected: _layer,
                 activeColor: _layer == LLMapLayer.satellite
@@ -475,7 +483,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             top: topInset + 66,
             right: AppSpacing.lg,
             child: LLIconButton(
-                icon: Icons.my_location, tooltip: '当前位置', onPressed: _locate),
+                icon: Icons.my_location,
+                tooltip: t.currentLocation,
+                onPressed: _locate),
           ),
           if (widget.schema.languageColors.isNotEmpty)
             Positioned(
@@ -503,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             right: AppSpacing.lg,
             bottom: collapsedPx + 12,
             child: LLPrimaryButton(
-              label: '新增采集',
+              label: t.newCollection,
               icon: Icons.add_a_photo_outlined,
               onPressed: _startCapture,
             ),
@@ -524,6 +534,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _recordsPanel(ScrollController scroll) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surfaceIvory,
@@ -551,16 +562,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
             child: Row(
               children: [
-                Text('采集记录', style: AppText.sectionTitle()),
+                Text(t.recordsTitle, style: AppText.sectionTitle()),
                 const SizedBox(width: AppSpacing.sm),
-                Text('共 ${_signs.length} 条记录', style: AppText.caption()),
+                Text(t.recordsCount(_signs.length), style: AppText.caption()),
                 const Spacer(),
                 if (_signs.isNotEmpty)
                   IconButton(
                     onPressed: _openGallery,
                     icon: const Icon(Icons.grid_view_outlined, size: 20),
                     color: AppColors.accentTerracotta,
-                    tooltip: '采集档案',
+                    tooltip: t.archiveTooltip,
                     visualDensity: VisualDensity.compact,
                   ),
                 LLTagChip(
@@ -569,7 +580,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onPressed: _editArea,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   color: AppColors.textSecondary,
-                  tooltip: '地区代码',
+                  tooltip: t.areaCodeTooltip,
                   visualDensity: VisualDensity.compact,
                 ),
               ],
@@ -599,11 +610,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     context,
                     icon: Icons.delete_outline,
                     iconColor: AppColors.danger,
-                    title: '删除记录',
-                    message: '确定删除 ${s.id} 吗？',
-                    primaryLabel: '删除',
+                    title: t.deleteRecordTitle,
+                    message: t.deleteRecordConfirm(s.id),
+                    primaryLabel: t.delete,
                     onPrimary: () => Navigator.pop(context, true),
-                    secondaryLabel: '取消',
+                    secondaryLabel: t.cancel,
                     onSecondary: () => Navigator.pop(context, false),
                   ),
                   onDismissed: (_) {
@@ -622,6 +633,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _emptyRecords() {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
@@ -630,9 +642,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Icon(Icons.add_a_photo_outlined,
               size: 40, color: AppColors.accentTerracotta),
           const SizedBox(height: AppSpacing.md),
-          Text('还没有采集记录', style: AppText.sectionTitle()),
+          Text(t.emptyTitle, style: AppText.sectionTitle()),
           const SizedBox(height: AppSpacing.xs),
-          Text('点击"新增采集"，开始记录你身边的语言景观。',
+          Text(t.emptyBody,
               textAlign: TextAlign.center,
               style: AppText.body().copyWith(color: AppColors.textSecondary)),
         ],

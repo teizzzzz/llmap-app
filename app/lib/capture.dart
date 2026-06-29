@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'l10n/app_localizations.dart';
 import 'widgets/ll/ll.dart';
 
 class CaptureResult {
@@ -25,21 +26,22 @@ Future<CaptureResult?> capturePhoto(BuildContext context) async {
   ImageSource source = ImageSource.gallery;
 
   if (isMobile) {
+    final t = AppLocalizations.of(context);
     final choice = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => LLBottomSheetScaffold(
-        title: '新增采集',
+        title: t.newCollection,
         children: [
           LLSheetTile(
             icon: Icons.camera_alt_outlined,
-            label: '拍照',
+            label: t.takePhoto,
             showChevron: false,
             onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
           ),
           LLSheetTile(
             icon: Icons.photo_library_outlined,
-            label: '从相册选择',
+            label: t.chooseFromGallery,
             showChevron: false,
             onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
           ),

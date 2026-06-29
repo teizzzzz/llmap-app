@@ -4,6 +4,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/tokens.dart';
 
 class LLProgressDialog extends StatelessWidget {
@@ -62,10 +63,10 @@ class LLProgressDialog extends StatelessWidget {
                           ),
                         Text(
                           finished
-                              ? '完成 · 共 ${p.total}${unit ?? ''}'
+                              ? '${AppLocalizations.of(context).done} · ${p.total}${unit ?? ''}'
                               : p.total > 0
                                   ? '${p.done} / ${p.total}${unit ?? ''}'
-                                  : '处理中…',
+                                  : AppLocalizations.of(context).processing,
                           style: AppText.caption().copyWith(
                               color: finished
                                   ? AppColors.success

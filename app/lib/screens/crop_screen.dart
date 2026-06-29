@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../capture.dart';
 import '../imaging.dart';
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../settings.dart';
 import '../store.dart';
@@ -125,19 +126,20 @@ class _CropScreenState extends State<CropScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('框选标志  (${_regions.length})'),
+        title: Text(t.cropTitle(_regions.length)),
         actions: [
           if (_regions.isNotEmpty)
             IconButton(
-              tooltip: '撤销最后一个框',
+              tooltip: t.undoLastBox,
               onPressed: () => setState(() => _regions.removeLast()),
               icon: const Icon(Icons.undo),
             ),
           if (_regions.isNotEmpty)
             IconButton(
-              tooltip: '清空',
+              tooltip: t.clearAll,
               onPressed: () => setState(() => _regions = []),
               icon: const Icon(Icons.delete_outline),
             ),
@@ -159,8 +161,9 @@ class _CropScreenState extends State<CropScreen> {
                   Expanded(
                     child: Text(
                       _regions.isEmpty
-                          ? '拖动框选每个标志；不框选则整张作为一条记录。'
-                          : '已框选：${_regions.map((r) => r.suffix).join("、")}',
+                          ? t.cropHintEmpty
+                          : t.cropHintBoxed(
+                              _regions.map((r) => r.suffix).join(', ')),
                       style: AppText.caption(),
                     ),
                   ),
@@ -185,7 +188,7 @@ class _CropScreenState extends State<CropScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: LLPrimaryButton(
-            label: _regions.isEmpty ? '整张作为一条记录 · 下一步' : '下一步：填写字段',
+            label: _regions.isEmpty ? t.nextWholeImage : t.nextFillFields,
             icon: Icons.arrow_forward,
             busy: _busy,
             onPressed: _busy ? null : _next,
@@ -197,6 +200,7 @@ class _CropScreenState extends State<CropScreen> {
 
   /// GPS 状態＋手動調整入口（自動GPS後の任意修正）。
   Widget _gpsStatus() {
+    final t = AppLocalizations.of(context);
     Widget row(IconData icon, String text, Color color, String action) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.sm, 0),
@@ -220,21 +224,20 @@ class _CropScreenState extends State<CropScreen> {
     }
 
     if (_manualGps != null) {
-      return row(Icons.edit_location_alt, '已手动调整位置',
-          AppColors.accentBlue, '重新调整');
+      return row(Icons.edit_location_alt, t.gpsAdjusted,
+          AppColors.accentBlue, t.gpsReadjust);
     }
     return FutureBuilder<({double lat, double lng})?>(
       future: _gpsFuture,
       builder: (context, snap) {
         final waiting = snap.connectionState == ConnectionState.waiting;
         final (icon, text, color) = waiting
-            ? (Icons.gps_not_fixed, '正在获取当前位置…', AppColors.textSecondary)
+            ? (Icons.gps_not_fixed, t.gpsLocating, AppColors.textSecondary)
             : snap.data != null
-                ? (Icons.gps_fixed, '已获取当前位置', AppColors.success)
-                : (Icons.gps_off, '无法获取当前位置，请手动选择拍摄地点',
-                    AppColors.warning);
+                ? (Icons.gps_fixed, t.gpsGot, AppColors.success)
+                : (Icons.gps_off, t.gpsFailed, AppColors.warning);
         return row(icon, text, color,
-            snap.data != null ? '位置不准确？手动调整' : '手动选择');
+            snap.data != null ? t.gpsAdjust : t.gpsManual);
       },
     );
   }

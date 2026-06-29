@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../theme/tokens.dart';
 import '../widgets/ll/ll.dart';
@@ -18,15 +19,16 @@ class EditSignScreen extends StatefulWidget {
 
 class _EditSignScreenState extends State<EditSignScreen> {
   Future<void> _confirmDelete() async {
+    final t = AppLocalizations.of(context);
     final ok = await showLLDialog<bool>(
       context,
       icon: Icons.delete_outline,
       iconColor: AppColors.danger,
-      title: '删除记录',
-      message: '确定删除 ${widget.sign.id} 吗？此操作不可撤销。',
-      primaryLabel: '删除',
+      title: t.deleteRecordTitle,
+      message: t.deleteRecordConfirmIrreversible(widget.sign.id),
+      primaryLabel: t.delete,
       onPrimary: () => Navigator.pop(context, true),
-      secondaryLabel: '取消',
+      secondaryLabel: t.cancel,
       onSecondary: () => Navigator.pop(context, false),
     );
     if (ok == true && mounted) Navigator.pop(context, 'deleted');
@@ -34,15 +36,16 @@ class _EditSignScreenState extends State<EditSignScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('编辑记录'),
+        title: Text(t.editTitle),
         actions: [
           IconButton(
             onPressed: _confirmDelete,
             icon: const Icon(Icons.delete_outline),
             color: AppColors.danger,
-            tooltip: '删除',
+            tooltip: t.delete,
           ),
         ],
       ),
@@ -60,7 +63,7 @@ class _EditSignScreenState extends State<EditSignScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: LLPrimaryButton(
-            label: '保存修改',
+            label: t.saveChanges,
             icon: Icons.check,
             onPressed: () => Navigator.pop(context, 'saved'),
           ),

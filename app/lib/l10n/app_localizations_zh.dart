@@ -1,0 +1,351 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Chinese (`zh`).
+class AppLocalizationsZh extends AppLocalizations {
+  AppLocalizationsZh([String locale = 'zh']) : super(locale);
+
+  @override
+  String get retry => '重试';
+
+  @override
+  String get settings => '设置';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get confirm => '确定';
+
+  @override
+  String get ok => '好的';
+
+  @override
+  String get delete => '删除';
+
+  @override
+  String get all => '全部';
+
+  @override
+  String get done => '完成';
+
+  @override
+  String get processing => '处理中…';
+
+  @override
+  String get untitled => '(未填写名称)';
+
+  @override
+  String get appTagline => '语言景观采集';
+
+  @override
+  String get bootOfflineTitle => '暂时无法读取配置';
+
+  @override
+  String get bootOfflineBody => '已使用本地默认设置，可正常采集。';
+
+  @override
+  String get newCollection => '新增采集';
+
+  @override
+  String get takePhoto => '拍照';
+
+  @override
+  String get chooseFromGallery => '从相册选择';
+
+  @override
+  String get recordsTitle => '采集记录';
+
+  @override
+  String recordsCount(int count) {
+    return '共 $count 条记录';
+  }
+
+  @override
+  String get archiveTooltip => '采集档案';
+
+  @override
+  String get areaCodeTooltip => '地区代码';
+
+  @override
+  String get emptyTitle => '还没有采集记录';
+
+  @override
+  String get emptyBody => '点击\"新增采集\"，开始记录你身边的语言景观。';
+
+  @override
+  String get savedTitle => '已保存到本地项目';
+
+  @override
+  String get savedBody => '照片记录已保存到当前项目中。你可以稍后导出 CSV 和照片压缩包，用于整理、备份或进一步分析。';
+
+  @override
+  String get backToMap => '返回地图';
+
+  @override
+  String get exporting => '正在导出数据…';
+
+  @override
+  String get unitPhotos => ' 张照片';
+
+  @override
+  String exportedTo(String path) {
+    return '已导出：$path';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '导出失败：$error';
+  }
+
+  @override
+  String get currentLocation => '当前位置';
+
+  @override
+  String get layerMap => '地图';
+
+  @override
+  String get layerSatellite => '卫星';
+
+  @override
+  String get areaDialogTitle => '地区代码（3 字符）';
+
+  @override
+  String get deleteRecordTitle => '删除记录';
+
+  @override
+  String deleteRecordConfirm(String id) {
+    return '确定删除 $id 吗？';
+  }
+
+  @override
+  String get settingsSaved => '设置已保存（URL 变更将在下次启动生效）';
+
+  @override
+  String get menu => '菜单';
+
+  @override
+  String get aboutApp => '关于 LLMap';
+
+  @override
+  String get tutorial => '使用教程';
+
+  @override
+  String get tips => '采集技巧';
+
+  @override
+  String get projectSettings => '项目设置';
+
+  @override
+  String get exportData => '导出数据';
+
+  @override
+  String aboutBody(String version) {
+    return '语言景观采集工具 · $version\n本地优先：照片与记录都保存在本机，可随时导出 CSV 和照片压缩包。云端同步为未来计划。';
+  }
+
+  @override
+  String get comingSoon => '功能开发中，敬请期待。';
+
+  @override
+  String cropTitle(int count) {
+    return '框选标志 ($count)';
+  }
+
+  @override
+  String get undoLastBox => '撤销最后一个框';
+
+  @override
+  String get clearAll => '清空';
+
+  @override
+  String get cropHintEmpty => '拖动框选每个标志；不框选则整张作为一条记录。';
+
+  @override
+  String cropHintBoxed(String list) {
+    return '已框选：$list';
+  }
+
+  @override
+  String get nextFillFields => '下一步：填写字段';
+
+  @override
+  String get nextWholeImage => '整张作为一条记录 · 下一步';
+
+  @override
+  String get gpsLocating => '正在获取当前位置…';
+
+  @override
+  String get gpsGot => '已获取当前位置';
+
+  @override
+  String get gpsFailed => '无法获取当前位置，请手动选择拍摄地点';
+
+  @override
+  String get gpsAdjust => '位置不准确？手动调整';
+
+  @override
+  String get gpsManual => '手动选择';
+
+  @override
+  String get gpsAdjusted => '已手动调整位置';
+
+  @override
+  String get gpsReadjust => '重新调整';
+
+  @override
+  String fieldsTitle(String suffix, int index, int total) {
+    return '填写字段 · $suffix ($index/$total)';
+  }
+
+  @override
+  String get reRecognize => '重新识别';
+
+  @override
+  String get recognizing => '识别中…';
+
+  @override
+  String aiFailed(String error) {
+    return 'AI 识别失败：$error';
+  }
+
+  @override
+  String get stashDone => '暂存并完成';
+
+  @override
+  String get stashNext => '暂存，稍后填写';
+
+  @override
+  String get saveDone => '保存本次采集 · 完成';
+
+  @override
+  String get saveNext => '保存并继续';
+
+  @override
+  String get editTitle => '编辑记录';
+
+  @override
+  String deleteRecordConfirmIrreversible(String id) {
+    return '确定删除 $id 吗？此操作不可撤销。';
+  }
+
+  @override
+  String get saveChanges => '保存修改';
+
+  @override
+  String get aiAuto => 'AI 自动识别';
+
+  @override
+  String get aiAutoSub => '开启后，进入每个框选标志时自动识别字段。';
+
+  @override
+  String get provider => '服务商';
+
+  @override
+  String get apiKey => 'API 密钥';
+
+  @override
+  String get apiKeyNote => '密钥仅保存在本机，识别时直接发送给各家 AI（Claude / Gemini），无需 PC。';
+
+  @override
+  String get backendOptional => '后端地址（可选）';
+
+  @override
+  String get backendNote => '日常采集无需后端。仅在使用旧版后端流程时填写。';
+
+  @override
+  String get backendUrl => '后端 URL';
+
+  @override
+  String get backendHint =>
+      'Windows: http://localhost:8000 / 模拟器: http://10.0.2.2:8000 / 真机: http://<PC 局域网 IP>:8000';
+
+  @override
+  String get saveSettings => '保存设置';
+
+  @override
+  String get language => '语言';
+
+  @override
+  String get languageSystem => '跟随系统';
+
+  @override
+  String get galleryTitle => '采集档案';
+
+  @override
+  String get langFilter => '语言';
+
+  @override
+  String get sourceFilter => '来源';
+
+  @override
+  String get noMatch => '没有符合条件的记录';
+
+  @override
+  String get selectLocTitle => '确认拍摄位置';
+
+  @override
+  String get selectLocBody1 => '系统已自动获取当前位置。';
+
+  @override
+  String get selectLocBody2 => '如果位置不准确，拖动地图以调整照片的拍摄地点。';
+
+  @override
+  String coords(String lat, String lng) {
+    return '坐标：$lat, $lng';
+  }
+
+  @override
+  String get relocate => '重新定位';
+
+  @override
+  String get gpsUnavailable => '无法获取当前位置';
+
+  @override
+  String get useThisLocation => '使用此位置';
+
+  @override
+  String get restoreAuto => '恢复自动定位';
+
+  @override
+  String get mapPreview => '地图预览';
+
+  @override
+  String get fitAll => '全体显示';
+
+  @override
+  String noCoords(int count) {
+    return '无坐标 $count 条未显示';
+  }
+
+  @override
+  String get mainLanguage => '主要语言';
+
+  @override
+  String get subLanguage => '辅助语言';
+
+  @override
+  String get operator => '设置主体';
+
+  @override
+  String get carrier => '载体类型';
+
+  @override
+  String get sourceType => '来源类型';
+
+  @override
+  String get multilingual => '多语关系';
+
+  @override
+  String noteLabel(String note) {
+    return '备注：$note';
+  }
+
+  @override
+  String signMeta(String lat, String lng, String time) {
+    return 'GPS：$lat, $lng · 采集：$time';
+  }
+}

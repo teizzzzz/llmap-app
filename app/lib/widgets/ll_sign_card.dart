@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../theme.dart' show statusBadge;
 import '../theme/tokens.dart';
@@ -50,7 +51,9 @@ class LLSignCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      sign.name.isEmpty ? '(未填写名称)' : sign.name,
+                      sign.name.isEmpty
+                          ? AppLocalizations.of(context).untitled
+                          : sign.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.body()

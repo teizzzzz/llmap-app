@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../theme/tokens.dart';
@@ -28,6 +29,7 @@ class SignForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -40,8 +42,12 @@ class SignForm extends StatelessWidget {
             statusBadge(sign.status),
           ],
         ),
-        Text('GPS：${sign.lat ?? '—'}, ${sign.lng ?? '—'}  ·  '
-            '采集：${sign.get('採集日時').isEmpty ? '—' : sign.get('採集日時')}',
+        Text(
+            t.signMeta(
+              '${sign.lat ?? '—'}',
+              '${sign.lng ?? '—'}',
+              sign.get('採集日時').isEmpty ? '—' : sign.get('採集日時'),
+            ),
             style: AppText.caption()),
         const Divider(),
         for (final field in schema.editableFields) _fieldEditor(field),

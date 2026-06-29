@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../capture.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/tokens.dart';
 import '../widgets/ll/ll.dart';
 import '../widgets/map/ll_map_view.dart' show LLMapLayer;
@@ -47,15 +48,16 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
       _map.move(LatLng(gps.lat, gps.lng), 17);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('无法获取当前位置')),
+        SnackBar(content: Text(AppLocalizations.of(context).gpsUnavailable)),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('确认拍摄位置')),
+      appBar: AppBar(title: Text(t.selectLocTitle)),
       body: Stack(
         children: [
           FlutterMap(
@@ -109,14 +111,13 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('系统已自动获取当前位置。', style: AppText.body()),
+                  Text(t.selectLocBody1, style: AppText.body()),
                   const SizedBox(height: 2),
-                  Text('如果位置不准确，拖动地图以调整照片的拍摄地点。',
-                      style: AppText.caption()),
+                  Text(t.selectLocBody2, style: AppText.caption()),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    '坐标：${_center.latitude.toStringAsFixed(5)}, '
-                    '${_center.longitude.toStringAsFixed(5)}',
+                    t.coords(_center.latitude.toStringAsFixed(5),
+                        _center.longitude.toStringAsFixed(5)),
                     style: AppText.caption().copyWith(
                         color: AppColors.accentBlue,
                         fontWeight: FontWeight.w700),
@@ -131,9 +132,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
             top: 120,
             right: AppSpacing.lg,
             child: LLSegmentedControl<LLMapLayer>(
-              segments: const [
-                LLSegment(LLMapLayer.map, '地图'),
-                LLSegment(LLMapLayer.satellite, '卫星'),
+              segments: [
+                LLSegment(LLMapLayer.map, t.layerMap),
+                LLSegment(LLMapLayer.satellite, t.layerSatellite),
               ],
               selected: _layer,
               activeColor: _layer == LLMapLayer.satellite
@@ -152,7 +153,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
             right: AppSpacing.lg,
             child: LLIconButton(
               icon: _locating ? Icons.hourglass_empty : Icons.my_location,
-              tooltip: '重新定位',
+              tooltip: t.relocate,
               onPressed: _locating ? null : _relocate,
             ),
           ),
@@ -165,14 +166,14 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               LLPrimaryButton(
-                label: '使用此位置',
+                label: t.useThisLocation,
                 icon: Icons.check,
                 onPressed: () => Navigator.pop(
                     context, (lat: _center.latitude, lng: _center.longitude)),
               ),
               const SizedBox(height: AppSpacing.sm),
               LLSecondaryButton(
-                label: '恢复自动定位',
+                label: t.restoreAuto,
                 icon: Icons.gps_fixed,
                 onPressed: () => _map.move(_auto, 17),
               ),

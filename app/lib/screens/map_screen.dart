@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../theme/tokens.dart';
 import '../widgets/ll/ll.dart';
@@ -59,10 +60,11 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final located = _located;
     final skipped = widget.signs.length - located.length;
     return Scaffold(
-      appBar: AppBar(title: const Text('地图预览')),
+      appBar: AppBar(title: Text(t.mapPreview)),
       body: Stack(
         children: [
           LLMapView(
@@ -86,9 +88,9 @@ class _MapScreenState extends State<MapScreen> {
             right: 0,
             child: Center(
               child: LLSegmentedControl<LLMapLayer>(
-                segments: const [
-                  LLSegment(LLMapLayer.map, '地图'),
-                  LLSegment(LLMapLayer.satellite, '卫星'),
+                segments: [
+                  LLSegment(LLMapLayer.map, t.layerMap),
+                  LLSegment(LLMapLayer.satellite, t.layerSatellite),
                 ],
                 selected: _layer,
                 activeColor: _layer == LLMapLayer.satellite
@@ -107,7 +109,7 @@ class _MapScreenState extends State<MapScreen> {
               right: AppSpacing.md,
               child: LLIconButton(
                 icon: Icons.center_focus_strong,
-                tooltip: '全体表示',
+                tooltip: t.fitAll,
                 onPressed: _recenter,
               ),
             ),
@@ -116,7 +118,7 @@ class _MapScreenState extends State<MapScreen> {
               top: 64,
               left: AppSpacing.md,
               child: LLTagChip(
-                  label: '无坐标 $skipped 条未显示',
+                  label: t.noCoords(skipped),
                   color: AppColors.warning,
                   icon: Icons.info_outline),
             ),

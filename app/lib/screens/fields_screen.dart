@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../ai.dart' as ai;
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../settings.dart';
 import '../store.dart';
@@ -87,8 +88,8 @@ class _FieldsScreenState extends State<FieldsScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('AI识别失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).aiFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _aiBusy = false);
@@ -120,12 +121,13 @@ class _FieldsScreenState extends State<FieldsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final total = widget.signs.length;
     final sign = _current;
     final suffix = sign.id.split('-').last;
     return Scaffold(
       appBar: AppBar(
-        title: Text('填写字段 · $suffix  (${_index + 1}/$total)'),
+        title: Text(t.fieldsTitle(suffix, _index + 1, total)),
         bottom: total > 1
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(4),
@@ -140,7 +142,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
         actions: [
           if (widget.aiConfig.enabled)
             IconButton(
-              tooltip: '重新识别',
+              tooltip: t.reRecognize,
               onPressed: _aiBusy ? null : () => _runAi(sign),
               icon: const Icon(Icons.auto_awesome),
             ),
@@ -173,7 +175,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
               top: AppSpacing.sm,
               right: AppSpacing.sm,
               child: LLTagChip(
-                  label: '识别中…',
+                  label: t.recognizing,
                   color: AppColors.accentBlue,
                   icon: Icons.auto_awesome),
             ),
@@ -187,14 +189,14 @@ class _FieldsScreenState extends State<FieldsScreen> {
             children: [
               // 暂存 = 不填写直接入库（之后可批量 AI/修正）。主ボタン。
               LLPrimaryButton(
-                label: _isLast ? '暂存并完成' : '暂存，稍后填写',
+                label: _isLast ? t.stashDone : t.stashNext,
                 icon: _isLast ? Icons.check : Icons.skip_next,
                 onPressed: _aiBusy ? null : _skip,
               ),
               const SizedBox(height: AppSpacing.sm),
               // 填写后保存（modified）。副ボタン。
               LLSecondaryButton(
-                label: _isLast ? '保存本次采集 · 完成' : '保存并继续',
+                label: _isLast ? t.saveDone : t.saveNext,
                 icon: Icons.save_outlined,
                 onPressed: _aiBusy ? null : _save,
               ),

@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'l10n/app_localizations.dart';
 import 'theme/tokens.dart';
 import 'widgets/ll/ll.dart';
 
@@ -13,7 +14,28 @@ const _kBaseUrl = 'backend_base_url';
 const _kAiEnabled = 'ai_enabled';
 const _kAiProvider = 'ai_provider';
 const _kAiKey = 'ai_api_key';
+const _kLocale = 'app_locale';
 const defaultBaseUrl = 'http://localhost:8000';
+
+/// アプリ言語。null = システムに従う。MaterialApp はこれを購読して再構築する。
+final ValueNotifier<Locale?> localeNotifier = ValueNotifier<Locale?>(null);
+
+Future<Locale?> loadLocale() async {
+  final prefs = await SharedPreferences.getInstance();
+  final c = prefs.getString(_kLocale);
+  if (c == null || c == 'system') return null;
+  return Locale(c);
+}
+
+/// 現在の選択コード（'system' | 'zh' | 'ja' | 'en'）。
+String currentLocaleCode() => localeNotifier.value?.languageCode ?? 'system';
+
+/// 言語を適用し保存。code は 'system' / 'zh' / 'ja' / 'en'。
+Future<void> applyLocale(String code) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(_kLocale, code);
+  localeNotifier.value = code == 'system' ? null : Locale(code);
+}
 
 Future<String> loadBaseUrl() async {
   final prefs = await SharedPreferences.getInstance();
@@ -87,11 +109,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('项目设置')),
+      appBar: AppBar(title: Text(t.projectSettings)),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          // ── 言語 / Language ──
+          LLCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.language, style: AppText.sectionTitle()),
+                const SizedBox(height: AppSpacing.sm),
+                _langOption(t.languageSystem, 'system'),
+                _langOption('简体中文', 'zh'),
+                _langOption('日本語', 'ja'),
+                _langOption('English', 'en'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
           // ── AI 自动识别 ──
           LLCard(
             child: Column(
@@ -100,16 +139,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   activeThumbColor: AppColors.accentTerracotta,
-                  title: Text('AI 自动识别', style: AppText.sectionTitle()),
-                  subtitle: Text('开启后，进入每个框选标志时自动识别字段。',
-                      style: AppText.caption()),
+                  title: Text(t.aiAuto, style: AppText.sectionTitle()),
+                  subtitle: Text(t.aiAutoSub, style: AppText.caption()),
                   value: _aiEnabled,
                   onChanged: (v) => setState(() => _aiEnabled = v),
                 ),
                 if (_aiEnabled) ...[
                   const SizedBox(height: AppSpacing.md),
                   LLFormField(
-                    label: '服务商',
+                    label: t.provider,
                     child: DropdownButtonFormField<String>(
                       initialValue: _provider,
                       items: const [
@@ -122,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   LLFormField(
-                    label: 'API 密钥',
+                    label: t.apiKey,
                     child: TextField(
                       controller: _key,
                       obscureText: !_showKey,
@@ -139,8 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Text('密钥仅保存在本机，识别时直接发送给各家 AI（Claude / Gemini），无需 PC。',
-                      style: AppText.caption()),
+                  Text(t.apiKeyNote, style: AppText.caption()),
                 ],
               ],
             ),
@@ -152,13 +189,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('后端地址（可选）', style: AppText.sectionTitle()),
+                Text(t.backendOptional, style: AppText.sectionTitle()),
                 const SizedBox(height: AppSpacing.xs),
-                Text('日常采集无需后端。仅在使用旧版后端流程时填写。',
-                    style: AppText.caption()),
+                Text(t.backendNote, style: AppText.caption()),
                 const SizedBox(height: AppSpacing.md),
                 LLFormField(
-                  label: '后端 URL',
+                  label: t.backendUrl,
                   child: TextField(
                     controller: _url,
                     decoration: const InputDecoration(
@@ -166,16 +202,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text('Windows: http://localhost:8000 ／ 模拟器: http://10.0.2.2:8000 '
-                    '／ 真机: http://<PC 的局域网 IP>:8000',
-                    style: AppText.caption()),
+                Text(t.backendHint, style: AppText.caption()),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          LLPrimaryButton(label: '保存设置', icon: Icons.check, onPressed: _save),
+          LLPrimaryButton(
+              label: t.saveSettings, icon: Icons.check, onPressed: _save),
         ],
+      ),
+    );
+  }
+
+  Widget _langOption(String label, String code) {
+    final selected = currentLocaleCode() == code;
+    return InkWell(
+      onTap: () async {
+        await applyLocale(code);
+        if (mounted) setState(() {});
+      },
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              size: 20,
+              color: selected ? AppColors.accentTerracotta : AppColors.textSecondary,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Text(label,
+                style: AppText.body().copyWith(
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500)),
+          ],
+        ),
       ),
     );
   }

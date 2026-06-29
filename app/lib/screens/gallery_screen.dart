@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../store.dart';
 import '../theme.dart' show statusBadge;
@@ -69,20 +70,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final langs = _distinct('主要言語');
     final sources = _distinct('来源類型');
     final filtered = _filtered;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('采集档案'),
+        title: Text(t.galleryTitle),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(96),
           child: Column(
             children: [
-              _filterRow('语言', langs, _lang, true,
+              _filterRow(t.langFilter, langs, _lang, true,
                   (v) => setState(() => _lang = v)),
-              _filterRow('来源', sources, _source, false,
+              _filterRow(t.sourceFilter, sources, _source, false,
                   (v) => setState(() => _source = v)),
               const SizedBox(height: AppSpacing.sm),
             ],
@@ -92,7 +94,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
       body: filtered.isEmpty
           ? Center(
               child: Text(
-                  widget.signs.isEmpty ? '还没有采集记录' : '没有符合条件的记录',
+                  widget.signs.isEmpty ? t.emptyTitle : t.noMatch,
                   style: AppText.body().copyWith(color: AppColors.textSecondary)),
             )
           : GridView.builder(
@@ -129,7 +131,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: _choiceChip(
-                        o,
+                        o == _all ? AppLocalizations.of(context).all : o,
                         o == selected,
                         () => onPick(o),
                         dotColor: colored && o != _all
@@ -216,7 +218,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(s.name.isEmpty ? '(未填写名称)' : s.name,
+                  Text(s.name.isEmpty ? AppLocalizations.of(context).untitled : s.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.body()
