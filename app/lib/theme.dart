@@ -6,28 +6,30 @@ library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// ── カラートークン（theme.css の :root を踏襲） ──
-const llBackground = Color(0xFFF3EADC); // 画面背景（オートミール）
-const llForeground = Color(0xFF2F3032); // 文字（ディープグレー）
-const llCard = Color(0xFFFFFAF0); // カード/サーフェス（明るいクリーム）
-const llPrimary = Color(0xFFE97545); // 主アクション（テラコッタ橙）
-const llAccent = Color(0xFF3B7FBA); // アクセント（ブルー）
-const llYellow = Color(0xFFF4C64D); // 黄
-const llPurple = Color(0xFF8A78C8); // 紫
-const llMuted = Color(0xFFEEE4D4); // 弱い面
-const llMutedFg = Color(0xFF7C766F); // 補助文字
-const llDestructive = Color(0xFFBE4B43); // 破壊的操作
-const llBorder = Color(0x24463E32); // rgba(70,62,50,0.14)
+import 'theme/tokens.dart';
+
+// ── 後方互換エイリアス（既存画面は llXxx を使用）。実体は AppColors。 ──
+const llBackground = AppColors.backgroundWarm;
+const llForeground = AppColors.textPrimary;
+const llCard = AppColors.surfaceIvory;
+const llPrimary = AppColors.accentTerracotta;
+const llAccent = AppColors.accentBlue;
+const llYellow = AppColors.accentMustard;
+const llPurple = AppColors.accentViolet;
+const llMuted = AppColors.muted;
+const llMutedFg = AppColors.textSecondary;
+const llDestructive = AppColors.danger;
+const llBorder = AppColors.borderSubtle;
 
 /// 採集状態（_status）の色。全画面で共通利用する。
 Color statusColor(String status) =>
     {
-      'pending': llMutedFg,
-      'ai': llAccent,
-      'modified': llPrimary,
-      'reviewed': const Color(0xFF4C9A77),
+      'pending': AppColors.textSecondary,
+      'ai': AppColors.accentBlue,
+      'modified': AppColors.accentTerracotta,
+      'reviewed': AppColors.success,
     }[status] ??
-    llMutedFg;
+    AppColors.textSecondary;
 
 /// 状態バッジ（チップ）。一覧・フォーム・地図詳情で共用。
 Widget statusBadge(String status) {

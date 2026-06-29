@@ -3,6 +3,35 @@
 バージョン採番は v1.0 / v1.1 / v1.2 ... と進める。
 APK 成果物のファイル名もこれに合わせる（例 `dist/LLMap-v1.1-release.apk`）。
 
+## v1.3 (2026-06-29) — 地図主体ホーム＋デザインシステム整備（Phase 1–3）
+
+Figma の map-first 方針に沿ってホームを地図主体へ。中核データフロー（`_signs`/
+`LocalStore`/`Sign`/`AppSchema`）は不変。中文文案へ統一。
+
+### Phase 1: デザイントークン
+- 新規 `lib/theme/tokens.dart`: `AppColors`（backgroundWarm/surfaceIvory/accentBlue/
+  Mustard/Terracotta/Violet/success/warning/danger 等）・`AppSpacing`・`AppRadius`・
+  `AppShadows`・`AppText`（Fraunces/Nunito）・`parseHexColor`。
+- `theme.dart` は tokens を参照する形へ再編（既存 `llXxx` は後方互換エイリアスとして維持）。
+
+### Phase 2: 共通コンポーネント `lib/widgets/ll/`
+- `LLPrimaryButton`/`LLSecondaryButton`/`LLIconButton`/`LLCard`/`LLTagChip`/
+  `LLSegmentedControl`/`LLAppHeader`/`LLBottomSheet`(+`LLSheetTile`)/`LLDialog`/`LLFormField`。
+  すべて tokens 参照・業務ロジックなし。
+
+### Phase 3: 地図主体ホーム
+- 地図部品を抽出し再利用化 `lib/widgets/map/`: `LLMapView`（CARTO/Esri 衛星切替）・
+  `LLMapDetailCard`・`LLMapLegend`・`MapPin`。`MapScreen` も同部品へ置換。
+- `HomeScreen` を地図主体に再構成: 地図全面＋上部ヘッダ（Info menu）＋Map/卫星切替＋
+  现在位置＋「新增采集」主ボタン＋採集記録の常駐ドラッグ抽屉（`LLSignCard` 流用）。
+  状態オーナー・採集/保存/导出/編集/削除の流れは不変。
+- 本地保存成功 Dialog（「已保存到本地项目」）を採集完了時に表示。
+- Info メニュー（关于/教程/技巧/项目设置/导出数据）→ 既存 `_openSettings`/`_export` へ委譲。
+
+### 保留（Phase 4–6）
+- CropScreen/FieldsScreen/EditSign/Settings の視覚移行、Select Location 手動微調整、
+  box_selector のテーマ色化、空/エラー/ロード状態の統一は次段階。
+
 ## v1.2 (2026-06-29) — UIリデザイン（Lingscape デザインシステム）
 
 Figma の「Lingscape」デザインを参照し、エディトリアル調に全面刷新。

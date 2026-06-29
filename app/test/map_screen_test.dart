@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llmap_app/models.dart';
 import 'package:llmap_app/screens/map_screen.dart';
+import 'package:llmap_app/theme/tokens.dart';
+import 'package:llmap_app/widgets/map/map_pin.dart';
 
 AppSchema _schema() => AppSchema(
       csvHeader: const ['SignID', '名称', '主要言語'],
@@ -41,7 +43,7 @@ void main() {
     // 2件の座標ありマーカー
     expect(find.byType(MapPin), findsNWidgets(2));
     // 座標なし警告
-    expect(find.textContaining('座標なし 1 件'), findsOneWidget);
+    expect(find.textContaining('无坐标 1 条'), findsOneWidget);
 
     // マーカータップで詳情カード
     await tester.tap(find.byType(MapPin).first);
