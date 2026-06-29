@@ -12,6 +12,7 @@ import '../theme/tokens.dart';
 import '../widgets/box_selector.dart';
 import '../widgets/ll/ll.dart';
 import 'fields_screen.dart';
+import 'select_location_screen.dart';
 
 /// 框选画面：1枚の写真から複数 sign を矩形で切り出す（②）。
 /// 「完了」で backend /extract を呼び、字段入力画面へ。
@@ -44,6 +45,8 @@ class _CropScreenState extends State<CropScreen> {
   bool _busy = false;
   // 撮影時GPSを画面表示中に非ブロッキングで取得（EXIF無し時の fallback）。
   Future<({double lat, double lng})?>? _gpsFuture;
+  // 手動微調整した位置（あれば自動GPSより優先）。
+  ({double lat, double lng})? _manualGps;
 
   @override
   void initState() {
@@ -54,7 +57,8 @@ class _CropScreenState extends State<CropScreen> {
   Future<void> _next() async {
     setState(() => _busy = true);
     try {
-      final gps = await _gpsFuture;
+      // 手動調整があれば優先、無ければ自動GPS。
+      final gps = _manualGps ?? await _gpsFuture;
       // 端末内で sign 群を生成し、写真を端末に保存する（後端非依存／PC off 可）。
       final signs = await _extractLocal(gps);
       if (!mounted) return;
@@ -191,36 +195,62 @@ class _CropScreenState extends State<CropScreen> {
     );
   }
 
-  /// GPS 取得状態の表示（自動取得。手动微调は今後対応）。
+  /// GPS 状態＋手動調整入口（自動GPS後の任意修正）。
   Widget _gpsStatus() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, 0),
-      child: FutureBuilder<({double lat, double lng})?>(
-        future: _gpsFuture,
-        builder: (context, snap) {
-          final (icon, text, color) = switch (snap.connectionState) {
-            ConnectionState.waiting => (
-                Icons.gps_not_fixed,
-                '正在获取当前位置…',
-                AppColors.textSecondary
-              ),
-            _ => snap.data != null
+    Widget row(IconData icon, String text, Color color, String action) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.sm, 0),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(text, style: AppText.caption().copyWith(color: color)),
+            const Spacer(),
+            TextButton(
+              onPressed: _adjustLocation,
+              style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8)),
+              child: Text(action, style: AppText.caption()
+                  .copyWith(color: AppColors.accentBlue)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_manualGps != null) {
+      return row(Icons.edit_location_alt, '已手动调整位置',
+          AppColors.accentBlue, '重新调整');
+    }
+    return FutureBuilder<({double lat, double lng})?>(
+      future: _gpsFuture,
+      builder: (context, snap) {
+        final waiting = snap.connectionState == ConnectionState.waiting;
+        final (icon, text, color) = waiting
+            ? (Icons.gps_not_fixed, '正在获取当前位置…', AppColors.textSecondary)
+            : snap.data != null
                 ? (Icons.gps_fixed, '已获取当前位置', AppColors.success)
-                : (
-                    Icons.gps_off,
-                    '无法获取当前位置，可继续采集',
-                    AppColors.warning
-                  ),
-          };
-          return Row(
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text(text, style: AppText.caption().copyWith(color: color)),
-            ],
-          );
-        },
+                : (Icons.gps_off, '无法获取当前位置，请手动选择拍摄地点',
+                    AppColors.warning);
+        return row(icon, text, color,
+            snap.data != null ? '位置不准确？手动调整' : '手动选择');
+      },
+    );
+  }
+
+  /// Select Location 画面で位置を手動微調整し、結果を _manualGps に反映。
+  Future<void> _adjustLocation() async {
+    final base = _manualGps ?? await _gpsFuture;
+    if (!mounted) return;
+    final r = await Navigator.push<({double lat, double lng})>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SelectLocationScreen(
+          initial: base == null ? null : (lat: base.lat, lng: base.lng),
+        ),
       ),
     );
+    if (r != null && mounted) setState(() => _manualGps = r);
   }
 }
