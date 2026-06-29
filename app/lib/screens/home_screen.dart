@@ -37,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final List<Sign> _signs = [];
   String _area = 'HAS';
   int _nextSeq = 1;
-  bool _busy = false;
   bool _opening = false; // 二重起動防止
   AiConfig _ai = AiConfig();
 
@@ -174,14 +173,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         primaryLabel: '返回地图',
       );
 
-  /// CSV＋写真を ZIP で一括エクスポート（端末内生成）。
+  /// CSV＋写真を ZIP で一括エクスポート（端末内生成・進捗ダイアログ表示）。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
-    setState(() => _busy = true);
+    final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LLProgressDialog(
+        title: '正在导出数据…',
+        unit: ' 张照片',
+        progress: progress,
+      ),
+    );
     try {
-      final zipPath =
-          await LocalStore.instance.buildBundle(_signs, widget.schema.csvHeader);
+      final zipPath = await LocalStore.instance.buildBundle(
+        _signs,
+        widget.schema.csvHeader,
+        onProgress: (done, total) =>
+            progress.value = (done: done, total: total),
+      );
       if (!mounted) return;
+      Navigator.pop(context); // 進捗ダイアログを閉じる
       if (isMobile) {
         await Share.shareXFiles([XFile(zipPath)],
             text: 'LLMap 导出（${_signs.length} 条）');
@@ -199,11 +212,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } catch (e) {
       if (mounted) {
+        Navigator.pop(context); // 進捗ダイアログを閉じる
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('导出失败：$e')));
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      progress.dispose();
     }
   }
 
@@ -463,8 +477,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: LLPrimaryButton(
               label: '新增采集',
               icon: Icons.add_a_photo_outlined,
-              busy: _busy,
-              onPressed: _busy ? null : _startCapture,
+              onPressed: _startCapture,
             ),
           ),
 

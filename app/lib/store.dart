@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'imaging.dart';
@@ -88,13 +88,16 @@ class LocalStore {
 
   /// CSV＋参照写真を 1つの ZIP にまとめて一時ファイルへ書き出し、パスを返す。
   /// backend /export_bundle のローカル版（PC off でも書き出せる）。
-  Future<String> buildBundle(List<Sign> signs, List<String> csvHeader) async {
+  /// [onProgress] は写真を1枚追加するごとに (done, total) を通知する。
+  /// 大量画像でもメモリを抱えないよう ZipFileEncoder でストリーミング書き込みする。
+  Future<String> buildBundle(
+    List<Sign> signs,
+    List<String> csvHeader, {
+    void Function(int done, int total)? onProgress,
+  }) async {
     await _ensure();
-    final csv = signsToCsv(signs.map((s) => s.toJson()).toList(), header: csvHeader);
-    final archive = Archive();
-    final csvBytes = utf8.encode(csv);
-    archive.addFile(ArchiveFile('data.csv', csvBytes.length, csvBytes));
 
+    // 参照写真を集計（存在するものだけ同梱）。
     final wanted = <String>{};
     for (final s in signs) {
       for (final k in ['写真ファイル名', '全景写真ファイル名']) {
@@ -102,33 +105,49 @@ class LocalStore {
         if (name.isNotEmpty) wanted.add(name);
       }
     }
-
-    var added = 0;
+    final existing = <String>[];
     final missing = <String>[];
     for (final name in wanted.toList()..sort()) {
-      final f = photoFile(name);
-      if (await f.exists()) {
-        final b = await f.readAsBytes();
-        archive.addFile(ArchiveFile('photos/$name', b.length, b));
-        added++;
+      if (await photoFile(name).exists()) {
+        existing.add(name);
       } else {
         missing.add(name);
       }
     }
+    final total = existing.length;
+    onProgress?.call(0, total);
 
-    final manifest = StringBuffer()
-      ..writeln('records: ${signs.length}')
-      ..writeln('photos_included: $added')
-      ..writeln('photos_missing: ${missing.length}');
-    for (final m in missing) {
-      manifest.writeln('  - $m');
-    }
-    final mb = utf8.encode(manifest.toString());
-    archive.addFile(ArchiveFile('MANIFEST.txt', mb.length, mb));
-
-    final zip = ZipEncoder().encode(archive) ?? const <int>[];
     final out = File('${Directory.systemTemp.path}/llmap_export.zip');
-    await out.writeAsBytes(zip, flush: true);
+    if (await out.exists()) await out.delete();
+
+    final encoder = ZipFileEncoder();
+    encoder.create(out.path);
+    try {
+      // data.csv（メモリ内データ）
+      final csvBytes = utf8.encode(
+          signsToCsv(signs.map((s) => s.toJson()).toList(), header: csvHeader));
+      encoder.addArchiveFile(ArchiveFile('data.csv', csvBytes.length, csvBytes));
+
+      // 写真をファイルから直接ストリーミング追加（1枚ごとに進捗通知）。
+      var done = 0;
+      for (final name in existing) {
+        await encoder.addFile(photoFile(name), 'photos/$name');
+        done++;
+        onProgress?.call(done, total);
+      }
+
+      final manifest = StringBuffer()
+        ..writeln('records: ${signs.length}')
+        ..writeln('photos_included: ${existing.length}')
+        ..writeln('photos_missing: ${missing.length}');
+      for (final m in missing) {
+        manifest.writeln('  - $m');
+      }
+      final mb = utf8.encode(manifest.toString());
+      encoder.addArchiveFile(ArchiveFile('MANIFEST.txt', mb.length, mb));
+    } finally {
+      await encoder.close();
+    }
     return out.path;
   }
 }
