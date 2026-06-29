@@ -20,6 +20,7 @@ class LLMapView extends StatelessWidget {
   final Sign? selected;
   final void Function(Sign sign) onMarkerTap;
   final VoidCallback? onMapTap;
+  final VoidCallback? onMapReady;
   final LatLng initialCenter;
   final double initialZoom;
 
@@ -32,6 +33,7 @@ class LLMapView extends StatelessWidget {
     this.layer = LLMapLayer.map,
     this.selected,
     this.onMapTap,
+    this.onMapReady,
     required this.initialCenter,
     this.initialZoom = 16,
   });
@@ -43,12 +45,16 @@ class LLMapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FlutterMap(
+    return ColoredBox(
+      // タイル未読込領域の下地（灰白の代わりに暖色）。
+      color: AppColors.muted,
+      child: FlutterMap(
       mapController: controller,
       options: MapOptions(
         initialCenter: initialCenter,
         initialZoom: initialZoom,
         onTap: (_, _) => onMapTap?.call(),
+        onMapReady: onMapReady,
       ),
       children: [
         if (layer == LLMapLayer.satellite)
@@ -57,6 +63,9 @@ class LLMapView extends StatelessWidget {
             urlTemplate:
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             maxZoom: 19,
+            // ズーム/パン中にタイルを保持し、灰白の点滅を抑える。
+            keepBuffer: 5,
+            panBuffer: 2,
             userAgentPackageName: 'com.llmap.llmap_app',
           )
         else
@@ -66,6 +75,8 @@ class LLMapView extends StatelessWidget {
                 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             subdomains: const ['a', 'b', 'c', 'd'],
             maxZoom: 19,
+            keepBuffer: 5,
+            panBuffer: 2,
             retinaMode: RetinaMode.isHighDensity(context),
             userAgentPackageName: 'com.llmap.llmap_app',
           ),
@@ -89,6 +100,7 @@ class LLMapView extends StatelessWidget {
         ),
         const _Attribution(),
       ],
+      ),
     );
   }
 }

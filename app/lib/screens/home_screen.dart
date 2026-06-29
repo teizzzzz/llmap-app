@@ -45,6 +45,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _map = MapController();
   Sign? _selected;
   LLMapLayer _layer = LLMapLayer.map;
+  // 起動時の現在地センタリング用。
+  Future<({double lat, double lng})?>? _initialGps;
+  bool _centeredOnce = false;
 
   @override
   void initState() {
@@ -53,8 +56,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     loadAiConfig().then((c) {
       if (mounted) setState(() => _ai = c);
     });
+    _initialGps = currentGps(); // 起動と同時に現在地取得を開始
     _loadSaved();
     _recoverLostData();
+  }
+
+  /// 地図準備完了時：現在地へ移動（取得不可なら記録範囲）。1回だけ。
+  Future<void> _onMapReady() async {
+    if (_centeredOnce) return;
+    final gps = await _initialGps;
+    if (!mounted || _centeredOnce) return;
+    if (gps != null) {
+      _centeredOnce = true;
+      _map.move(LatLng(gps.lat, gps.lng), 16);
+    } else if (_located.isNotEmpty) {
+      _centeredOnce = true;
+      _fitRecords();
+    }
   }
 
   @override
@@ -367,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             selected: _selected,
             initialCenter: _center,
             initialZoom: located.isEmpty ? 12 : 16,
+            onMapReady: _onMapReady,
             onMarkerTap: (s) {
               setState(() => _selected = s);
               _map.move(LatLng(s.lat!, s.lng!), _map.camera.zoom);

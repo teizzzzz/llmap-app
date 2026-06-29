@@ -72,6 +72,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                   urlTemplate:
                       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                   maxZoom: 19,
+                  keepBuffer: 5,
+                  panBuffer: 2,
                   userAgentPackageName: 'com.llmap.llmap_app',
                 )
               else
@@ -80,6 +82,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                       'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   maxZoom: 19,
+                  keepBuffer: 5,
+                  panBuffer: 2,
                   retinaMode: RetinaMode.isHighDensity(context),
                   userAgentPackageName: 'com.llmap.llmap_app',
                 ),
