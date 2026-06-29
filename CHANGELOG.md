@@ -1,169 +1,96 @@
 # 更新履歴 (CHANGELOG)
 
-バージョン採番は v1.0 / v1.1 / v1.2 ... と進める。
-APK 成果物のファイル名もこれに合わせる（例 `dist/LLMap-v1.1-release.apk`）。
+バージョンは **MAJOR.MINOR.PATCH**（例 `v1.2.6`）。
+- PATCH（末尾）= 小さな修正・調整
+- MINOR = 目立つ新機能のまとまり
+- MAJOR = 大きな節目／方向転換
 
-## v1.9 (2026-06-30) — 采集档案（筛选型画廊）
+APK 成果物のファイル名もこれに合わせる（例 `dist/LLMap-v1.2.6-release.apk`）。
+Android の versionCode（`+N`）は番号表記に関わらず単調増加させる。
+
+> 採番方針の変更（2026-06-30）: 初期は小変更ごとに MINOR を上げて v1.9 まで進んだため、
+> 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
+> 新スキームで振り直している。
+
+## v1.2.6 (2026-06-30) — 采集档案（筛选型画廊）
 
 - 新規 `lib/screens/gallery_screen.dart`: 缩略图カード网格で採集記録を閲覧する
   全屏「采集档案」ページ。
   - 各カード: 裁切写真の缩略图＋状態バッジ＋名称＋SignID＋言語タグ（言語別色）＋来源タグ。
   - **筛选**: 言語 × 来源（横スクロールのチップ）。响应式网格（`SliverGridDelegate`、
     最大列幅220）、`GridView.builder` で遅延読込（大量でも軽量）。
-  - タップで `EditSignScreen` 編集／スワイプ削除相当は編集画面の削除で。
+  - タップで `EditSignScreen` 編集。
 - 地図主体ホームの「采集记录」パネルヘッダに**画廊入口**（grid アイコン）を追加。
   底部抽屉の快速列表はそのまま保持。
 - **状態オーナーは HomeScreen のまま**。画廊の編集/削除は callback で委譲し、
   `_signs`/`LocalStore` のデータフローは不変。
 
-## v1.8 (2026-06-29) — 導出の進捗表示
+## v1.2.5 (2026-06-29) — 導出の進捗表示
 
-- **導出進捗ダイアログ**を追加。写真1枚ごとに「X / N 张照片」を表示し、
-  大量（数百〜千枚）でも現在の状況が分かるように。新規 `LLProgressDialog`。
+- **導出進捗ダイアログ**を追加。写真1枚ごとに「X / N 张照片」を表示（新規 `LLProgressDialog`）。
 - `LocalStore.buildBundle` を **`ZipFileEncoder` のストリーミング書き込み**に変更
   （全画像をメモリに抱えず、写真ごとに進捗 `onProgress(done,total)` を通知）。
-  大量画像でのメモリ消費を削減。
 
-## v1.7 (2026-06-29) — 地図の体感改善（実機フィードバック）
+## v1.2.4 (2026-06-29) — 地図の体感改善（実機フィードバック）
 
 - **ズーム時の灰白点滅を軽減**: タイルの `keepBuffer`/`panBuffer` を増やし、
-  ズーム・パン中も既存タイルを保持。未読込領域の下地を灰白から暖色(`muted`)へ。
-  （Crop/MapScreen/SelectLocation の地図すべてに適用）
-- **起動時に現在地をプレビュー**: 起動と同時にGPS取得を開始し、地図準備完了時に
-  現在地へセンタリング（取得不可なら記録範囲）。`LLMapView` に `onMapReady` を追加。
+  未読込領域の下地を暖色(`muted`)へ。
+- **起動時に現在地をプレビュー**: 起動と同時にGPS取得、地図準備完了時に現在地へ
+  センタリング（取得不可なら記録範囲）。`LLMapView` に `onMapReady` を追加。
 
-## v1.6 (2026-06-29) — 仕上げ（Phase 6）
+## v1.2.3 (2026-06-29) — 仕上げ（Phase 6）
 
-- 起動画面をブランド化＋中文化（LLMap／语言景观采集／バージョン表示）。
-  オフライン安全弁画面も中文＋LL部品に。
-- 撮影シートを中文＋LL化（`LLBottomSheetScaffold`／「拍照」「从相册选择」）。
-- 衛星/暗色地図での出典表記を半透明チップ化して可読性を改善。
-- 残存していた日本語のユーザー可視文言を中文へ（AIプロンプトと内部コメントは
-  ドメイン上維持。字段名は CSV 標準キーのため不変）。
+- 起動画面をブランド化＋中文化。撮影シートを中文＋LL化（`LLBottomSheetScaffold`）。
+- 衛星/暗色地図での出典表記を半透明チップ化。残存日本語のユーザー可視文言を中文へ。
 
-これで Phase 1–6 のUI実装が一巡（デザインシステム→共通部品→地図主体ホーム→
-既存画面移行→Select Location→仕上げ）。中核データ構造・採集ロジックは終始不変。
+## v1.2.2 (2026-06-29) — Select Location 手動微調整（Phase 5）
 
-## v1.5 (2026-06-29) — Select Location 手動微調整（Phase 5）
+- 新規 `lib/screens/select_location_screen.dart`: 中心固定ピン方式の位置選択
+  （地图/卫星切替・重新定位・恢复自动定位・座標表示）。
+- `CropScreen`: GPS状態行に手動調整入口。`_manualGps` を優先適用
+  （`gps = _manualGps ?? await _gpsFuture`）。採集ロジックは不変。
 
-自動GPSはそのまま既定。位置がずれているときだけ手動で微調整できる任意機能を追加。
-中核フロー（採集→框选→字段→保存）は不変。
+## v1.2.1 (2026-06-29) — 既存画面の視覚移行（Phase 4）
 
-### 追加
-- 新規 `lib/screens/select_location_screen.dart`: 中心固定ピン方式の位置選択。
-  地图/卫星切替、重新定位（再GPS取得）、恢复自动定位、リアルタイム座標表示、
-  「使用此位置」で (lat,lng) を返す。
-- `CropScreen`: GPS状態行に手動調整入口を追加（「位置不准确？手动调整」/「重新调整」/
-  GPS失敗時「手动选择」）。`_manualGps` を `_extractLocal` の位置に優先適用
-  （`gps = _manualGps ?? await _gpsFuture`）。採集ロジック自体は不変。
+- `CropScreen`/`FieldsScreen`/`EditSignScreen`/`SettingsScreen` を LL コンポーネント＋
+  tokens に移行、中文文案へ統一。`SignForm` 補助文字を tokens に。
+- `box_selector.dart`: ハードコード色を `AppColors` に置換。
+- **業務ロジック・データ構造は不変。**
 
-### 据え置き（Phase 6）
-- 空/エラー/ロード状態の最終統一、暗色/衛星地図の可読性、文案の残り精査。
+## v1.2.0 (2026-06-29) — Lingscape UI 全面刷新 ＋ 地図主体ホーム（Phase 1–3）
 
-## v1.4 (2026-06-29) — 既存画面の視覚移行（Phase 4）
+Figma「Lingscape」を参照し、エディトリアル調＋map-first へ全面刷新。中核データフロー
+（`_signs`/`LocalStore`/`Sign`/`AppSchema`）は不変。中文文案へ統一。
 
-採集フローの各画面を LL コンポーネント＋tokens に移行し、中文文案へ統一。
-**業務ロジック・データ構造は不変。**
+### デザインシステム
+- `lib/theme/tokens.dart`: `AppColors`/`AppSpacing`/`AppRadius`/`AppShadows`/`AppText`
+  （Fraunces/Nunito）/`parseHexColor`。`theme.dart` は tokens 参照に再編（`llXxx` は互換維持）。
+- 共通部品 `lib/widgets/ll/`: `LLPrimaryButton`/`LLSecondaryButton`/`LLIconButton`/`LLCard`/
+  `LLTagChip`/`LLSegmentedControl`/`LLAppHeader`/`LLBottomSheet`/`LLDialog`/`LLFormField`。
 
-### 変更（視覚のみ）
-- `CropScreen`: ヒントカード＋GPS状態表示（定位中／已获取／无法获取）、底部を
-  `LLPrimaryButton`「下一步：填写字段」に。
-- `FieldsScreen`: プレビューを `LLCard`、底部を `LLPrimaryButton`(暂存)＋
-  `LLSecondaryButton`(保存本次采集)、AI識別中を `LLTagChip`「识别中…」に。
-- `EditSignScreen`: 保存を `LLPrimaryButton`、削除確認を `LLDialog`(danger) に。
-- `SettingsScreen`: `LLCard`＋`LLFormField` でセクション化、中文化。後端を「可选/进阶」に。
-- `SignForm`: 補助文字・ID を tokens/`AppText` に。
-- `box_selector.dart`: ハードコード色 `#c84b31`/`#27ae60` を
-  `AppColors.accentTerracotta`/`success` に置換（Phase 6 項目を前倒し）。
-
-### 据え置き（Phase 5–6）
-- Select Location 手動微調整、空/エラー/ロード状態の最終統一、文案の残り精査。
-
-## v1.3 (2026-06-29) — 地図主体ホーム＋デザインシステム整備（Phase 1–3）
-
-Figma の map-first 方針に沿ってホームを地図主体へ。中核データフロー（`_signs`/
-`LocalStore`/`Sign`/`AppSchema`）は不変。中文文案へ統一。
-
-### Phase 1: デザイントークン
-- 新規 `lib/theme/tokens.dart`: `AppColors`（backgroundWarm/surfaceIvory/accentBlue/
-  Mustard/Terracotta/Violet/success/warning/danger 等）・`AppSpacing`・`AppRadius`・
-  `AppShadows`・`AppText`（Fraunces/Nunito）・`parseHexColor`。
-- `theme.dart` は tokens を参照する形へ再編（既存 `llXxx` は後方互換エイリアスとして維持）。
-
-### Phase 2: 共通コンポーネント `lib/widgets/ll/`
-- `LLPrimaryButton`/`LLSecondaryButton`/`LLIconButton`/`LLCard`/`LLTagChip`/
-  `LLSegmentedControl`/`LLAppHeader`/`LLBottomSheet`(+`LLSheetTile`)/`LLDialog`/`LLFormField`。
-  すべて tokens 参照・業務ロジックなし。
-
-### Phase 3: 地図主体ホーム
-- 地図部品を抽出し再利用化 `lib/widgets/map/`: `LLMapView`（CARTO/Esri 衛星切替）・
+### 地図主体ホーム
+- 地図部品を抽出・再利用化 `lib/widgets/map/`: `LLMapView`（CARTO/Esri 衛星切替）・
   `LLMapDetailCard`・`LLMapLegend`・`MapPin`。`MapScreen` も同部品へ置換。
-- `HomeScreen` を地図主体に再構成: 地図全面＋上部ヘッダ（Info menu）＋Map/卫星切替＋
-  现在位置＋「新增采集」主ボタン＋採集記録の常駐ドラッグ抽屉（`LLSignCard` 流用）。
-  状態オーナー・採集/保存/导出/編集/削除の流れは不変。
-- 本地保存成功 Dialog（「已保存到本地项目」）を採集完了時に表示。
-- Info メニュー（关于/教程/技巧/项目设置/导出数据）→ 既存 `_openSettings`/`_export` へ委譲。
+- `HomeScreen` を地図主体に再構成（上部ヘッダ＋Map/卫星＋现在位置＋「新增采集」＋
+  採集記録の常駐ドラッグ抽屉）。本地保存成功 Dialog、Info メニューを追加。
 
-### 保留（Phase 4–6）
-- CropScreen/FieldsScreen/EditSign/Settings の視覚移行、Select Location 手動微調整、
-  box_selector のテーマ色化、空/エラー/ロード状態の統一は次段階。
-
-## v1.2 (2026-06-29) — UIリデザイン（Lingscape デザインシステム）
-
-Figma の「Lingscape」デザインを参照し、エディトリアル調に全面刷新。
-
-### 追加
-- **中央集約テーマ** `lib/theme.dart`: Lingscape のカラートークン（暖色クリーム背景・
-  テラコッタ橙の主アクション・ブルー/黄/紫アクセント）、大きな角丸、ソフトな影を定義。
-- **タイポグラフィ**: 見出し Fraunces（セリフ）／本文 Nunito（`google_fonts`）。
-- 状態バッジ（pending/ai/modified/reviewed）の配色とチップを全画面で共通化（`statusBadge`）。
-- **アプリアイコン**を Lingscape のアプリマーク（クリーム背景＋黄の書類＋橙のピン＋青い道＋紫の角丸）に刷新。
-  Pillow で SVG を描画し（`assets/icon/`）、`flutter_launcher_icons` で Android/iOS/Windows に展開。
-
-### 変更
-- `main.dart` を `lingscapeTheme()` 適用に。ボタン・カード・入力・ダイアログ・FAB・
-  スナックバー等が全画面で自動的に新デザインへ。
-- ホーム画面: 一覧をエディトリアルなカード表示に、空状態を刷新。
-- `sign_form` / `map_screen` の状態チップを共通バッジに統一。
+### アプリアイコン
+- Lingscape のアプリマークに刷新（Pillow で SVG 描画、`flutter_launcher_icons` で展開）。
 
 ### 依存追加
 - `google_fonts` / `flutter_launcher_icons`(dev)
 
-### 注意
-- フォント（Fraunces/Nunito）は `google_fonts` の実行時取得。初回オフライン時は
-  既定フォントにフォールバック（配色・形状は維持）。完全オフライン化が必要なら ttf 同梱に切替。
-
-## v1.1 (2026-06-29) — ローカル完結化（計画C-1）＋ AI端末化
+## v1.1.0 (2026-06-29) — ローカル完結化（計画C-1）＋ AI端末化
 
 「家のPCを切ったまま外でスマホ単体で採集・閲覧・書き出し・AI判定まで完結」を実現。
 
-### 追加
-- **データ永続化**: 採集記録（疎なMap）と写真を端末に保存し、アプリ再起動後も復元（`lib/store.dart`）。
-- **オフライン起動**: 後端 `/schema` に繋がらなくても端末内の既定スキーマで起動（`lib/schema_defaults.dart`）。
-- **ローカル採集**: 写真の保存・クロップ・SignID採番・GPS付与を端末内で実行（`lib/imaging.dart`、後端 `/extract` 非依存）。
-- **ローカル書き出し**: CSV＋写真ZIPを端末内で生成（後端 `/export_bundle` 非依存）。
-- **AI端末化**: Claude / Gemini を端末から直接HTTP呼び出し（`lib/ai.dart`、後端 `/ai` 非依存）。APIキーは端末内保存。
+- **データ永続化**: 採集記録と写真を端末に保存、再起動後も復元（`lib/store.dart`）。
+- **オフライン起動**: 端末内既定スキーマ（`lib/schema_defaults.dart`）。
+- **ローカル採集/書き出し**: クロップ・SignID採番・CSV/ZIP を端末内で（`lib/imaging.dart`）。
+- **AI端末化**: Claude/Gemini を端末から直接HTTP（`lib/ai.dart`）。APIキーは端末内保存。
+- ビルド: ASCII パス化で直接ビルド可、`kotlin.incremental=false` でキャッシュ失敗回避。
 
-### 変更
-- 採集フロー（`crop_screen.dart` / `fields_screen.dart` / `home_screen.dart`）を後端非依存に再配線。
-- 設定画面の説明を「AIキーは各社APIへ直接送信（PC不要）」に修正。
+## v1.0.0 — 初期リリース
 
-### 依存追加
-- `path_provider` / `image` / `archive`
-
-### ビルド
-- リポジトリパスを ASCII 化し、その場で `flutter build apk --release` が通るようにした。
-- Kotlin 増分キャッシュの close 失敗回避のため `android/gradle.properties` に
-  `kotlin.incremental=false` / `org.gradle.caching=false` を追加。
-- 成果物: `dist/LLMap-v1.1-release.apk`（54.6MB, universal）。
-
-### 残課題
-- EXIF読取のみ後端利用のまま（実時GPSで代替可、実用上は不要）。
-- 自定义字段（スキーマのデータ化）は設計のみ・未実装。
-- 実機での実通信テスト（AI応答・再起動後復元）は未実施。
-
-## v1.0 — 初期リリース
-
-- Phase 0〜3: FastAPI後端（EXIF/GPS・AI判定・CSV）、Flutter採集MVP、地図预览、AI填字段・承認フロー。
-- 実機カメラ撮影・実時GPS、編集/削除、CSV+写真の一括エクスポート。
-- 後端（PC上の uvicorn）に依存する構成。
+- Phase 0〜3: FastAPI後端（EXIF/GPS・AI判定・CSV）、Flutter採集MVP、地図预览、AI填字段。
+- 実機カメラ撮影・実時GPS、編集/削除、CSV+写真の一括エクスポート。後端依存の構成。

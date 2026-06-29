@@ -1,4 +1,4 @@
 /// アプリのバージョン表示。
 library;
 
-const String kAppVersion = 'v1.9';
+const String kAppVersion = 'v1.2.6';
