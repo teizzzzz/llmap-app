@@ -178,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _export() async {
     if (_signs.isEmpty) return;
     final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
+    final sw = Stopwatch()..start();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -194,6 +195,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         onProgress: (done, total) =>
             progress.value = (done: done, total: total),
       );
+      // 少量でも進捗→完成が見えるよう、最低 ~0.9 秒は表示する。
+      final remain = 900 - sw.elapsedMilliseconds;
+      if (remain > 0) {
+        await Future.delayed(Duration(milliseconds: remain));
+      }
       if (!mounted) return;
       Navigator.pop(context); // 進捗ダイアログを閉じる
       if (isMobile) {

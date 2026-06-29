@@ -35,7 +35,8 @@ class LLProgressDialog extends StatelessWidget {
             ValueListenableBuilder<({int done, int total})>(
               valueListenable: progress,
               builder: (context, p, _) {
-                final value = p.total > 0 ? p.done / p.total : null;
+                final finished = p.total > 0 && p.done >= p.total;
+                final value = finished ? 1.0 : (p.total > 0 ? p.done / p.total : null);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -45,15 +46,32 @@ class LLProgressDialog extends StatelessWidget {
                         value: value,
                         minHeight: 8,
                         backgroundColor: AppColors.muted,
-                        color: AppColors.accentTerracotta,
+                        color: finished
+                            ? AppColors.success
+                            : AppColors.accentTerracotta,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      p.total > 0
-                          ? '${p.done} / ${p.total}${unit ?? ''}'
-                          : '处理中…',
-                      style: AppText.caption(),
+                    Row(
+                      children: [
+                        if (finished)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(Icons.check_circle,
+                                size: 15, color: AppColors.success),
+                          ),
+                        Text(
+                          finished
+                              ? '完成 · 共 ${p.total}${unit ?? ''}'
+                              : p.total > 0
+                                  ? '${p.done} / ${p.total}${unit ?? ''}'
+                                  : '处理中…',
+                          style: AppText.caption().copyWith(
+                              color: finished
+                                  ? AppColors.success
+                                  : AppColors.textSecondary),
+                        ),
+                      ],
                     ),
                   ],
                 );
