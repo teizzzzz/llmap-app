@@ -5,6 +5,7 @@ import 'models.dart';
 import 'schema_defaults.dart';
 import 'screens/home_screen.dart';
 import 'settings.dart';
+import 'theme.dart';
 
 void main() {
   runApp(const LLMapApp());
@@ -18,11 +19,7 @@ class LLMapApp extends StatelessWidget {
     return MaterialApp(
       title: 'LLMap 採集',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFFc84b31),
-        scaffoldBackgroundColor: const Color(0xFFf5f2ed),
-      ),
+      theme: lingscapeTheme(),
       home: const _Boot(),
     );
   }

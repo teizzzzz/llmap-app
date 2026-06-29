@@ -10,6 +10,7 @@ import '../capture.dart';
 import '../models.dart';
 import '../settings.dart';
 import '../store.dart';
+import '../theme.dart';
 import '../version.dart';
 import 'crop_screen.dart';
 import 'edit_sign_screen.dart';
@@ -279,53 +280,54 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
       body: _signs.isEmpty
-          ? const Center(
-              child: Text('「＋」から写真を取り込み、框选して採集を始めます',
-                  style: TextStyle(color: Colors.grey)),
-            )
-          : ListView.separated(
+          ? _EmptyState()
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               itemCount: _signs.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (_, i) {
                 final s = _signs[i];
-                return Dismissible(
-                  key: ValueKey('${s.id}-$i'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  confirmDismiss: (_) async => await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('削除確認'),
-                      content: Text('${s.id} を削除しますか？'),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('取消')),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                              backgroundColor: Colors.red),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('削除'),
-                        ),
-                      ],
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Dismissible(
+                    key: ValueKey('${s.id}-$i'),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      decoration: BoxDecoration(
+                        color: llDestructive,
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 24),
+                      child: const Icon(Icons.delete_outline,
+                          color: Colors.white),
                     ),
-                  ),
-                  onDismissed: (_) {
-                    setState(() => _signs.removeAt(i));
-                    _persist();
-                  },
-                  child: ListTile(
-                    leading: CircleAvatar(child: Text('${i + 1}')),
-                    title: Text(s.name.isEmpty ? '(名称未入力)' : s.name),
-                    subtitle: Text(
-                        '${s.id} · ${s.mainLang} · ${s.lat ?? '—'}, ${s.lng ?? '—'}'),
-                    trailing: _StatusChip(status: s.status),
-                    onTap: () => _editSign(i),
+                    confirmDismiss: (_) async => await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('削除確認'),
+                        content: Text('${s.id} を削除しますか？'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('取消')),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                                backgroundColor: llDestructive),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('削除'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onDismissed: (_) {
+                      setState(() => _signs.removeAt(i));
+                      _persist();
+                    },
+                    child: _SignCard(
+                      sign: s,
+                      index: i,
+                      onTap: () => _editSign(i),
+                    ),
                   ),
                 );
               },
@@ -339,23 +341,114 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
+/// 採集一覧の1枚カード（エディトリアル調）。
+class _SignCard extends StatelessWidget {
+  final Sign sign;
+  final int index;
+  final VoidCallback onTap;
+  const _SignCard(
+      {required this.sign, required this.index, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
-    final color = {
-          'pending': Colors.grey,
-          'ai': Colors.blue,
-          'modified': Colors.orange,
-          'reviewed': Colors.green,
-        }[status] ??
-        Colors.grey;
-    return Chip(
-      label: Text(status, style: const TextStyle(fontSize: 11)),
-      backgroundColor: color.withValues(alpha: 0.15),
-      side: BorderSide(color: color),
-      visualDensity: VisualDensity.compact,
+    final hasGps = sign.lat != null && sign.lng != null;
+    return Material(
+      color: llCard,
+      borderRadius: BorderRadius.circular(26),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(26),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: llMuted,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text('${index + 1}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: llForeground)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sign.name.isEmpty ? '(名称未入力)' : sign.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(hasGps ? Icons.place : Icons.location_off,
+                            size: 13, color: llMutedFg),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            '${sign.id}'
+                            '${sign.mainLang.isEmpty ? '' : ' · ${sign.mainLang}'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, color: llMutedFg),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              statusBadge(sign.status),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 採集ゼロ件のときの空状態。
+class _EmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: llCard,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: const Icon(Icons.add_a_photo_outlined,
+                size: 38, color: llPrimary),
+          ),
+          const SizedBox(height: 20),
+          Text('採集をはじめる',
+              style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              '「採集」から写真を撮影・取り込み、看板を框选して記録します。',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: llMutedFg, height: 1.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

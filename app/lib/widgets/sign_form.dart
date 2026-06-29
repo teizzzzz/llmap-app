@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../theme.dart';
 
 class SignForm extends StatelessWidget {
   final Sign sign;
@@ -93,21 +94,4 @@ class SignForm extends StatelessWidget {
   }
 }
 
-Widget statusBadge(String status) {
-  final color = {
-        'pending': Colors.grey,
-        'ai': Colors.blue,
-        'modified': Colors.orange,
-        'reviewed': Colors.green,
-      }[status] ??
-      Colors.grey;
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.15),
-      border: Border.all(color: color),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Text(status, style: TextStyle(fontSize: 11, color: color)),
-  );
-}
+// 状態バッジは theme.dart の statusBadge() を共用する。

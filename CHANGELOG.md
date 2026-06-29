@@ -3,6 +3,31 @@
 バージョン採番は v1.0 / v1.1 / v1.2 ... と進める。
 APK 成果物のファイル名もこれに合わせる（例 `dist/LLMap-v1.1-release.apk`）。
 
+## v1.2 (2026-06-29) — UIリデザイン（Lingscape デザインシステム）
+
+Figma の「Lingscape」デザインを参照し、エディトリアル調に全面刷新。
+
+### 追加
+- **中央集約テーマ** `lib/theme.dart`: Lingscape のカラートークン（暖色クリーム背景・
+  テラコッタ橙の主アクション・ブルー/黄/紫アクセント）、大きな角丸、ソフトな影を定義。
+- **タイポグラフィ**: 見出し Fraunces（セリフ）／本文 Nunito（`google_fonts`）。
+- 状態バッジ（pending/ai/modified/reviewed）の配色とチップを全画面で共通化（`statusBadge`）。
+- **アプリアイコン**を Lingscape のアプリマーク（クリーム背景＋黄の書類＋橙のピン＋青い道＋紫の角丸）に刷新。
+  Pillow で SVG を描画し（`assets/icon/`）、`flutter_launcher_icons` で Android/iOS/Windows に展開。
+
+### 変更
+- `main.dart` を `lingscapeTheme()` 適用に。ボタン・カード・入力・ダイアログ・FAB・
+  スナックバー等が全画面で自動的に新デザインへ。
+- ホーム画面: 一覧をエディトリアルなカード表示に、空状態を刷新。
+- `sign_form` / `map_screen` の状態チップを共通バッジに統一。
+
+### 依存追加
+- `google_fonts` / `flutter_launcher_icons`(dev)
+
+### 注意
+- フォント（Fraunces/Nunito）は `google_fonts` の実行時取得。初回オフライン時は
+  既定フォントにフォールバック（配色・形状は維持）。完全オフライン化が必要なら ttf 同梱に切替。
+
 ## v1.1 (2026-06-29) — ローカル完結化（計画C-1）＋ AI端末化
 
 「家のPCを切ったまま外でスマホ単体で採集・閲覧・書き出し・AI判定まで完結」を実現。

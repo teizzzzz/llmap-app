@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models.dart';
+import '../theme.dart';
 
 /// 地図预览（⑤⑦）。保存済み sign を言語別色のピンで表示し、タップで詳情。
 class MapScreen extends StatefulWidget {
@@ -339,7 +340,7 @@ class _DetailCard extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 12, color: Colors.grey)),
                     const Spacer(),
-                    _StatusChip(sign.status),
+                    statusBadge(sign.status),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -382,26 +383,3 @@ class _DetailCard extends StatelessWidget {
       );
 }
 
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip(this.status);
-  @override
-  Widget build(BuildContext context) {
-    final color = {
-          'pending': Colors.grey,
-          'ai': Colors.blue,
-          'modified': Colors.orange,
-          'reviewed': Colors.green,
-        }[status] ??
-        Colors.grey;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(status, style: TextStyle(fontSize: 11, color: color)),
-    );
-  }
-}
