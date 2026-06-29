@@ -21,6 +21,7 @@ import '../widgets/map/ll_map_legend.dart';
 import '../widgets/map/ll_map_view.dart';
 import 'crop_screen.dart';
 import 'edit_sign_screen.dart';
+import 'gallery_screen.dart';
 
 /// 採集ホーム（地図主体）。_signs の状態オーナー。地図表示・採集入口・
 /// 記録パネル・导出・設定・本地保存の中核フローを担う。
@@ -238,6 +239,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         const SnackBar(content: Text('设置已保存（URL 变更将在下次启动生效）')),
       );
     }
+  }
+
+  /// 采集档案（画廊）を開く。HomeScreen が状態オーナーのまま編集/削除を委譲。
+  void _openGallery() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GalleryScreen(
+          signs: _signs,
+          schema: widget.schema,
+          onDelete: (s) {
+            setState(() => _signs.remove(s));
+            _persist();
+          },
+          onChanged: () {
+            setState(() {});
+            _persist();
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _editSign(int i) async {
@@ -527,6 +549,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const SizedBox(width: AppSpacing.sm),
                 Text('共 ${_signs.length} 条记录', style: AppText.caption()),
                 const Spacer(),
+                if (_signs.isNotEmpty)
+                  IconButton(
+                    onPressed: _openGallery,
+                    icon: const Icon(Icons.grid_view_outlined, size: 20),
+                    color: AppColors.accentTerracotta,
+                    tooltip: '采集档案',
+                    visualDensity: VisualDensity.compact,
+                  ),
                 LLTagChip(
                     label: '$_area #$_nextSeq', color: AppColors.accentBlue),
                 IconButton(
