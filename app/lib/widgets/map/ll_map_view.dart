@@ -97,12 +97,19 @@ class _Attribution extends StatelessWidget {
   const _Attribution();
   @override
   Widget build(BuildContext context) {
-    return const Align(
+    return Align(
       alignment: Alignment.bottomRight,
       child: Padding(
-        padding: EdgeInsets.only(right: 4, bottom: 2),
-        child: Text('© OpenStreetMap · © CARTO · Esri',
-            style: TextStyle(fontSize: 9, color: Colors.black54)),
+        padding: const EdgeInsets.only(right: 4, bottom: 2),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceIvory.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Text('© OpenStreetMap · CARTO · Esri',
+              style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+        ),
       ),
     );
   }

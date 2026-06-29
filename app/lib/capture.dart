@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'widgets/ll/ll.dart';
+
 class CaptureResult {
   final Uint8List bytes;
   final String fileName;
@@ -25,22 +27,23 @@ Future<CaptureResult?> capturePhoto(BuildContext context) async {
   if (isMobile) {
     final choice = await showModalBottomSheet<ImageSource>(
       context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('カメラで撮影'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('ギャラリーから選択'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => LLBottomSheetScaffold(
+        title: '新增采集',
+        children: [
+          LLSheetTile(
+            icon: Icons.camera_alt_outlined,
+            label: '拍照',
+            showChevron: false,
+            onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+          ),
+          LLSheetTile(
+            icon: Icons.photo_library_outlined,
+            label: '从相册选择',
+            showChevron: false,
+            onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+          ),
+        ],
       ),
     );
     if (choice == null) return null;

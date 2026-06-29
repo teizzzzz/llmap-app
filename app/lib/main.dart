@@ -6,6 +6,9 @@ import 'schema_defaults.dart';
 import 'screens/home_screen.dart';
 import 'settings.dart';
 import 'theme.dart';
+import 'theme/tokens.dart';
+import 'version.dart';
+import 'widgets/ll/ll.dart';
 
 void main() {
   runApp(const LLMapApp());
@@ -83,40 +86,51 @@ class _BootState extends State<_Boot> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (snap.hasError || !snap.hasData) {
           return Scaffold(
+            backgroundColor: AppColors.backgroundWarm,
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  Text('后端に接続できません\n${api.baseUrl}',
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  const Text('backend を起動してください:\n'
-                      'uvicorn app.main:app --port 8000',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _editUrl,
-                        icon: const Icon(Icons.settings),
-                        label: const Text('URL設定'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                          onPressed: _load, child: const Text('再試行')),
-                    ],
+                  Text('LLMap', style: AppText.pageTitle()),
+                  const SizedBox(height: 6),
+                  Text('语言景观采集 · $kAppVersion', style: AppText.caption()),
+                  const SizedBox(height: 28),
+                  const SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(strokeWidth: 3),
                   ),
                 ],
+              ),
+            ),
+          );
+        }
+        if (snap.hasError || !snap.hasData) {
+          // 通常は端末内既定スキーマにフォールバックするため到達しない安全弁。
+          return Scaffold(
+            backgroundColor: AppColors.backgroundWarm,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off,
+                        size: 44, color: AppColors.textSecondary),
+                    const SizedBox(height: 12),
+                    Text('暂时无法读取配置', style: AppText.sectionTitle()),
+                    const SizedBox(height: 6),
+                    Text('已使用本地默认设置，可正常采集。',
+                        textAlign: TextAlign.center, style: AppText.caption()),
+                    const SizedBox(height: 20),
+                    LLPrimaryButton(
+                        label: '重试', expand: false, onPressed: _load),
+                    const SizedBox(height: 8),
+                    LLSecondaryButton(
+                        label: '设置', expand: false, onPressed: _editUrl),
+                  ],
+                ),
               ),
             ),
           );
