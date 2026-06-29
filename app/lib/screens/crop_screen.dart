@@ -8,7 +8,9 @@ import '../imaging.dart';
 import '../models.dart';
 import '../settings.dart';
 import '../store.dart';
+import '../theme/tokens.dart';
 import '../widgets/box_selector.dart';
+import '../widgets/ll/ll.dart';
 import 'fields_screen.dart';
 
 /// 框选画面：1枚の写真から複数 sign を矩形で切り出す（②）。
@@ -121,17 +123,17 @@ class _CropScreenState extends State<CropScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('框选  (${_regions.length} sign)'),
+        title: Text('框选标志  (${_regions.length})'),
         actions: [
           if (_regions.isNotEmpty)
             IconButton(
-              tooltip: '最後の枠を削除',
+              tooltip: '撤销最后一个框',
               onPressed: () => setState(() => _regions.removeLast()),
               icon: const Icon(Icons.undo),
             ),
           if (_regions.isNotEmpty)
             IconButton(
-              tooltip: '全消去',
+              tooltip: '清空',
               onPressed: () => setState(() => _regions = []),
               icon: const Icon(Icons.delete_outline),
             ),
@@ -139,20 +141,33 @@ class _CropScreenState extends State<CropScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            color: const Color(0xFFece7df),
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              _regions.isEmpty
-                  ? 'ドラッグで景観を囲む。囲まなければ全景1枚として登録。'
-                  : '枠: ${_regions.map((r) => r.suffix).join(", ")}',
-              style: const TextStyle(fontSize: 12),
+          // 操作ヒント＋GPS状態
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xs),
+            child: LLCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  const Icon(Icons.crop_free,
+                      size: 18, color: AppColors.accentTerracotta),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      _regions.isEmpty
+                          ? '拖动框选每个标志；不框选则整张作为一条记录。'
+                          : '已框选：${_regions.map((r) => r.suffix).join("、")}',
+                      style: AppText.caption(),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          _gpsStatus(),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               child: BoxSelector(
                 imageBytes: widget.imageBytes,
                 regions: _regions,
@@ -162,13 +177,49 @@ class _CropScreenState extends State<CropScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _busy ? null : _next,
-        icon: _busy
-            ? const SizedBox(
-                width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(Icons.arrow_forward),
-        label: Text(_regions.isEmpty ? '全景で次へ' : '字段入力へ'),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: LLPrimaryButton(
+            label: _regions.isEmpty ? '整张作为一条记录 · 下一步' : '下一步：填写字段',
+            icon: Icons.arrow_forward,
+            busy: _busy,
+            onPressed: _busy ? null : _next,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// GPS 取得状態の表示（自動取得。手动微调は今後対応）。
+  Widget _gpsStatus() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, 0),
+      child: FutureBuilder<({double lat, double lng})?>(
+        future: _gpsFuture,
+        builder: (context, snap) {
+          final (icon, text, color) = switch (snap.connectionState) {
+            ConnectionState.waiting => (
+                Icons.gps_not_fixed,
+                '正在获取当前位置…',
+                AppColors.textSecondary
+              ),
+            _ => snap.data != null
+                ? (Icons.gps_fixed, '已获取当前位置', AppColors.success)
+                : (
+                    Icons.gps_off,
+                    '无法获取当前位置，可继续采集',
+                    AppColors.warning
+                  ),
+          };
+          return Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(text, style: AppText.caption().copyWith(color: color)),
+            ],
+          );
+        },
       ),
     );
   }

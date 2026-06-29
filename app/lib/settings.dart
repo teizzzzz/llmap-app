@@ -6,6 +6,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'theme/tokens.dart';
+import 'widgets/ll/ll.dart';
+
 const _kBaseUrl = 'backend_base_url';
 const _kAiEnabled = 'ai_enabled';
 const _kAiProvider = 'ai_provider';
@@ -85,77 +88,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('設定')),
+      appBar: AppBar(title: const Text('项目设置')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          const Text('后端 URL',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _url,
-            decoration: const InputDecoration(
-              hintText: 'http://192.168.x.x:8000',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Windows: http://localhost:8000 ／ Androidエミュ: http://10.0.2.2:8000 ／'
-            ' 実機: http://<PCのLAN IP>:8000',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-          const Divider(height: 32),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('AI自動識別',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: const Text('オンにすると、框选した各景観に入ると自動で字段を識別します'),
-            value: _aiEnabled,
-            onChanged: (v) => setState(() => _aiEnabled = v),
-          ),
-          if (_aiEnabled) ...[
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              initialValue: _provider,
-              decoration: const InputDecoration(
-                labelText: 'プロバイダ',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              items: const [
-                DropdownMenuItem(value: 'claude', child: Text('Claude')),
-                DropdownMenuItem(value: 'gemini', child: Text('Gemini')),
-              ],
-              onChanged: (v) => setState(() => _provider = v ?? 'claude'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _key,
-              obscureText: !_showKey,
-              decoration: InputDecoration(
-                labelText: 'API キー',
-                border: const OutlineInputBorder(),
-                isDense: true,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                      _showKey ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _showKey = !_showKey),
+          // ── AI 自动识别 ──
+          LLCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeThumbColor: AppColors.accentTerracotta,
+                  title: Text('AI 自动识别', style: AppText.sectionTitle()),
+                  subtitle: Text('开启后，进入每个框选标志时自动识别字段。',
+                      style: AppText.caption()),
+                  value: _aiEnabled,
+                  onChanged: (v) => setState(() => _aiEnabled = v),
                 ),
-              ),
+                if (_aiEnabled) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  LLFormField(
+                    label: '服务商',
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _provider,
+                      items: const [
+                        DropdownMenuItem(value: 'claude', child: Text('Claude')),
+                        DropdownMenuItem(value: 'gemini', child: Text('Gemini')),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => _provider = v ?? 'claude'),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  LLFormField(
+                    label: 'API 密钥',
+                    child: TextField(
+                      controller: _key,
+                      obscureText: !_showKey,
+                      decoration: InputDecoration(
+                        hintText: 'sk-...',
+                        suffixIcon: IconButton(
+                          icon: Icon(_showKey
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          onPressed: () =>
+                              setState(() => _showKey = !_showKey),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text('密钥仅保存在本机，识别时直接发送给各家 AI（Claude / Gemini），无需 PC。',
+                      style: AppText.caption()),
+                ],
+              ],
             ),
-            const SizedBox(height: 4),
-            const Text('キーは端末内にのみ保存され、判定時に各社AI(Claude/Gemini)へ'
-                '直接送信されます（PC不要）。',
-                style: TextStyle(fontSize: 11, color: Colors.grey)),
-          ],
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _save,
-            icon: const Icon(Icons.check),
-            label: const Text('保存'),
           ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── 后端地址（可选・进阶） ──
+          LLCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('后端地址（可选）', style: AppText.sectionTitle()),
+                const SizedBox(height: AppSpacing.xs),
+                Text('日常采集无需后端。仅在使用旧版后端流程时填写。',
+                    style: AppText.caption()),
+                const SizedBox(height: AppSpacing.md),
+                LLFormField(
+                  label: '后端 URL',
+                  child: TextField(
+                    controller: _url,
+                    decoration: const InputDecoration(
+                        hintText: 'http://192.168.x.x:8000'),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Windows: http://localhost:8000 ／ 模拟器: http://10.0.2.2:8000 '
+                    '／ 真机: http://<PC 的局域网 IP>:8000',
+                    style: AppText.caption()),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+
+          LLPrimaryButton(label: '保存设置', icon: Icons.check, onPressed: _save),
         ],
       ),
     );

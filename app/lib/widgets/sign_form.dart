@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../theme.dart';
+import '../theme/tokens.dart';
 
 class SignForm extends StatelessWidget {
   final Sign sign;
@@ -34,14 +35,14 @@ class SignForm extends StatelessWidget {
           children: [
             Expanded(
               child: Text(sign.id,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                  style: AppText.body().copyWith(fontWeight: FontWeight.w800)),
             ),
             statusBadge(sign.status),
           ],
         ),
-        Text('GPS: ${sign.lat ?? '—'}, ${sign.lng ?? '—'}  ·  '
-            '採集: ${sign.get('採集日時').isEmpty ? '—' : sign.get('採集日時')}',
-            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text('GPS：${sign.lat ?? '—'}, ${sign.lng ?? '—'}  ·  '
+            '采集：${sign.get('採集日時').isEmpty ? '—' : sign.get('採集日時')}',
+            style: AppText.caption()),
         const Divider(),
         for (final field in schema.editableFields) _fieldEditor(field),
       ],

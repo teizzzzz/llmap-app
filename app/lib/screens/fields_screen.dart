@@ -6,7 +6,9 @@ import '../ai.dart' as ai;
 import '../models.dart';
 import '../settings.dart';
 import '../store.dart';
+import '../theme/tokens.dart';
 import '../widgets/crop_preview.dart';
+import '../widgets/ll/ll.dart';
 import '../widgets/sign_form.dart';
 
 /// 字段入力ウィザード（⑥）。框选した sign を1つずつ入力する。
@@ -123,20 +125,22 @@ class _FieldsScreenState extends State<FieldsScreen> {
     final suffix = sign.id.split('-').last;
     return Scaffold(
       appBar: AppBar(
-        title: Text('字段入力  $suffix  (${_index + 1}/$total)'),
+        title: Text('填写字段 · $suffix  (${_index + 1}/$total)'),
         bottom: total > 1
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(4),
                 child: LinearProgressIndicator(
                   value: (_index + 1) / total,
                   minHeight: 4,
+                  backgroundColor: AppColors.muted,
+                  color: AppColors.accentTerracotta,
                 ),
               )
             : null,
         actions: [
           if (widget.aiConfig.enabled)
             IconButton(
-              tooltip: 'AI再識別',
+              tooltip: '重新识别',
               onPressed: _aiBusy ? null : () => _runAi(sign),
               icon: const Icon(Icons.auto_awesome),
             ),
@@ -145,17 +149,17 @@ class _FieldsScreenState extends State<FieldsScreen> {
       body: Stack(
         children: [
           ListView(
-            // sign が変わるたびにフォーム(controller)を作り直す
             key: ValueKey(sign.id),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             children: [
-              // 上: 框选プレビュー
-              CropPreview(
-                imageBytes: widget.imageBytes,
-                region: _regionFor(sign),
+              LLCard(
+                padding: EdgeInsets.zero,
+                child: CropPreview(
+                  imageBytes: widget.imageBytes,
+                  region: _regionFor(sign),
+                ),
               ),
-              const SizedBox(height: 12),
-              // 下: 入力
+              const SizedBox(height: AppSpacing.md),
               SignForm(
                 sign: sign,
                 schema: widget.schema,
@@ -165,46 +169,34 @@ class _FieldsScreenState extends State<FieldsScreen> {
             ],
           ),
           if (_aiBusy)
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: Chip(
-                avatar: SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                label: Text('AI識別中…'),
-              ),
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: LLTagChip(
+                  label: '识别中…',
+                  color: AppColors.accentBlue,
+                  icon: Icons.auto_awesome),
             ),
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 暂存（スキップ）= 入力せずそのまま入库。一番大きい主ボタン。
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: FilledButton.icon(
-                  onPressed: _aiBusy ? null : _skip,
-                  icon: Icon(_isLast ? Icons.check : Icons.skip_next),
-                  label: Text(_isLast ? '暂存して完了' : '暂存して次へ',
-                      style: const TextStyle(fontSize: 16)),
-                ),
+              // 暂存 = 不填写直接入库（之后可批量 AI/修正）。主ボタン。
+              LLPrimaryButton(
+                label: _isLast ? '暂存并完成' : '暂存，稍后填写',
+                icon: _isLast ? Icons.check : Icons.skip_next,
+                onPressed: _aiBusy ? null : _skip,
               ),
-              const SizedBox(height: 8),
-              // 入力済みとして保存（副ボタン）。
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _aiBusy ? null : _save,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(_isLast ? '入力して保存・完了' : '入力して保存・次へ'),
-                ),
+              const SizedBox(height: AppSpacing.sm),
+              // 填写后保存（modified）。副ボタン。
+              LLSecondaryButton(
+                label: _isLast ? '保存本次采集 · 完成' : '保存并继续',
+                icon: Icons.save_outlined,
+                onPressed: _aiBusy ? null : _save,
               ),
             ],
           ),

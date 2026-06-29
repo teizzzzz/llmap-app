@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../theme/tokens.dart';
+import '../widgets/ll/ll.dart';
 import '../widgets/sign_form.dart';
 
-/// 既存 sign の編集（②の追加要望）。フォームはウィザードと共用。
+/// 既存 sign の編集／削除。フォームはウィザードと共用。
 /// 戻り値: 'saved' 保存 / 'deleted' 削除 / null キャンセル。
 class EditSignScreen extends StatefulWidget {
   final Sign sign;
@@ -16,22 +18,16 @@ class EditSignScreen extends StatefulWidget {
 
 class _EditSignScreenState extends State<EditSignScreen> {
   Future<void> _confirmDelete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('削除確認'),
-        content: Text('${widget.sign.id} を削除しますか？'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('削除'),
-          ),
-        ],
-      ),
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.delete_outline,
+      iconColor: AppColors.danger,
+      title: '删除记录',
+      message: '确定删除 ${widget.sign.id} 吗？此操作不可撤销。',
+      primaryLabel: '删除',
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: '取消',
+      onSecondary: () => Navigator.pop(context, false),
     );
     if (ok == true && mounted) Navigator.pop(context, 'deleted');
   }
@@ -40,17 +36,18 @@ class _EditSignScreenState extends State<EditSignScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('編集'),
+        title: const Text('编辑记录'),
         actions: [
           IconButton(
             onPressed: _confirmDelete,
             icon: const Icon(Icons.delete_outline),
-            tooltip: '削除',
+            color: AppColors.danger,
+            tooltip: '删除',
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           SignForm(
             sign: widget.sign,
@@ -61,11 +58,11 @@ class _EditSignScreenState extends State<EditSignScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: FilledButton.icon(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: LLPrimaryButton(
+            label: '保存修改',
+            icon: Icons.check,
             onPressed: () => Navigator.pop(context, 'saved'),
-            icon: const Icon(Icons.check),
-            label: const Text('保存'),
           ),
         ),
       ),

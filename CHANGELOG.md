@@ -3,6 +3,25 @@
 バージョン採番は v1.0 / v1.1 / v1.2 ... と進める。
 APK 成果物のファイル名もこれに合わせる（例 `dist/LLMap-v1.1-release.apk`）。
 
+## v1.4 (2026-06-29) — 既存画面の視覚移行（Phase 4）
+
+採集フローの各画面を LL コンポーネント＋tokens に移行し、中文文案へ統一。
+**業務ロジック・データ構造は不変。**
+
+### 変更（視覚のみ）
+- `CropScreen`: ヒントカード＋GPS状態表示（定位中／已获取／无法获取）、底部を
+  `LLPrimaryButton`「下一步：填写字段」に。
+- `FieldsScreen`: プレビューを `LLCard`、底部を `LLPrimaryButton`(暂存)＋
+  `LLSecondaryButton`(保存本次采集)、AI識別中を `LLTagChip`「识别中…」に。
+- `EditSignScreen`: 保存を `LLPrimaryButton`、削除確認を `LLDialog`(danger) に。
+- `SettingsScreen`: `LLCard`＋`LLFormField` でセクション化、中文化。後端を「可选/进阶」に。
+- `SignForm`: 補助文字・ID を tokens/`AppText` に。
+- `box_selector.dart`: ハードコード色 `#c84b31`/`#27ae60` を
+  `AppColors.accentTerracotta`/`success` に置換（Phase 6 項目を前倒し）。
+
+### 据え置き（Phase 5–6）
+- Select Location 手動微調整、空/エラー/ロード状態の最終統一、文案の残り精査。
+
 ## v1.3 (2026-06-29) — 地図主体ホーム＋デザインシステム整備（Phase 1–3）
 
 Figma の map-first 方針に沿ってホームを地図主体へ。中核データフロー（`_signs`/

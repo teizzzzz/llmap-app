@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../theme/tokens.dart';
 
 class BoxSelector extends StatefulWidget {
   final Uint8List imageBytes;
@@ -134,8 +135,9 @@ class _BoxPainter extends CustomPainter {
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..color = const Color(0xFFc84b31);
-    final fill = Paint()..color = const Color(0x22c84b31);
+      ..color = AppColors.accentTerracotta;
+    final fill = Paint()
+      ..color = AppColors.accentTerracotta.withValues(alpha: 0.13);
 
     for (final r in regions) {
       final rect = Rect.fromLTWH(
@@ -153,7 +155,7 @@ class _BoxPainter extends CustomPainter {
             color: Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            backgroundColor: Color(0xFFc84b31),
+            backgroundColor: AppColors.accentTerracotta,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -165,7 +167,7 @@ class _BoxPainter extends CustomPainter {
       final live = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5
-        ..color = const Color(0xFF27ae60);
+        ..color = AppColors.success;
       canvas.drawRect(Rect.fromPoints(dragStart!, dragCurrent!), live);
     }
   }
