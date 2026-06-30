@@ -189,6 +189,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final t = AppLocalizations.of(context);
     final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
     final sw = Stopwatch()..start();
+    // 進捗ダイアログは1回だけ閉じる（success と catch の二重 pop で
+    // 本体ページまで pop してしまい黒画面になるのを防ぐ）。
+    var dialogOpen = true;
+    void closeDialog() {
+      if (dialogOpen && mounted) {
+        dialogOpen = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -211,9 +221,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await Future.delayed(Duration(milliseconds: remain));
       }
       if (!mounted) return;
-      Navigator.pop(context); // 進捗ダイアログを閉じる
+      closeDialog(); // 進捗ダイアログを閉じる
       if (isMobile) {
-        await Share.shareXFiles([XFile(zipPath)], text: 'LLMap');
+        // iPad では sharePositionOrigin 必須（無いと presentation で例外）。
+        final box = context.findRenderObject() as RenderBox?;
+        await Share.shareXFiles(
+          [XFile(zipPath)],
+          text: 'LLMap',
+          sharePositionOrigin:
+              box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+        );
       } else {
         final dir =
             Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
@@ -227,8 +244,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
       }
     } catch (e) {
+      closeDialog(); // 進捗ダイアログを閉じる（まだ開いていれば）
       if (mounted) {
-        Navigator.pop(context); // 進捗ダイアログを閉じる
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(t.exportFailed('$e'))));
       }
