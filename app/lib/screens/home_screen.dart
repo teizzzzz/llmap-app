@@ -37,10 +37,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final List<Sign> _signs = [];
-  String _area = 'HAS';
+  String _area = 'OOK'; // 既定の地点コード（新大久保 Shin-Ōkubo）
   int _nextSeq = 1;
   bool _opening = false; // 二重起動防止
   AiConfig _ai = AiConfig();
+  String _collector = ''; // 採集者ID（設定で自動生成/自定义）。SignID に入る。
 
   // 地図主体首页の表示状態
   final _map = MapController();
@@ -56,6 +57,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     loadAiConfig().then((c) {
       if (mounted) setState(() => _ai = c);
+    });
+    loadCollectorId().then((id) {
+      if (mounted) setState(() => _collector = id);
     });
     _initialGps = currentGps(); // 起動と同時に現在地取得を開始
     _loadSaved();
@@ -148,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             fileName: fileName,
             area: _area,
             seq: _nextSeq,
+            collector: _collector,
             aiConfig: _ai,
           ),
         ),
@@ -233,18 +238,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openSettings() async {
-    final result = await Navigator.push<({String baseUrl, AiConfig ai})>(
+    final result =
+        await Navigator.push<({String baseUrl, AiConfig ai, String collectorId})>(
       context,
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(baseUrl: widget.api.baseUrl, ai: _ai),
+        builder: (_) => SettingsScreen(
+          baseUrl: widget.api.baseUrl,
+          ai: _ai,
+          collectorId: _collector,
+        ),
       ),
     );
     if (result == null) return;
     await saveBaseUrl(result.baseUrl);
     await saveAiConfig(result.ai);
+    await saveCollectorId(result.collectorId);
     widget.api.baseUrl = result.baseUrl;
     if (mounted) {
-      setState(() => _ai = result.ai);
+      setState(() {
+        _ai = result.ai;
+        _collector = result.collectorId;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
       );
@@ -300,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           controller: ctrl,
           maxLength: 3,
           textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(hintText: 'HAS / YKH / SKO ...'),
+          decoration: const InputDecoration(hintText: 'OOK / YKH / SKO ...'),
         ),
         actions: [
           TextButton(

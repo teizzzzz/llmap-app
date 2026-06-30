@@ -13,9 +13,14 @@ import 'schema_defaults.dart';
 String photoId(String area, String yyyymmdd, int seq) =>
     '${area.toUpperCase()}-$yyyymmdd-${seq.toString().padLeft(3, '0')}';
 
-/// SignID: AREA-SNNN-suffix （§5.4）
-String signId(String area, int seq, String suffix) =>
-    '${area.toUpperCase()}-S${seq.toString().padLeft(3, '0')}-$suffix';
+/// SignID: 地点-採集者-序号（採集字段定義表 v3）。例 OOK-K7m9Qp4t-S001-a。
+/// collector（採集者ID）が空なら従来の AREA-SNNN-suffix。suffix は常に末尾。
+String signId(String area, int seq, String suffix, {String collector = ''}) {
+  final a = area.toUpperCase();
+  final s = seq.toString().padLeft(3, '0');
+  final c = collector.trim();
+  return c.isEmpty ? '$a-S$s-$suffix' : '$a-$c-S$s-$suffix';
+}
 
 /// 'YYYY-MM-DD HH:MM:SS' → 'YYYYMMDD'
 String yyyymmdd(String captured) {

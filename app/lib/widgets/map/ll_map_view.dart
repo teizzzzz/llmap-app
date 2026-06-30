@@ -90,7 +90,7 @@ class LLMapView extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => onMarkerTap(s),
                   child: MapPin(
-                    color: _langColor(s.mainLang),
+                    color: _langColor(s.mainLangPrimary),
                     label: _suffixOf(s),
                     selected: identical(selected, s),
                   ),

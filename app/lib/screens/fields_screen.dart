@@ -112,9 +112,11 @@ class _FieldsScreenState extends State<FieldsScreen> {
     _advance();
   }
 
-  /// 入力済みとして保存（pending なら modified に昇格）。
+  /// 入力済みとして保存（pending/ai なら human-reviewed に昇格）。
   void _save() {
-    if (_current.status == 'pending') _current.set('_status', 'modified');
+    if (_current.status == 'pending' || _current.status == 'ai') {
+      _current.set('_status', 'human-reviewed');
+    }
     _saved.add(_current);
     _advance();
   }

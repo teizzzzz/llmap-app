@@ -88,10 +88,14 @@
   "saveSettings": "設定を保存",
   "language": "言語",
   "languageSystem": "システムに従う",
+  "collectorId": "採集者 ID",
+  "collectorIdNote": "採集者の識別子。SignID の「採集者」位に入り、多人協作時の採番衝突を防ぐ。既定で自動生成済み（NanoID 8桁・易混字 0/O/1/l/I を除外）。自由に変更可。",
+  "collectorIdLabel": "採集者 ID",
+  "collectorIdRegenerate": "再生成",
 
   "galleryTitle": "採集アーカイブ",
   "langFilter": "言語",
-  "sourceFilter": "来源",
+  "sourceFilter": "設置",
   "noMatch": "条件に合う記録がありません",
 
   "selectLocTitle": "撮影位置を確認",
@@ -110,7 +114,7 @@
   "subLanguage": "補助言語",
   "operator": "設置主体",
   "carrier": "担体類型",
-  "sourceType": "来源類型",
+  "sourceType": "ディスコース類型",
   "multilingual": "多言語関係",
   "noteLabel": "備考: {note}",
   "signMeta": "GPS：{lat}, {lng} · 採集：{time}"

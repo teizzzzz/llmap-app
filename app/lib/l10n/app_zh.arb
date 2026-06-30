@@ -88,10 +88,14 @@
   "saveSettings": "保存设置",
   "language": "语言",
   "languageSystem": "跟随系统",
+  "collectorId": "采集者 ID",
+  "collectorIdNote": "对应采集者，会写入 SignID 的「采集者」位，多人协作时防止编号撞车。默认已自动生成（NanoID 8 位，去除易混字符 0/O/1/l/I），可自定义。",
+  "collectorIdLabel": "采集者 ID",
+  "collectorIdRegenerate": "重新生成",
 
   "galleryTitle": "采集档案",
   "langFilter": "语言",
-  "sourceFilter": "来源",
+  "sourceFilter": "设置",
   "noMatch": "没有符合条件的记录",
 
   "selectLocTitle": "确认拍摄位置",
@@ -110,7 +114,7 @@
   "subLanguage": "辅助语言",
   "operator": "设置主体",
   "carrier": "载体类型",
-  "sourceType": "来源类型",
+  "sourceType": "话语类型",
   "multilingual": "多语关系",
   "noteLabel": "备注：{note}",
   "signMeta": "GPS：{lat}, {lng} · 采集：{time}"

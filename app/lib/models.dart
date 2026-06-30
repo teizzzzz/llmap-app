@@ -1,6 +1,14 @@
 /// データモデル。backend(/schema, /extract) と CSV 標準字段に対応。
 library;
 
+/// 複数選択字段（"日本語/韓国語" など）を個々の値に分割する。
+/// 区切りは「/・、,」を許容し、空と「—」は除外する。
+List<String> splitMulti(String v) => v
+    .split(RegExp(r'[/・、,]'))
+    .map((e) => e.trim())
+    .where((e) => e.isNotEmpty && e != '—')
+    .toList();
+
 /// 全景写真上での框选矩形（0..1 の相対座標）。1枚に複数 = 1图多个sign。
 class CropRegion {
   String suffix; // a, b, c ...
@@ -38,6 +46,12 @@ class Sign {
   double? get lng => _toDouble(data['経度']);
   String get mainLang => (data['主要言語'] ?? '').toString();
 
+  /// 多選/併記の先頭言語。地図ピン色など代表値が要る箇所に使う。
+  String get mainLangPrimary {
+    final parts = splitMulti(mainLang);
+    return parts.isEmpty ? '' : parts.first;
+  }
+
   String get(String key) => (data[key] ?? '').toString();
   void set(String key, String value) => data[key] = value;
 
@@ -58,12 +72,16 @@ class AppSchema {
   final List<String> aiFields;
   final Map<String, String> languageColors;
 
+  /// 複数選択かつ自由追加できる字段（フォームを multi-select で描画）。
+  final Set<String> multiFields;
+
   AppSchema({
     required this.csvHeader,
     required this.statusValues,
     required this.enums,
     required this.aiFields,
     required this.languageColors,
+    this.multiFields = const {},
   });
 
   factory AppSchema.fromJson(Map<String, dynamic> j) => AppSchema(
@@ -75,6 +93,7 @@ class AppSchema {
         aiFields: List<String>.from(j['ai_fields'] ?? const []),
         languageColors: (j['language_colors'] as Map<String, dynamic>? ?? {})
             .map((k, v) => MapEntry(k, v.toString())),
+        multiFields: Set<String>.from(j['multi_fields'] ?? const []),
       );
 
   /// フォームに出さない（システム/自動生成）字段。

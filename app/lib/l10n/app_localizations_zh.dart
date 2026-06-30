@@ -273,13 +273,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageSystem => '跟随系统';
 
   @override
+  String get collectorId => '采集者 ID';
+
+  @override
+  String get collectorIdNote =>
+      '对应采集者，会写入 SignID 的「采集者」位，多人协作时防止编号撞车。默认已自动生成（NanoID 8 位，去除易混字符 0/O/1/l/I），可自定义。';
+
+  @override
+  String get collectorIdLabel => '采集者 ID';
+
+  @override
+  String get collectorIdRegenerate => '重新生成';
+
+  @override
   String get galleryTitle => '采集档案';
 
   @override
   String get langFilter => '语言';
 
   @override
-  String get sourceFilter => '来源';
+  String get sourceFilter => '设置';
 
   @override
   String get noMatch => '没有符合条件的记录';
@@ -334,7 +347,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get carrier => '载体类型';
 
   @override
-  String get sourceType => '来源类型';
+  String get sourceType => '话语类型';
 
   @override
   String get multilingual => '多语关系';

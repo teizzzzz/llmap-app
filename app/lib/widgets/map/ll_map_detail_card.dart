@@ -23,7 +23,7 @@ class LLMapDetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final color =
-        parseHexColor(schema.languageColors[sign.mainLang] ?? '#888888');
+        parseHexColor(schema.languageColors[sign.mainLangPrimary] ?? '#888888');
     final suffix = sign.id.split('-').last;
     String v(String k) => sign.get(k).isEmpty ? '—' : sign.get(k);
 
@@ -91,7 +91,7 @@ class LLMapDetailCard extends StatelessWidget {
                     _kv(t.subLanguage, v('補助言語')),
                     _kv(t.operator, v('設置主体')),
                     _kv(t.carrier, v('担体類型')),
-                    _kv(t.sourceType, v('来源類型')),
+                    _kv(t.sourceType, v('ディスコース類型')),
                     _kv(t.multilingual, v('多言語関係')),
                   ],
                 ),

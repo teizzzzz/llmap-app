@@ -18,7 +18,7 @@ from . import ai, storage
 from .csv_io import signs_to_csv
 from .exif import extract_exif, normalize_datetime
 from .schema import (
-    AI_FIELDS, CSV_HEADER, ENUMS, LANGUAGE_COLORS, STATUS_VALUES,
+    AI_FIELDS, CSV_HEADER, ENUMS, LANGUAGE_COLORS, MULTI_FIELDS, STATUS_VALUES,
     CropRegion, Sign, photo_id, sign_id,
 )
 
@@ -47,6 +47,7 @@ def get_schema():
         "enums": ENUMS,
         "ai_fields": AI_FIELDS,
         "language_colors": LANGUAGE_COLORS,
+        "multi_fields": MULTI_FIELDS,
     }
 
 

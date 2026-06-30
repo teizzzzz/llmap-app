@@ -275,13 +275,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get languageSystem => 'システムに従う';
 
   @override
+  String get collectorId => '採集者 ID';
+
+  @override
+  String get collectorIdNote =>
+      '採集者の識別子。SignID の「採集者」位に入り、多人協作時の採番衝突を防ぐ。既定で自動生成済み（NanoID 8桁・易混字 0/O/1/l/I を除外）。自由に変更可。';
+
+  @override
+  String get collectorIdLabel => '採集者 ID';
+
+  @override
+  String get collectorIdRegenerate => '再生成';
+
+  @override
   String get galleryTitle => '採集アーカイブ';
 
   @override
   String get langFilter => '言語';
 
   @override
-  String get sourceFilter => '来源';
+  String get sourceFilter => '設置';
 
   @override
   String get noMatch => '条件に合う記録がありません';
@@ -336,7 +349,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get carrier => '担体類型';
 
   @override
-  String get sourceType => '来源類型';
+  String get sourceType => 'ディスコース類型';
 
   @override
   String get multilingual => '多言語関係';

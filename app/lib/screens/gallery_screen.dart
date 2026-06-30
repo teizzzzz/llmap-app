@@ -36,18 +36,25 @@ class _GalleryScreenState extends State<GalleryScreen> {
   String _lang = _all;
   String _source = _all;
 
-  List<String> _distinct(String key) {
+  // multi=true の字段（主要言語など）は "/" 区切りを個々の値に展開する。
+  List<String> _distinct(String key, {bool multi = false}) {
     final set = <String>{};
     for (final s in widget.signs) {
       final v = s.get(key);
-      if (v.isNotEmpty && v != '—') set.add(v);
+      if (v.isEmpty || v == '—') continue;
+      if (multi) {
+        set.addAll(splitMulti(v));
+      } else {
+        set.add(v);
+      }
     }
     return [_all, ...set];
   }
 
   List<Sign> get _filtered => widget.signs.where((s) {
-        final okLang = _lang == _all || s.get('主要言語') == _lang;
-        final okSrc = _source == _all || s.get('来源類型') == _source;
+        final okLang =
+            _lang == _all || splitMulti(s.get('主要言語')).contains(_lang);
+        final okSrc = _source == _all || s.get('設置主体') == _source;
         return okLang && okSrc;
       }).toList();
 
@@ -71,8 +78,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final langs = _distinct('主要言語');
-    final sources = _distinct('来源類型');
+    final langs = _distinct('主要言語', multi: true);
+    final sources = _distinct('設置主体');
     final filtered = _filtered;
 
     return Scaffold(
@@ -189,7 +196,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   Widget _card(Sign s) {
     final lang = s.get('主要言語');
-    final source = s.get('来源類型');
+    final source = s.get('設置主体');
     return LLCard(
       padding: EdgeInsets.zero,
       onTap: () => _edit(s),
@@ -266,7 +273,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
       );
 
   Widget _langTag(String lang) {
-    final c = parseHexColor(widget.schema.languageColors[lang] ?? '#888888');
+    // 多選/併記時は先頭言語で色を引く（表示は全体）。
+    final parts = splitMulti(lang);
+    final primary = parts.isEmpty ? lang : parts.first;
+    final c = parseHexColor(widget.schema.languageColors[primary] ?? '#888888');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

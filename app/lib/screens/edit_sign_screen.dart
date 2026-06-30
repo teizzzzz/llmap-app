@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../store.dart';
 import '../theme/tokens.dart';
 import '../widgets/ll/ll.dart';
 import '../widgets/sign_form.dart';
@@ -34,6 +37,70 @@ class _EditSignScreenState extends State<EditSignScreen> {
     if (ok == true && mounted) Navigator.pop(context, 'deleted');
   }
 
+  /// 編集中の写真プレビュー。タップで全画面ズーム表示。
+  Widget _preview() {
+    final name = widget.sign.fileName;
+    final file = name.isEmpty ? null : LocalStore.instance.photoFile(name);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: AspectRatio(
+        aspectRatio: 4 / 3,
+        child: (file != null && file.existsSync())
+            ? GestureDetector(
+                onTap: () => _openFullImage(file),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(file, fit: BoxFit.cover, gaplessPlayback: true),
+                    Positioned(
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: const Icon(Icons.zoom_out_map,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : ColoredBox(
+                color: AppColors.muted,
+                child: const Center(
+                  child: Icon(Icons.image_not_supported_outlined,
+                      color: AppColors.textSecondary, size: 40),
+                ),
+              ),
+      ),
+    );
+  }
+
+  void _openFullImage(File file) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            title: Text(widget.sign.id),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 5,
+              child: Image.file(file),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -52,6 +119,8 @@ class _EditSignScreenState extends State<EditSignScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          _preview(),
+          const SizedBox(height: AppSpacing.md),
           SignForm(
             sign: widget.sign,
             schema: widget.schema,

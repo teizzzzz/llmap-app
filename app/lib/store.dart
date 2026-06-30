@@ -78,7 +78,7 @@ class LocalStore {
           .toList();
       return ProjectState(
         signs: signs,
-        area: (map['area'] ?? 'HAS').toString(),
+        area: (map['area'] ?? 'OOK').toString(),
         nextSeq: (map['nextSeq'] is int)
             ? map['nextSeq'] as int
             : int.tryParse('${map['nextSeq']}') ?? 1,

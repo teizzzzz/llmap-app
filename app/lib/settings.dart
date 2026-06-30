@@ -3,6 +3,8 @@
 /// - AI 自動識別の有効/無効・プロバイダ・APIキー
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,7 +17,37 @@ const _kAiEnabled = 'ai_enabled';
 const _kAiProvider = 'ai_provider';
 const _kAiKey = 'ai_api_key';
 const _kLocale = 'app_locale';
+const _kCollectorId = 'collector_id';
 const defaultBaseUrl = 'http://localhost:8000';
+
+// 採集者ID（採集者の識別子）。SignID の「采集者」位に入り、多人協作の衝突防止になる。
+// NanoID 風に 8 桁。視認・手抄・スキャンで紛れやすい 0 O 1 l I を除いた英数字を使う。
+const _nanoAlphabet =
+    '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+/// 採集者IDを新規生成（NanoID 8桁・易混字除外）。
+String generateCollectorId([int len = 8]) {
+  final rnd = Random.secure();
+  return List.generate(
+      len, (_) => _nanoAlphabet[rnd.nextInt(_nanoAlphabet.length)]).join();
+}
+
+/// 採集者IDを読み込む。未設定なら自動生成して保存し、それを返す。
+Future<String> loadCollectorId() async {
+  final prefs = await SharedPreferences.getInstance();
+  var id = prefs.getString(_kCollectorId);
+  if (id == null || id.isEmpty) {
+    id = generateCollectorId();
+    await prefs.setString(_kCollectorId, id);
+  }
+  return id;
+}
+
+Future<void> saveCollectorId(String id) async {
+  final prefs = await SharedPreferences.getInstance();
+  final v = id.trim();
+  await prefs.setString(_kCollectorId, v.isEmpty ? generateCollectorId() : v);
+}
 
 /// アプリ言語。null = システムに従う。MaterialApp はこれを購読して再構築する。
 final ValueNotifier<Locale?> localeNotifier = ValueNotifier<Locale?>(null);
@@ -74,7 +106,13 @@ Future<void> saveAiConfig(AiConfig c) async {
 class SettingsScreen extends StatefulWidget {
   final String baseUrl;
   final AiConfig ai;
-  const SettingsScreen({super.key, required this.baseUrl, required this.ai});
+  final String collectorId;
+  const SettingsScreen({
+    super.key,
+    required this.baseUrl,
+    required this.ai,
+    required this.collectorId,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -85,6 +123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       TextEditingController(text: widget.baseUrl);
   late final TextEditingController _key =
       TextEditingController(text: widget.ai.apiKey);
+  late final TextEditingController _collector =
+      TextEditingController(text: widget.collectorId);
   late bool _aiEnabled = widget.ai.enabled;
   late String _provider = widget.ai.provider;
   bool _showKey = false;
@@ -93,10 +133,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _url.dispose();
     _key.dispose();
+    _collector.dispose();
     super.dispose();
   }
 
   void _save() {
+    final collector = _collector.text.trim();
     Navigator.pop(context, (
       baseUrl: _url.text.trim(),
       ai: AiConfig(
@@ -104,6 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         provider: _provider,
         apiKey: _key.text.trim(),
       ),
+      collectorId: collector.isEmpty ? generateCollectorId() : collector,
     ));
   }
 
@@ -126,6 +169,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _langOption('简体中文', 'zh'),
                 _langOption('日本語', 'ja'),
                 _langOption('English', 'en'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── 採集者ID / Collector ID ──
+          LLCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.collectorId, style: AppText.sectionTitle()),
+                const SizedBox(height: AppSpacing.xs),
+                Text(t.collectorIdNote, style: AppText.caption()),
+                const SizedBox(height: AppSpacing.md),
+                LLFormField(
+                  label: t.collectorIdLabel,
+                  child: TextField(
+                    controller: _collector,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. K7m9Qp4t',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.casino_outlined),
+                        tooltip: t.collectorIdRegenerate,
+                        onPressed: () => setState(
+                            () => _collector.text = generateCollectorId()),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

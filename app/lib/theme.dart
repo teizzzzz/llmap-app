@@ -26,8 +26,8 @@ Color statusColor(String status) =>
     {
       'pending': AppColors.textSecondary,
       'ai': AppColors.accentBlue,
-      'modified': AppColors.accentTerracotta,
-      'reviewed': AppColors.success,
+      'human-reviewed': AppColors.accentTerracotta,
+      'final': AppColors.success,
     }[status] ??
     AppColors.textSecondary;
 

@@ -76,16 +76,20 @@ class _BootState extends State<_Boot> {
 
   Future<void> _editUrl() async {
     final ai = await loadAiConfig();
+    final collector = await loadCollectorId();
     if (!mounted) return;
-    final result = await Navigator.push<({String baseUrl, AiConfig ai})>(
+    final result =
+        await Navigator.push<({String baseUrl, AiConfig ai, String collectorId})>(
       context,
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(baseUrl: api.baseUrl, ai: ai),
+        builder: (_) =>
+            SettingsScreen(baseUrl: api.baseUrl, ai: ai, collectorId: collector),
       ),
     );
     if (result == null) return;
     await saveBaseUrl(result.baseUrl);
     await saveAiConfig(result.ai);
+    await saveCollectorId(result.collectorId);
     api.baseUrl = result.baseUrl;
     _load();
   }

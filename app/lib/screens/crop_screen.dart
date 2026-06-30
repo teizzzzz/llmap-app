@@ -24,6 +24,7 @@ class CropScreen extends StatefulWidget {
   final String fileName;
   final String area;
   final int seq;
+  final String collector;
   final AiConfig aiConfig;
 
   const CropScreen({
@@ -34,6 +35,7 @@ class CropScreen extends StatefulWidget {
     required this.fileName,
     required this.area,
     required this.seq,
+    required this.collector,
     required this.aiConfig,
   });
 
@@ -111,7 +113,8 @@ class _CropScreenState extends State<CropScreen> {
         await LocalStore.instance.savePhoto(fname, cropped);
       }
       signs.add(Sign({
-        'SignID': signId(widget.area, widget.seq, r.suffix),
+        'SignID':
+            signId(widget.area, widget.seq, r.suffix, collector: widget.collector),
         '_status': 'pending',
         '写真ID': pid,
         '写真ファイル名': fname,
