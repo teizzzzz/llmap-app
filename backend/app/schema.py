@@ -4,10 +4,17 @@ CSV互換のための標準表頭・分类值・SignID/写真ID規約をここ�
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+def split_multi(v: str | None) -> list[str]:
+    """複数選択字段（"日本語/韓国語" 等）を個々の値に分割（アプリ splitMulti と同一）。"""
+    return [p.strip() for p in re.split(r"[/・、,]", v or "")
+            if p.strip() and p.strip() != "—"]
 
 # ── CSV 標準表頭（採集字段定義表 v3 三語重構版） ──
 # A 識別情報（系統/自動）→ 名称 → B 言語·文字 → C 物質·空間·時間 → D 解読·判定。
@@ -34,6 +41,25 @@ CSV_HEADER = [
 # ── 状態（判定来源を統合）── pending=未処理 / ai=AI下書未校 /
 #    human-reviewed=人が記入or校閲 / final=確定。
 STATUS_VALUES = ["pending", "ai", "human-reviewed", "final"]
+
+# _status → DataStatus（Console 審核状態）の対応（アプリ models.dart と同一）。
+DATA_STATUS_MAP = {
+    "pending": "raw",
+    "ai": "ai_drafted",
+    "human-reviewed": "reviewed",
+    "final": "verified",
+}
+
+# システム/自動生成字段（アプリ AppSchema.systemFields と同一）。
+# Console の編集 API では _status / DataStatus を除きロックする。
+SYSTEM_FIELDS = [
+    "SignID", "_status",
+    "CaptureID", "DisplayID", "採集者ID", "地区コード", "LocalSeq",
+    "CropSuffix", "CropRect",
+    "写真ID", "写真ファイル名", "元写真ファイル名", "全景写真ファイル名",
+    "緯度", "経度", "採集日時",
+    "EntryMode", "DataStatus", "SchemaVersion", "AppVersion",
+]
 
 # 言語の正準値（主要/補助/装飾で共用）。
 LANGUAGES = ["日本語", "韓国語", "中国語", "ベトナム語", "ネパール語", "英語", "その他"]

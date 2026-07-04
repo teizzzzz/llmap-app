@@ -24,3 +24,6 @@ backend/uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Backend local database & imported photos (Research Console)
+backend/data/

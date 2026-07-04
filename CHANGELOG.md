@@ -12,6 +12,34 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## backend v0.2.0 (2026-07-04) — Research Console 用ローカルDBサービス（Step 4）
+
+backend を SQLite ベースのローカルデータベースサービスに拡張（アプリは不変）。
+既存の採集補助エンドポイント（/health /schema /extract /ai /export*）は維持。
+
+### 新規モジュール
+- `database.py`（SQLite・LLMAP_DATA_DIR で保存先切替可）/ `db_models.py`
+  （Dataset / SignRecord / Photo。核心列＋全字段 data_json）
+- `import_dataset.py`: **POST /datasets/import** — Dataset Package zip を
+  data/imports に展開、JSON/CSV 検証、manifest と実ファイル照合、SQLite 取込、
+  写真を data/photos・data/source_photos へ複製、導入レポート返却。
+  SignID 重複は skip して duplicateSignIds に報告（静黙上書きなし）。
+  写真欠落は warnings（導入は失敗しない）。zip slip 拒否。
+- `records_api.py`: **GET /records**（分页・q検索・言語/地区/採集者/モード/
+  状態/日付/GPS/写真有無/dataset 筛选）、**GET/PATCH /records/{id}**
+  （研究字段と _status/DataStatus のみ編集可・系統字段はロック・_status 変更で
+  DataStatus 自動同期）、**GET /records/{id}/photo・/source-photo・
+  /photos/{filename}**（目录穿越拒否）、**GET /map/records**（GPS有のみ軽量）。
+- `stats_api.py`: **GET /stats/summary**（件数・写真・EntryMode/DataStatus/
+  言語(併記展開)/地区/採集者分布）。
+- `export_api.py`: **GET /export/csv**（筛选条件付き・標準36列・utf-8-sig）。
+
+### 互換
+- DataStatus 欠落は _status から補完（DATA_STATUS_MAP）。旧データは package 側で
+  規範化済みのため再規範化しない。字段欠落は空で取込（落ちない）。
+- テスト `backend/tests/test_console_api.py`（14件: 導入/重複/分页/筛选/詳細/
+  編集/ロック/写真/地図/統計/導出/壊れた包の拒否）全通過。
+
 ## v1.8.0 (2026-07-04) — Dataset Package v1 完成（Step 3）
 
 v1.6.0 で導入した Dataset Package を Step 3 仕様どおりに完成させた

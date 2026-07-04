@@ -45,9 +45,14 @@ flutter run -d windows
 後端なしで起動する（v1.1〜）。AI判定を使う場合は、アプリ右上の歯車 →「AI自動識別」をオンにし、
 プロバイダ（Claude / Gemini）と **APIキー**を入力（端末内に保存）。
 
-## backend（任意 / 通常は不要）
+## backend（採集は不要 / Research Console 用ローカルDBサービス）
 
-v1.1 以降、通常運用に後端は不要。EXIF抽出の利用や、将来の多人共享の開発時のみ起動する。
+採集はスマホ単体で完結する（後端不要）。backend v0.2.0 からは、将来の
+**LLMap Research Console**（PC/Web 研究管理台）向けのローカルDBサービスを兼ねる:
+アプリが导出した Dataset Package（`llmap_dataset_*.zip`）を `POST /datasets/import`
+で取り込み、検索/筛选（`/records`）・編集（`PATCH /records/{id}`）・写真配信・
+地図（`/map/records`）・統計（`/stats/summary`）・CSV導出（`/export/csv`）を提供する
+（SQLite・完全ローカル。テスト: `cd backend && python -m pytest tests/ -q`）。
 
 ```bash
 cd backend

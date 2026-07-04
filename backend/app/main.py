@@ -1,13 +1,15 @@
 """
-LLMap 轻后端 (FastAPI)。
-Phase 0: EXIF/GPS抽出・字段规整・AI判定・CSV互換を提供。
-フロント(Flutter)は採集・框选・地図预览を担当し、ここに写真と框选を渡す。
+LLMap backend (FastAPI)。
+- 採集補助（Phase 0）: EXIF/GPS抽出・字段规整・AI判定・CSV互換。
+- Research Console 用ローカルDBサービス（Step 4）: Dataset Package 導入・
+  検索/筛选・編集・写真配信・地図・統計・CSV導出（SQLite）。
 """
 from __future__ import annotations
 
 import io
 import json
 import zipfile
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -16,13 +18,27 @@ from fastapi.responses import JSONResponse, Response
 
 from . import ai, storage
 from .csv_io import signs_to_csv
+from .database import init_db
 from .exif import extract_exif, normalize_datetime
 from .schema import (
     AI_FIELDS, CSV_HEADER, ENUMS, LANGUAGE_COLORS, MULTI_FIELDS, STATUS_VALUES,
     CropRegion, Sign, photo_id, sign_id,
 )
+from . import export_api, import_dataset, records_api, stats_api
 
-app = FastAPI(title="LLMap backend", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="LLMap backend", version="0.2.0", lifespan=lifespan)
+
+app.include_router(import_dataset.router)
+app.include_router(records_api.router)
+app.include_router(stats_api.router)
+app.include_router(export_api.router)
 
 # 単人ローカル開発のため全許可。多人化時に絞る。
 app.add_middleware(
@@ -35,7 +51,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "llmap-backend", "version": "0.1.0"}
+    return {"ok": True, "service": "llmap-backend", "version": "0.2.0"}
 
 
 @app.get("/schema")
