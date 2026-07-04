@@ -84,6 +84,24 @@ export const getSchema = () => request<SchemaInfo>('/schema');
 export const getMapRecords = (params: MapQuery = {}) =>
   request<MapRecord[]>(`/map/records${query({ ...params })}`);
 
+/** 現在の筛选条件で CSV を取得する（呼び出し側でダウンロードを起動する）。 */
+export const exportRecordsCsv = async (
+  params: RecordsQuery = {},
+): Promise<Blob> => {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/export/csv${query({ ...params })}`);
+  } catch {
+    throw new ApiError(
+      `Cannot reach backend at ${API_BASE_URL}. Is it running? (uvicorn app.main:app --port 8000)`,
+    );
+  }
+  if (!res.ok) {
+    throw new ApiError(`${res.status}: ${res.statusText}`, res.status);
+  }
+  return res.blob();
+};
+
 /** Dataset Package（llmap_dataset_*.zip）を導入する。 */
 export const importDatasetPackage = (file: File) => {
   const formData = new FormData();

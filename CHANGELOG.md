@@ -12,6 +12,21 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.6.0 (2026-07-04) — Export CSV ページ（Step 8A）
+
+- Export ページを実装: 筛选（Database と同じ RecordsFilters を再利用・
+  q/言語/地区/採集者/モード/状態/日付/GPS/写真/dataset）＋快速プリセット
+  （All / Reviewed only / Verified only / With GPS / With photos）。
+- 导出摘要: `/records?pageSize=1` で筛选後の件数を表示、0件は導出不可。
+- **Export CSV**: `/export/csv` を現在の筛选条件付きで取得し
+  `llmap_export_YYYYMMDD_HHMMSS.csv` としてブラウザ下載
+  （client に `exportRecordsCsv(params)` 追加）。進行中/成功/失敗/offline を表示。
+- フォーマット区: CSV=available、Dataset Package / GeoJSON / Photos ZIP は
+  Coming soon（無効カード）。写真は CSV に含まれない旨をページに明記。
+- 検証: npm run build 通過。実 backend＋Playwright で件数摘要→reviewed 筛选→
+  実ダウンロード（36列 header・行数・筛选反映を検査）→Coming soon 無効→
+  offline エラーまで確認。backend 変更なし。
+
 ## console v0.5.0 / backend v0.2.1 (2026-07-04) — Review 審核工作流（Step 7）
 
 Review ページを審核队列として実装（「どの記録がまだ人の確認を要するか」に答える。
