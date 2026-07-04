@@ -12,6 +12,28 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.4.0 (2026-07-04) — Map ページ（Step 6）
+
+Web 地図预览を実装（Leaflet + react-leaflet v4・OpenStreetMap tiles・
+attribution 付き。有料 token 不要）。
+
+- **GET /map/records** を接続（`getMapRecords(params)`＋`MapRecord`/`MapQuery` 型）。
+  GPS を持つ記録のみ表示（その旨をページに明記）。経緯度異常値は除外。
+- **marker**: 主要言語の先頭言語で着色（/schema の language_colors =
+  モバイル地図と同一配色。未知言語は灰）。CircleMarker（画像アセット不要）。
+  表示中の言語だけの凡例を左下に表示。記録群が変わると fitBounds。
+- **筛选**: mainLanguage / areaCode / entryMode / dataStatus / datasetId
+  （Database と同じ命名・同じ選択肢ソース = useFilterOptions hook に共通化）。
+  Clear filters / Refresh / 「N mapped records」。
+- **popup**: 開いた時に /records/{id} を遅延取得し、缩略图（欠図 placeholder）・
+  DisplayID・主要/補助言語・地区コード・採集日時・EntryMode/DataStatus badge を
+  表示。**Open in Database** で Database ページへ遷移し該当記録を自動選択
+  （?record=<id> 連動を DatabasePage に追加）。
+- 空状態（GPS 記録なし / 筛选後 0 件）・offline エラーを白屏なしで処理。
+- 検証: npm run build 通過。実 backend＋Playwright で marker 2件・言語/モード/
+  状態筛选・空状態・popup 遅延詳情＋写真・Database 遷移選択・offline を確認。
+- backend 変更なし。
+
 ## console v0.3.0 (2026-07-04) — Dataset Package 導入 UI（Step 5C）
 
 Database ページから直接 Dataset Package をアップロードできるようにした

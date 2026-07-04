@@ -1,7 +1,7 @@
 {
   "name": "llmap-console",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "LLMap Research Console — PC/Web management UI for linguistic landscape datasets",
   "type": "module",
   "scripts": {
@@ -10,11 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

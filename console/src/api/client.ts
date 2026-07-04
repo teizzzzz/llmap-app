@@ -3,6 +3,8 @@
 import type {
   Dataset,
   ImportDatasetResult,
+  MapQuery,
+  MapRecord,
   RecordDetail,
   RecordsQuery,
   RecordsResponse,
@@ -78,6 +80,9 @@ export const updateRecord = (id: number, payload: Record<string, string>) =>
 export const getDatasets = () => request<Dataset[]>('/datasets');
 
 export const getSchema = () => request<SchemaInfo>('/schema');
+
+export const getMapRecords = (params: MapQuery = {}) =>
+  request<MapRecord[]>(`/map/records${query({ ...params })}`);
 
 /** Dataset Package（llmap_dataset_*.zip）を導入する。 */
 export const importDatasetPackage = (file: File) => {

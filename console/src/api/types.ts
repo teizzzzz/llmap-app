@@ -70,6 +70,28 @@ export interface Dataset {
   missing_source_photo_count: number;
 }
 
+/** GET /map/records の1件（GPS を持つ記録のみ・軽量） */
+export interface MapRecord {
+  id: number;
+  signId: string;
+  displayId: string;
+  lat: number;
+  lng: number;
+  mainLanguage: string;
+  dataStatus: string;
+  entryMode: string;
+  photoUrl: string | null;
+}
+
+/** GET /map/records の筛选（/records と同じ命名） */
+export interface MapQuery {
+  mainLanguage?: string;
+  areaCode?: string;
+  entryMode?: string;
+  dataStatus?: string;
+  datasetId?: number;
+}
+
 /** POST /datasets/import の導入レポート */
 export interface ImportDatasetResult {
   datasetId: number;

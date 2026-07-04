@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ApiError,
-  getDatasets,
-  getRecords,
-  getSchema,
-  getStatsSummary,
-} from '../api/client';
-import type {
-  Dataset,
-  RecordsQuery,
-  RecordsResponse,
-  SchemaInfo,
-} from '../api/types';
+import { useSearchParams } from 'react-router-dom';
+import { ApiError, getRecords } from '../api/client';
+import type { RecordsQuery, RecordsResponse } from '../api/types';
 import ImportDatasetDialog from '../components/database/ImportDatasetDialog';
 import RecordDetailPanel from '../components/database/RecordDetailPanel';
 import RecordsFilters from '../components/database/RecordsFilters';
 import RecordsTable from '../components/database/RecordsTable';
+import useFilterOptions from '../hooks/useFilterOptions';
 
 const PAGE_SIZES = [25, 50, 100];
 
@@ -30,23 +21,19 @@ export default function DatabasePage() {
 
   const [importing, setImporting] = useState(false);
 
-  // 筛选肢の元データ（schema の言語 enum、実在の地区/採集者、dataset 一覧）。
-  const [schema, setSchema] = useState<SchemaInfo | null>(null);
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [areas, setAreas] = useState<string[]>([]);
-  const [collectors, setCollectors] = useState<string[]>([]);
+  // 筛选肢の元データ（Map ページと共用の hook）。
+  const { schema, datasets, areas, collectors, refresh: fetchOptions } =
+    useFilterOptions();
 
-  const fetchOptions = useCallback(() => {
-    getSchema().then(setSchema).catch(() => {});
-    getDatasets().then(setDatasets).catch(() => {});
-    getStatsSummary()
-      .then((s) => {
-        setAreas(Object.keys(s.areaCounts).filter((k) => k !== 'unknown'));
-        setCollectors(Object.keys(s.collectorCounts).filter((k) => k !== 'unknown'));
-      })
-      .catch(() => {});
-  }, []);
-  useEffect(fetchOptions, [fetchOptions]);
+  // Map の popup「Open in Database」からの遷移: ?record=<id> を選択状態に反映。
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const rid = searchParams.get('record');
+    if (rid) {
+      setSelectedId(Number(rid));
+      setSearchParams({}, { replace: true }); // 一度反映したら URL を掃除
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchRecords = useCallback(() => {
     setLoading(true);
