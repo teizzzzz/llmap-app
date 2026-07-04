@@ -5,6 +5,7 @@ import type {
   RecordDetail,
   RecordsQuery,
   RecordsResponse,
+  SchemaInfo,
   StatsSummary,
 } from './types';
 
@@ -71,6 +72,8 @@ export const updateRecord = (id: number, payload: Record<string, string>) =>
   });
 
 export const getDatasets = () => request<Dataset[]>('/datasets');
+
+export const getSchema = () => request<SchemaInfo>('/schema');
 
 export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');

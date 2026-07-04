@@ -70,6 +70,16 @@ export interface Dataset {
   missing_source_photo_count: number;
 }
 
+/** GET /schema — フォーム選択肢（enums）・複数選択字段・状態値 */
+export interface SchemaInfo {
+  csv_header: string[];
+  status_values: string[];
+  enums: Record<string, string[]>;
+  ai_fields: string[];
+  language_colors: Record<string, string>;
+  multi_fields: string[];
+}
+
 /** GET /records の筛选パラメータ */
 export interface RecordsQuery {
   page?: number;

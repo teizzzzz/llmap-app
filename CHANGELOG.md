@@ -12,6 +12,30 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.2.0 (2026-07-04) — Database ページ MVP（Step 5B）
+
+Database ページを実用化: 一覧・検索・筛选・分页・詳情・編集・保存。
+
+- **表格**: 缩略图 / DisplayID(→SignID fallback) / 主要・補助言語 / 地区 /
+  採集日時 / EntryMode・DataStatus badge / 採集者 / GPS有無。選択行ハイライト、
+  写真欠落は placeholder。
+- **筛选**: q 検索（400ms デバウンス）＋ mainLanguage / areaCode / collectorId /
+  entryMode / dataStatus / datasetId / hasGps / hasPhoto / hasSourcePhoto /
+  dateFrom / dateTo。選択肢は /schema（言語 enum）・/stats/summary（実在の
+  地区/採集者）・/datasets から動的取得。変更で page 1 に戻る。
+  Clear filters / Refresh / 件数表示。
+- **分页**: Prev/Next・pageSize 25/50/100・「1–50 of 123」表示。
+- **詳情面板**: 裁切図＋元写真（欠落 placeholder）、識別情報14字段は只読、
+  編集は 主要言語/補助言語/文字体系(チップ多選)・担体類型/設置主体/多言語関係
+  (下拉)・備考(textarea)・_status/DataStatus(下拉)。dirty 表示・Save(PATCH)・
+  Cancel・保存後に表格再取得・失敗はエラー表示。
+- 新規コンポーネント: components/database/{RecordsTable, RecordsFilters,
+  RecordDetailPanel, FieldEditor, StatusBadge, PhotoThumb}。
+- API client に getSchema()（/schema の enums・multi_fields で表単型を決定）。
+- 検証: npm run build（tsc strict）通過。実 backend＋Playwright で
+  表格/検索/3筛选/詳情/写真表示・placeholder/編集保存の永続化/識別情報只読を確認。
+- backend 変更なし。
+
 ## console v0.1.0 (2026-07-04) — Research Console 基礎フレーム（Step 5A）
 
 リポジトリ根に `console/` を新設（React + Vite + TypeScript + React Router、
