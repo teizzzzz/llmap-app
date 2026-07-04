@@ -2,6 +2,7 @@
 // base URL は .env の VITE_API_BASE_URL（既定 http://localhost:8000）。
 import type {
   Dataset,
+  ImportDatasetResult,
   RecordDetail,
   RecordsQuery,
   RecordsResponse,
@@ -25,9 +26,12 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  // FormData（ファイルアップロード）は Content-Type をブラウザに任せる
+  // （boundary 付き multipart を自動設定させるため）。
+  const isForm = init?.body instanceof FormData;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: isForm ? undefined : { 'Content-Type': 'application/json' },
       ...init,
     });
   } catch {
@@ -74,6 +78,16 @@ export const updateRecord = (id: number, payload: Record<string, string>) =>
 export const getDatasets = () => request<Dataset[]>('/datasets');
 
 export const getSchema = () => request<SchemaInfo>('/schema');
+
+/** Dataset Package（llmap_dataset_*.zip）を導入する。 */
+export const importDatasetPackage = (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<ImportDatasetResult>('/datasets/import', {
+    method: 'POST',
+    body: formData,
+  });
+};
 
 export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');

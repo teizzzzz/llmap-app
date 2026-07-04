@@ -12,6 +12,7 @@ import type {
   RecordsResponse,
   SchemaInfo,
 } from '../api/types';
+import ImportDatasetDialog from '../components/database/ImportDatasetDialog';
 import RecordDetailPanel from '../components/database/RecordDetailPanel';
 import RecordsFilters from '../components/database/RecordsFilters';
 import RecordsTable from '../components/database/RecordsTable';
@@ -27,13 +28,15 @@ export default function DatabasePage() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
+  const [importing, setImporting] = useState(false);
+
   // 筛选肢の元データ（schema の言語 enum、実在の地区/採集者、dataset 一覧）。
   const [schema, setSchema] = useState<SchemaInfo | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [collectors, setCollectors] = useState<string[]>([]);
 
-  useEffect(() => {
+  const fetchOptions = useCallback(() => {
     getSchema().then(setSchema).catch(() => {});
     getDatasets().then(setDatasets).catch(() => {});
     getStatsSummary()
@@ -43,6 +46,7 @@ export default function DatabasePage() {
       })
       .catch(() => {});
   }, []);
+  useEffect(fetchOptions, [fetchOptions]);
 
   const fetchRecords = useCallback(() => {
     setLoading(true);
@@ -74,15 +78,25 @@ export default function DatabasePage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>Database</h1>
-        <p>
-          Manage imported linguistic landscape records.{' '}
-          <span className="muted">
-            To import data, use backend <code>POST /datasets/import</code> for now.
-          </span>
-        </p>
+      <div className="page-header page-header-row">
+        <div>
+          <h1>Database</h1>
+          <p>Manage imported linguistic landscape records.</p>
+        </div>
+        <button className="btn primary" onClick={() => setImporting(true)}>
+          ⇪ Import Dataset Package
+        </button>
       </div>
+
+      {importing && (
+        <ImportDatasetDialog
+          onClose={() => setImporting(false)}
+          onImported={() => {
+            fetchRecords(); // 表格
+            fetchOptions(); // datasets / 地区・採集者の筛选肢（Dashboard は次回表示時に反映）
+          }}
+        />
+      )}
 
       <RecordsFilters
         value={filters}
@@ -116,8 +130,8 @@ export default function DatabasePage() {
                 <p>No records match the current filters.</p>
               ) : (
                 <p>
-                  No records yet. Import a Dataset Package via backend{' '}
-                  <code>POST /datasets/import</code>.
+                  No records yet. Click “Import Dataset Package” above to upload a
+                  package exported from LLMap Mobile.
                 </p>
               )}
             </div>

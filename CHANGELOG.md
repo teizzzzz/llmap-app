@@ -12,6 +12,28 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.3.0 (2026-07-04) — Dataset Package 導入 UI（Step 5C）
+
+Database ページから直接 Dataset Package をアップロードできるようにした
+（curl 不要に）。
+
+- ヘッダに「⇪ Import Dataset Package」ボタン → モーダル
+  （`components/database/ImportDatasetDialog.tsx`）。
+- フロー: zip 選択（非 zip は即時拒否・ファイル名/サイズ表示）→ Upload
+  （進行中表示）→ **導入レポート**（Dataset ID / Records / Imported / Skipped /
+  Photos / Source photos / Missing 2種）＋ duplicateSignIds・warnings は
+  黄色の警告ボックスに列挙（20件で省略表示）。
+- 成功後: records 表格・datasets/筛选肢を自動再取得。「View records」で閉じる /
+  「Import another」で連続導入。空状態の文言も導入ボタン誘導に更新。
+- API client: `importDatasetPackage(file)`（FormData。multipart の boundary の
+  ため Content-Type はブラウザに委譲するよう request() を調整）＋
+  `ImportDatasetResult` 型。
+- エラー処理: 未選択 / 非zip / 失敗（backend の detail 表示）/ offline すべて
+  モーダル内で表示（白屏なし）。
+- 検証: npm run build 通過。実 backend＋Playwright で 非zip拒否 → 導入成功
+  レポート → 表格 3→4 件刷新 → 同一包再導入で duplicate 表示 → offline
+  エラーまで確認。backend 変更なし。
+
 ## console v0.2.0 (2026-07-04) — Database ページ MVP（Step 5B）
 
 Database ページを実用化: 一覧・検索・筛选・分页・詳情・編集・保存。

@@ -70,6 +70,20 @@ export interface Dataset {
   missing_source_photo_count: number;
 }
 
+/** POST /datasets/import の導入レポート */
+export interface ImportDatasetResult {
+  datasetId: number;
+  recordCount: number;
+  importedRecordCount: number;
+  skippedRecordCount: number;
+  photoCount: number;
+  sourcePhotoCount: number;
+  missingPhotoCount: number;
+  missingSourcePhotoCount: number;
+  duplicateSignIds: string[];
+  warnings: string[];
+}
+
 /** GET /schema — フォーム選択肢（enums）・複数選択字段・状態値 */
 export interface SchemaInfo {
   csv_header: string[];
