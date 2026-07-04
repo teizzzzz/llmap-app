@@ -239,6 +239,29 @@ def test_photo_endpoints():
     assert client.get("/photos/..%2Fllmap.sqlite3").status_code in (400, 404)
 
 
+def test_record_photo_traversal_rejected():
+    # DB の写真名が汚染されていても（導入 CSV 由来）、record 経由の配信で
+    # 目录穿越できない。
+    from sqlmodel import Session, select
+    from app.database import get_engine
+    from app.db_models import SignRecord
+
+    with Session(get_engine()) as s:
+        s.add(SignRecord(sign_id="EVIL-traversal-a",
+                         photo_file_name="../llmap.sqlite3",
+                         source_photo_file_name="..\\llmap.sqlite3",
+                         data_json="{}"))
+        s.commit()
+        rid = s.exec(select(SignRecord)
+                     .where(SignRecord.sign_id == "EVIL-traversal-a")).first().id
+    assert client.get(f"/records/{rid}/photo").status_code == 400
+    assert client.get(f"/records/{rid}/source-photo").status_code == 400
+    # 後続テスト（stats の件数）に影響しないよう掃除する。
+    with Session(get_engine()) as s:
+        s.delete(s.get(SignRecord, rid))
+        s.commit()
+
+
 def test_map_records_gps_only():
     r = client.get("/map/records")
     items = r.json()

@@ -12,6 +12,32 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.8.1 / backend v0.3.1 (2026-07-04) — Stabilization Pass（全流程験収）
+
+Mobile 导出 → Console 導入 → Database → Map → Review → Dashboard → Export の
+端到端験収を実施し、発見した 2 件を修正（新機能追加なし）。
+
+### 修正
+- **fix(backend/セキュリティ)**: `/records/{id}/photo`・`/source-photo` が DB 内の
+  ファイル名（導入 CSV 由来＝信頼できない）をそのままパス結合しており、
+  `../` を含む名前で任意ファイルを読める目录穿越が可能だった（再現確認済）。
+  `_serve` で名前を一律検証するよう修正し、テスト追加（17件全通過）。
+- **fix(console/審核)**: 確定済み記録（_status=human-reviewed/final）に
+  Needs review / Reject を適用すると「final なのに needs_review」という
+  モバイル/Console 間の矛盾状態になっていた。`actionPayload()`（reviewStatus.ts）
+  で該当時のみ _status を pending に降格。pending/ai の記録は従来どおり保持。
+
+### 験収結果（実 backend＋Playwright）
+- 空DB: 7ページすべて空状態表示・JSエラー0・导出ボタン0件で無効。
+- 一致性: 全字段入りの Dataset Package を導入し、CaptureID/SignID/DisplayID/
+  写真・元写真ファイル名/EntryMode/DataStatus/SchemaVersion/AppVersion/
+  採集者ID/地区コード/LocalSeq/CropSuffix/CropRect の14字段が
+  data.csv → DB/detail → Database 識別情報 → Review 元情報 → Export CSV で
+  逐字段一致（緯度経度は数値同値）。写真名は storage/配信と一致。
+- 状態遷移: submitted→verified→needs_review(降格)→reviewed→rejected(降格)→
+  needs_review(pending保持) の全系列を検証。
+- 回帰: 7ページ（有データ/空/offline）・console build・backend 17テスト全通過。
+
 ## console v0.8.0 / backend v0.3.0 (2026-07-04) — AI Processing 骨架（Step 8C）
 
 AI 批処理の**安全な scaffold**（実 AI 呼び出しは一切行わない・API キーは

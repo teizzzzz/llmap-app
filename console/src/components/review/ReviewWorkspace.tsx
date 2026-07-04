@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
 import type { RecordDetail, SchemaInfo } from '../../api/types';
-import { REVIEW_ACTIONS, type ReviewActionDef } from '../../reviewStatus';
+import {
+  actionPayload,
+  REVIEW_ACTIONS,
+  type ReviewActionDef,
+} from '../../reviewStatus';
 import FieldEditor from '../database/FieldEditor';
 import PhotoThumb from '../database/PhotoThumb';
 import StatusBadge from '../database/StatusBadge';
@@ -106,7 +110,8 @@ export default function ReviewWorkspace({
       key={a.key}
       className={`btn review-action ${a.kind}`}
       disabled={busy != null}
-      onClick={() => patch(a.payload, a.key, a.leavesQueue)}
+      onClick={() =>
+        patch(actionPayload(a, detail?.data['_status'] ?? ''), a.key, a.leavesQueue)}
     >
       {busy === a.key ? 'Working…' : a.label}
     </button>

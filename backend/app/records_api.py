@@ -220,7 +220,12 @@ def patch_record(
 
 # ── 写真配信 ──
 
-def _serve(path, name: str):
+def _serve(base_dir, name: str):
+    """写真ファイルを配信する。名前は必ず検証する（DB の値も導入 CSV 由来で
+    信頼できないため、`../` 等での目录穿越をここで一律拒否する）。"""
+    if not name or "/" in name or "\\" in name or ".." in name:
+        raise HTTPException(400, f"不正なファイル名です: {name}")
+    path = base_dir / name
     if not path.is_file():
         raise HTTPException(404, f"写真が見つかりません: {name}")
     return FileResponse(path, media_type="image/jpeg")
@@ -231,7 +236,7 @@ def record_photo(record_id: int, session: Session = Depends(get_session)):
     rec = _get_record(session, record_id)
     if not rec.photo_file_name:
         raise HTTPException(404, "この記録に写真がありません")
-    return _serve(photos_dir() / rec.photo_file_name, rec.photo_file_name)
+    return _serve(photos_dir(), rec.photo_file_name)
 
 
 @router.get("/records/{record_id}/source-photo")
@@ -239,8 +244,7 @@ def record_source_photo(record_id: int, session: Session = Depends(get_session))
     rec = _get_record(session, record_id)
     if not rec.source_photo_file_name:
         raise HTTPException(404, "この記録に元写真がありません")
-    return _serve(source_photos_dir() / rec.source_photo_file_name,
-                  rec.source_photo_file_name)
+    return _serve(source_photos_dir(), rec.source_photo_file_name)
 
 
 @router.get("/photos/{filename}")

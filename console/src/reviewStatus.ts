@@ -55,15 +55,30 @@ export const REVIEW_ACTIONS: ReviewActionDef[] = [
   {
     key: 'needs_review',
     label: 'Needs review',
-    payload: { DataStatus: 'needs_review' }, // _status は保持（モバイル互換）
+    payload: { DataStatus: 'needs_review' }, // _status は原則保持（モバイル互換）
     leavesQueue: false,
     kind: 'neutral',
   },
   {
     key: 'rejected',
     label: 'Reject',
-    payload: { DataStatus: 'rejected' }, // _status は保持（モバイル互換）
+    payload: { DataStatus: 'rejected' }, // _status は原則保持（モバイル互換）
     leavesQueue: true,
     kind: 'negative',
   },
 ];
+
+/** アクションの PATCH payload を現在の _status を考慮して組み立てる。
+    needs_review / rejected を「確定済み」（human-reviewed / final）の記録に
+    適用する場合は _status を pending に降格させる — さもないと
+    「final なのに needs_review」というモバイル/Console 間の矛盾状態になる。
+    pending / ai の場合は従来どおり _status を保持する。 */
+export function actionPayload(
+  action: ReviewActionDef,
+  currentStatus: string,
+): Record<string, string> {
+  const demote =
+    (action.key === 'needs_review' || action.key === 'rejected') &&
+    (currentStatus === 'human-reviewed' || currentStatus === 'final');
+  return demote ? { ...action.payload, _status: 'pending' } : action.payload;
+}
