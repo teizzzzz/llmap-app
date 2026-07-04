@@ -27,3 +27,8 @@ Thumbs.db
 
 # Backend local database & imported photos (Research Console)
 backend/data/
+
+# Console (React/Vite)
+console/node_modules/
+console/dist/
+console/.env

@@ -12,6 +12,24 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.1.0 (2026-07-04) — Research Console 基礎フレーム（Step 5A）
+
+リポジトリ根に `console/` を新設（React + Vite + TypeScript + React Router、
+UI フレームワーク無しの軽量構成・桌面工具型レイアウト）。
+
+- 左ナビ（Dashboard / Database / Map / Review / AI Processing / Export /
+  Settings）＋顶部栏＋内容区。顶部栏に backend 接続状態チップ（/health）。
+- **Dashboard は実装済み**: `/stats/summary` を読み、件数タイル＋言語/状態/
+  モード/地区/採集者の分布を表示。backend 未起動時は白屏でなく友好なエラー
+  ボックス（起動コマンドと設定方法を案内）。
+- API client（`src/api/client.ts` + `types.ts`）: getStatsSummary /
+  getRecords / getRecord / updateRecord / getDatasets / getHealth。
+  base URL は `VITE_API_BASE_URL`（既定 http://localhost:8000、`.env.example`）。
+- Database/Map/Review/AI/Export は占位ページ（実装予定 Step を明記）。
+- 検証: `npm run build`（tsc strict）通過。実 backend＋Playwright で
+  Dashboard 表示・全ページ遷移・オフライン時エラー表示を確認。
+- アプリ・backend は不変（backend テスト 14 件通過のまま）。
+
 ## backend v0.2.0 (2026-07-04) — Research Console 用ローカルDBサービス（Step 4）
 
 backend を SQLite ベースのローカルデータベースサービスに拡張（アプリは不変）。

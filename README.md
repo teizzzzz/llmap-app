@@ -16,8 +16,10 @@ PC（後端）は不要。後端は将来の多人共享（Phase 4）用に温�
 
 ```
 llmap-app/
-  app/        Flutter モバイルアプリ（採集・框选・地図预览・字段表单・AI判定・端末内保存）
-  backend/    Python FastAPI 轻后端（任意。EXIF抽出と、将来の多人共享用）
+  app/        Flutter モバイル採集端（採集・框选・地図预览・字段表单・AI判定・端末内保存）
+  backend/    Python FastAPI（採集補助＋Research Console 用ローカルDBサービス）
+  console/    LLMap Research Console（PC/Web 研究管理台・React+Vite。開発中）
+  docs/       データ契約・字段規範（docs/data-contract.md）
 ```
 
 - **単人本地**で完結。データは端末内（記録 `project.json` ＋写真）に永続化。
