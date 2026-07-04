@@ -12,6 +12,35 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.5.0 / backend v0.2.1 (2026-07-04) — Review 審核工作流（Step 7）
+
+Review ページを審核队列として実装（「どの記録がまだ人の確認を要するか」に答える。
+Database は閲覧・編集、Review は状態を前に進める場所）。
+
+- **队列**: 既定は待審核（raw / submitted / ai_drafted / needs_review）。快速タブ
+  （All pending / Raw / Submitted / AI drafted / Needs review / Reviewed /
+  Verified / Rejected）＋ Mode/Language/Area/Dataset 筛选＋件数＋Skip/Next。
+  カードに缩略图・DisplayID・言語・地区・日時・badge。
+- **工作区**（3列）: 写真（crop/source、クリックで原寸を新タブ表示・欠図
+  placeholder）/ 研究字段編集（Database の FieldEditor 再利用: 言語・文字体系
+  チップ、担体類型等下拉、備考）/ 只読元情報16項目（CropRect はテキスト表示、
+  可視化 overlay は TODO）＋アクション。
+- **審核アクション**（状態対応は `reviewStatus.ts` に一元定義）:
+  Save changes（状態不変）/ Mark as reviewed（_status=human-reviewed・
+  DataStatus=reviewed）/ Mark as verified（final・verified）/
+  Needs review（DataStatus のみ。_status 保持＝モバイル互換）/
+  Reject（DataStatus のみ）/ Open in Database（?record= 連動）。
+  アクションは未保存の字段変更も一緒に保存する。
+- **队列規則**: 成功後に队列再取得＋自動で次の記録へ。空になったら
+  「No records waiting for review.」。未保存変更がある間の記録/タブ切替は
+  confirm で保護。
+- **backend v0.2.1**: `/records` の dataStatus 筛选がカンマ区切りの複数値を
+  許容（待審核队列が raw,submitted,ai_drafted を1リクエストで分页取得する
+  ため。単値の既存動作は不変・テスト追加、15件全通過）。
+- 検証: npm run build 通過。実 backend＋Playwright で 队列3件→タブ/筛选→
+  保存→reviewed/verified/needs_review/rejected の状態遷移と队列移除・
+  自動前進→空状態→dirty ガード→offline まで確認。
+
 ## v1.8.1 (2026-07-04) — ビルド修正（設定画面の第二経路）
 
 - **fix**: v1.7.0 で `SettingsScreen` に必須パラメータ `captureMode` を追加した際、

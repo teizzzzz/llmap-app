@@ -169,6 +169,15 @@ def test_records_pagination():
     assert len(r2.json()["items"]) == 1
 
 
+def test_data_status_multi_value_filter():
+    # Review 队列用: カンマ区切りで複数 DataStatus をまとめて取得できる。
+    multi = client.get("/records", params={"dataStatus": "raw,submitted"}).json()
+    single_raw = client.get("/records", params={"dataStatus": "raw"}).json()
+    single_sub = client.get("/records", params={"dataStatus": "submitted"}).json()
+    assert multi["total"] == single_raw["total"] + single_sub["total"]
+    assert multi["total"] >= 2
+
+
 def test_records_filters():
     assert client.get("/records", params={"entryMode": "quick"}).json()["total"] == 1
     assert client.get("/records", params={"dataStatus": "submitted"}).json()["total"] == 1

@@ -64,8 +64,14 @@ def apply_filters(
         stmt = stmt.where(SignRecord.collector_id == collector_id)
     if entry_mode:
         stmt = stmt.where(SignRecord.entry_mode == entry_mode)
+    # dataStatus はカンマ区切りの複数値を許容する（Review 队列が
+    # raw,submitted,ai_drafted をまとめて分页取得するため。単値は従来どおり）。
     if data_status:
-        stmt = stmt.where(SignRecord.data_status == data_status)
+        values = [v.strip() for v in data_status.split(",") if v.strip()]
+        if len(values) == 1:
+            stmt = stmt.where(SignRecord.data_status == values[0])
+        elif values:
+            stmt = stmt.where(col(SignRecord.data_status).in_(values))
     if status:
         stmt = stmt.where(SignRecord.status == status)
     # 採集日時は 'YYYY-MM-DD HH:MM:SS' 固定書式なので文字列比較でよい。
