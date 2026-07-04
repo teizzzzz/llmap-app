@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
 import '../capture.dart';
+import '../capture_mode.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../settings.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _opening = false; // 二重起動防止
   AiConfig _ai = AiConfig();
   String _collector = ''; // 採集者ID（設定で自動生成/自定义）。SignID に入る。
+  CaptureMode _mode = CaptureMode.standard; // 採集モード（既定 standard）
 
   // 地図主体首页の表示状態
   final _map = MapController();
@@ -60,6 +62,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
     loadCollectorId().then((id) {
       if (mounted) setState(() => _collector = id);
+    });
+    loadCaptureMode().then((m) {
+      if (mounted) setState(() => _mode = m);
     });
     _initialGps = currentGps(); // 起動と同時に現在地取得を開始
     _loadSaved();
@@ -154,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             seq: _nextSeq,
             collector: _collector,
             aiConfig: _ai,
+            mode: _mode,
           ),
         ),
       );
@@ -173,12 +179,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _showSavedDialog() {
     final t = AppLocalizations.of(context);
+    // 保存メッセージは採集モードで変える（quick=後で補完可 / standard=提交済 /
+    // research=研究記録として保存）。
+    final message = switch (_mode) {
+      CaptureMode.quick => t.savedQuick,
+      CaptureMode.standard => t.savedStandard,
+      CaptureMode.research => t.savedResearch,
+    };
     return showLLDialog(
       context,
       icon: Icons.check_rounded,
       iconColor: AppColors.success,
       title: t.savedTitle,
-      message: t.savedBody,
+      message: message,
       primaryLabel: t.backToMap,
     );
   }
@@ -256,14 +269,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openSettings() async {
-    final result =
-        await Navigator.push<({String baseUrl, AiConfig ai, String collectorId})>(
+    final result = await Navigator.push<
+        ({
+          String baseUrl,
+          AiConfig ai,
+          String collectorId,
+          CaptureMode captureMode,
+        })>(
       context,
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
           baseUrl: widget.api.baseUrl,
           ai: _ai,
           collectorId: _collector,
+          captureMode: _mode,
         ),
       ),
     );
@@ -271,11 +290,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await saveBaseUrl(result.baseUrl);
     await saveAiConfig(result.ai);
     await saveCollectorId(result.collectorId);
+    await saveCaptureMode(result.captureMode);
     widget.api.baseUrl = result.baseUrl;
     if (mounted) {
       setState(() {
         _ai = result.ai;
         _collector = result.collectorId;
+        _mode = result.captureMode;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
@@ -606,6 +627,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     tooltip: t.archiveTooltip,
                     visualDensity: VisualDensity.compact,
                   ),
+                // 現在の採集モード（設定で切替。タップで設定へ）。
+                InkWell(
+                  onTap: _openSettings,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: LLTagChip(
+                    label: _mode.label(t),
+                    color: switch (_mode) {
+                      CaptureMode.quick => AppColors.accentMustard,
+                      CaptureMode.standard => AppColors.accentBlue,
+                      CaptureMode.research => AppColors.accentViolet,
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
                 LLTagChip(
                     label: '$_area #$_nextSeq', color: AppColors.accentBlue),
                 IconButton(

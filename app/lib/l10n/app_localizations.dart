@@ -747,6 +747,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'GPS: {lat}, {lng} · Collected: {time}'**
   String signMeta(String lat, String lng, String time);
+
+  /// No description provided for @captureMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'采集模式'**
+  String get captureMode;
+
+  /// No description provided for @captureModeNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。'**
+  String get captureModeNote;
+
+  /// No description provided for @modeQuick.
+  ///
+  /// In zh, this message translates to:
+  /// **'快速模式'**
+  String get modeQuick;
+
+  /// No description provided for @modeQuickDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'拍照框选后直接保存，字段稍后补充'**
+  String get modeQuickDesc;
+
+  /// No description provided for @modeStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准模式'**
+  String get modeStandard;
+
+  /// No description provided for @modeStandardDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'只需选择标识上出现的语言（默认）'**
+  String get modeStandardDesc;
+
+  /// No description provided for @modeResearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'研究模式'**
+  String get modeResearch;
+
+  /// No description provided for @modeResearchDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'完整研究字段表单，用于正式采集标注'**
+  String get modeResearchDesc;
+
+  /// No description provided for @fieldScheme.
+  ///
+  /// In zh, this message translates to:
+  /// **'字段方案'**
+  String get fieldScheme;
+
+  /// No description provided for @fieldSchemeOfficial.
+  ///
+  /// In zh, this message translates to:
+  /// **'官方字段'**
+  String get fieldSchemeOfficial;
+
+  /// No description provided for @fieldSchemeCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义字段'**
+  String get fieldSchemeCustom;
+
+  /// No description provided for @savedQuick.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录已保存，可稍后在采集档案中补充字段。'**
+  String get savedQuick;
+
+  /// No description provided for @savedStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录已提交。'**
+  String get savedStandard;
+
+  /// No description provided for @savedResearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'研究记录已保存。'**
+  String get savedResearch;
+
+  /// No description provided for @stdLangPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择标识中出现的语言'**
+  String get stdLangPrompt;
+
+  /// No description provided for @stdMoreInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'＋ 添加更多信息'**
+  String get stdMoreInfo;
 }
 
 class _AppLocalizationsDelegate

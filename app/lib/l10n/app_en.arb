@@ -131,5 +131,22 @@
   "noteLabel": "Note: {note}",
   "@noteLabel": { "placeholders": { "note": { "type": "String" } } },
   "signMeta": "GPS: {lat}, {lng} · Collected: {time}",
-  "@signMeta": { "placeholders": { "lat": { "type": "String" }, "lng": { "type": "String" }, "time": { "type": "String" } } }
+  "@signMeta": { "placeholders": { "lat": { "type": "String" }, "lng": { "type": "String" }, "time": { "type": "String" } } },
+
+  "captureMode": "Capture mode",
+  "captureModeNote": "Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.",
+  "modeQuick": "Quick mode",
+  "modeQuickDesc": "Save right after boxing; fill fields later",
+  "modeStandard": "Standard mode",
+  "modeStandardDesc": "Just pick the languages on the sign (default)",
+  "modeResearch": "Research mode",
+  "modeResearchDesc": "Full research field form for formal annotation",
+  "fieldScheme": "Field scheme",
+  "fieldSchemeOfficial": "Official fields",
+  "fieldSchemeCustom": "Custom fields",
+  "savedQuick": "Record saved. You can add fields later.",
+  "savedStandard": "Record submitted.",
+  "savedResearch": "Research record saved.",
+  "stdLangPrompt": "Select the languages on this sign",
+  "stdMoreInfo": "+ Add more info"
 }

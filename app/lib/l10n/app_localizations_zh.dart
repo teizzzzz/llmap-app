@@ -361,4 +361,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS：$lat, $lng · 采集：$time';
   }
+  @override
+  String get captureMode => '采集模式';
+
+  @override
+  String get captureModeNote => '决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。';
+
+  @override
+  String get modeQuick => '快速模式';
+
+  @override
+  String get modeQuickDesc => '拍照框选后直接保存，字段稍后补充';
+
+  @override
+  String get modeStandard => '标准模式';
+
+  @override
+  String get modeStandardDesc => '只需选择标识上出现的语言（默认）';
+
+  @override
+  String get modeResearch => '研究模式';
+
+  @override
+  String get modeResearchDesc => '完整研究字段表单，用于正式采集标注';
+
+  @override
+  String get fieldScheme => '字段方案';
+
+  @override
+  String get fieldSchemeOfficial => '官方字段';
+
+  @override
+  String get fieldSchemeCustom => '自定义字段';
+
+  @override
+  String get savedQuick => '记录已保存，可稍后在采集档案中补充字段。';
+
+  @override
+  String get savedStandard => '记录已提交。';
+
+  @override
+  String get savedResearch => '研究记录已保存。';
+
+  @override
+  String get stdLangPrompt => '选择标识中出现的语言';
+
+  @override
+  String get stdMoreInfo => '＋ 添加更多信息';
 }

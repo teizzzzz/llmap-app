@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'capture_mode.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/tokens.dart';
 import 'widgets/ll/ll.dart';
@@ -18,6 +19,7 @@ const _kAiProvider = 'ai_provider';
 const _kAiKey = 'ai_api_key';
 const _kLocale = 'app_locale';
 const _kCollectorId = 'collector_id';
+const _kCaptureMode = 'capture_mode';
 const defaultBaseUrl = 'http://localhost:8000';
 
 // 採集者ID（採集者の識別子）。SignID の「采集者」位に入り、多人協作の衝突防止になる。
@@ -69,6 +71,17 @@ Future<void> applyLocale(String code) async {
   localeNotifier.value = code == 'system' ? null : Locale(code);
 }
 
+/// 採集モード。未設定は standard（既定）。
+Future<CaptureMode> loadCaptureMode() async {
+  final prefs = await SharedPreferences.getInstance();
+  return captureModeFrom(prefs.getString(_kCaptureMode));
+}
+
+Future<void> saveCaptureMode(CaptureMode mode) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(_kCaptureMode, mode.name);
+}
+
 Future<String> loadBaseUrl() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getString(_kBaseUrl) ?? defaultBaseUrl;
@@ -102,16 +115,18 @@ Future<void> saveAiConfig(AiConfig c) async {
   await prefs.setString(_kAiKey, c.apiKey.trim());
 }
 
-/// 設定画面。保存すると更新後の (baseUrl, AiConfig) を返す。
+/// 設定画面。保存すると更新後の (baseUrl, AiConfig, collectorId, captureMode) を返す。
 class SettingsScreen extends StatefulWidget {
   final String baseUrl;
   final AiConfig ai;
   final String collectorId;
+  final CaptureMode captureMode;
   const SettingsScreen({
     super.key,
     required this.baseUrl,
     required this.ai,
     required this.collectorId,
+    required this.captureMode,
   });
 
   @override
@@ -127,6 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       TextEditingController(text: widget.collectorId);
   late bool _aiEnabled = widget.ai.enabled;
   late String _provider = widget.ai.provider;
+  late CaptureMode _mode = widget.captureMode;
   bool _showKey = false;
 
   @override
@@ -147,6 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         apiKey: _key.text.trim(),
       ),
       collectorId: collector.isEmpty ? generateCollectorId() : collector,
+      captureMode: _mode,
     ));
   }
 
@@ -169,6 +186,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _langOption('简体中文', 'zh'),
                 _langOption('日本語', 'ja'),
                 _langOption('English', 'en'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── 採集モード / Capture Mode ──
+          LLCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.captureMode, style: AppText.sectionTitle()),
+                const SizedBox(height: AppSpacing.xs),
+                Text(t.captureModeNote, style: AppText.caption()),
+                const SizedBox(height: AppSpacing.sm),
+                for (final m in CaptureMode.values) _modeOption(t, m),
+                // research のみ: 字段方案（官方字段 / 自定义=未実装入口）。
+                if (_mode == CaptureMode.research) ...[
+                  const Divider(height: AppSpacing.lg),
+                  Text(t.fieldScheme, style: AppText.caption()),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      LLTagChip(
+                          label: t.fieldSchemeOfficial,
+                          color: AppColors.accentTerracotta),
+                      const SizedBox(width: AppSpacing.sm),
+                      InkWell(
+                        onTap: () => showLLDialog(
+                          context,
+                          icon: Icons.construction_outlined,
+                          title: t.fieldSchemeCustom,
+                          message: t.comingSoon,
+                          primaryLabel: t.ok,
+                        ),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        child: LLTagChip(
+                            label: t.fieldSchemeCustom,
+                            color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -283,6 +342,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
           LLPrimaryButton(
               label: t.saveSettings, icon: Icons.check, onPressed: _save),
         ],
+      ),
+    );
+  }
+
+  Widget _modeOption(AppLocalizations t, CaptureMode m) {
+    final selected = _mode == m;
+    return InkWell(
+      onTap: () => setState(() => _mode = m),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              size: 20,
+              color: selected
+                  ? AppColors.accentTerracotta
+                  : AppColors.textSecondary,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(m.label(t),
+                      style: AppText.body().copyWith(
+                          fontWeight:
+                              selected ? FontWeight.w800 : FontWeight.w500)),
+                  Text(m.description(t), style: AppText.caption()),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

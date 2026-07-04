@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../capture.dart';
+import '../capture_mode.dart';
 import '../imaging.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
@@ -17,6 +18,7 @@ import '../widgets/box_selector.dart';
 import '../widgets/ll/ll.dart';
 import 'fields_screen.dart';
 import 'select_location_screen.dart';
+import 'standard_fields_screen.dart';
 
 /// 框选画面：1枚の写真から複数 sign を矩形で切り出す（②）。
 /// 「完了」で backend /extract を呼び、字段入力画面へ。
@@ -29,6 +31,7 @@ class CropScreen extends StatefulWidget {
   final int seq;
   final String collector;
   final AiConfig aiConfig;
+  final CaptureMode mode;
 
   const CropScreen({
     super.key,
@@ -40,6 +43,7 @@ class CropScreen extends StatefulWidget {
     required this.seq,
     required this.collector,
     required this.aiConfig,
+    this.mode = CaptureMode.standard,
   });
 
   @override
@@ -68,16 +72,32 @@ class _CropScreenState extends State<CropScreen> {
       // 端末内で sign 群を生成し、写真を端末に保存する（後端非依存／PC off 可）。
       final signs = await _extractLocal(gps);
       if (!mounted) return;
+
+      // 採集モードで框选後のフローを分岐する（首页・データ構造は共通）。
+      if (widget.mode == CaptureMode.quick) {
+        // quick: 表単を出さず直接保存（字段は後で Gallery/編集から補完）。
+        Navigator.pop(context, signs);
+        return;
+      }
       final result = await Navigator.push<List<Sign>>(
         context,
         MaterialPageRoute(
-          builder: (_) => FieldsScreen(
-            schema: widget.schema,
-            imageBytes: widget.imageBytes,
-            signs: signs,
-            regions: _regions,
-            aiConfig: widget.aiConfig,
-          ),
+          builder: (_) => widget.mode == CaptureMode.research
+              // research: 完全な研究字段表単（AI下書も可）。
+              ? FieldsScreen(
+                  schema: widget.schema,
+                  imageBytes: widget.imageBytes,
+                  signs: signs,
+                  regions: _regions,
+                  aiConfig: widget.aiConfig,
+                )
+              // standard: 簡易言語選択（既定モード）。
+              : StandardFieldsScreen(
+                  schema: widget.schema,
+                  imageBytes: widget.imageBytes,
+                  signs: signs,
+                  regions: _regions,
+                ),
         ),
       );
       if (result != null && mounted) Navigator.pop(context, result);
@@ -136,8 +156,10 @@ class _CropScreenState extends State<CropScreen> {
         '経度': gps?.lng,
         '採集日時': captured,
         // 溯源字段: 採集方式・審核状態(Console対応値)・契約/アプリ版。
-        'EntryMode': 'standard',
-        'DataStatus': dataStatusFor('pending'),
+        // DataStatus 初期値: quick=raw / standard=submitted / research=submitted
+        // （research は校閲保存で setStatus により reviewed へ昇格）。
+        'EntryMode': widget.mode.entryMode,
+        'DataStatus': widget.mode.initialDataStatus,
         'SchemaVersion': kSchemaVersion,
         'AppVersion': kAppVersion,
       }));
@@ -209,8 +231,13 @@ class _CropScreenState extends State<CropScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: LLPrimaryButton(
-            label: _regions.isEmpty ? t.nextWholeImage : t.nextFillFields,
-            icon: Icons.arrow_forward,
+            // quick は框选で完了（表単に進まない）ためラベルも「完了」。
+            label: widget.mode == CaptureMode.quick
+                ? t.done
+                : (_regions.isEmpty ? t.nextWholeImage : t.nextFillFields),
+            icon: widget.mode == CaptureMode.quick
+                ? Icons.check
+                : Icons.arrow_forward,
             busy: _busy,
             onPressed: _busy ? null : _next,
           ),

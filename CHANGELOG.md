@@ -12,6 +12,40 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.7.0 (2026-07-04) — 3つの採集モード（quick / standard / research）
+
+同一の Sign データ構造・同一の地図首页のまま、**框选後のフロー**だけを
+採集モードで切り替えられるようにした（3套の首页・3套のモデルは作らない）。
+
+### モード（`capture_mode.dart` 新設）
+- **クイック**: 拍照→框选→即保存。表単なし。EntryMode=quick / DataStatus=raw /
+  _status=pending。字段は後で Gallery/編集から補完（保存時にその旨を案内）。
+- **標準（既定）**: 拍照→框选→簡易言語選択（Lingscape 相当）。
+  EntryMode=standard / DataStatus=submitted / _status=pending。
+- **研究**: 拍照→框选→完全な研究字段表単（既存 FieldsScreen・AI下書可）。
+  EntryMode=research / DataStatus=submitted、校閲保存で
+  `setStatus('human-reviewed')` → DataStatus=reviewed。
+
+### 標準モードの簡易表単（`standard_fields_screen.dart` 新設）
+- 裁切プレビュー＋「標識に現れる言語」の複数選択チップ
+  （日本語/韓国語/中国語/ベトナム語/ネパール語/英語/その他＋**不明**）
+  ＋補助言語＋任意の備考。
+- 「＋ 添加更多信息」で少数の官方字段（文字体系/担体類型/設置主体/多言語関係）
+  を展開。完全表単は研究モードのみ。
+
+### 設定・首页
+- 設定に**採集モード**セクション（radio・説明付き、既定 standard）。研究モード
+  選択時は**字段方案**入口（官方字段＝現行 / 自定义字段＝開発中 TODO）を表示。
+- 首页の記録パネルに現在モードのタグを表示（タップで設定へ）。地図・大ボタン・
+  Gallery 等の首页構造は3モード共通で不変。
+- 保存成功メッセージをモード別に（保存済・後で補完可 / 提交済 / 研究記録保存）。
+- 文言は三語対応（arb＋生成 l10n に 16 キー追加）。
+
+### 互換
+- モードは本機のアプリ設定（SharedPreferences）。権限/アカウント機構ではない。
+- CaptureID/SignID/ファイル命名・導出規範化は3モード共通で不変。
+  旧データ（EntryMode/DataStatus なし）もそのまま閲覧・編集・導出可。
+
 ## v1.6.0 (2026-07-04) — LLMap Dataset Package v1.0（標準导出包 / Step 2）
 
 导出を標準 Dataset Package に刷新（`dataset_package.dart` 新設・`store.buildBundle` 改修）。

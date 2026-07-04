@@ -371,4 +371,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS: $lat, $lng · Collected: $time';
   }
+  @override
+  String get captureMode => 'Capture mode';
+
+  @override
+  String get captureModeNote => 'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.';
+
+  @override
+  String get modeQuick => 'Quick mode';
+
+  @override
+  String get modeQuickDesc => 'Save right after boxing; fill fields later';
+
+  @override
+  String get modeStandard => 'Standard mode';
+
+  @override
+  String get modeStandardDesc => 'Just pick the languages on the sign (default)';
+
+  @override
+  String get modeResearch => 'Research mode';
+
+  @override
+  String get modeResearchDesc => 'Full research field form for formal annotation';
+
+  @override
+  String get fieldScheme => 'Field scheme';
+
+  @override
+  String get fieldSchemeOfficial => 'Official fields';
+
+  @override
+  String get fieldSchemeCustom => 'Custom fields';
+
+  @override
+  String get savedQuick => 'Record saved. You can add fields later.';
+
+  @override
+  String get savedStandard => 'Record submitted.';
+
+  @override
+  String get savedResearch => 'Research record saved.';
+
+  @override
+  String get stdLangPrompt => 'Select the languages on this sign';
+
+  @override
+  String get stdMoreInfo => '+ Add more info';
 }

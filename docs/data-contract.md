@@ -56,8 +56,8 @@ short label:     OOK #008-a
 | 元写真ファイル名 | **新** | `CaptureID-source.jpg` | 空 → 全景写真ファイル名 にフォールバック |
 | 全景写真ファイル名 | 旧 | **= 元写真ファイル名**（互換値） | 旧形式のまま |
 | 緯度 / 経度 / 採集日時 | 旧 | 同じ（採集日時は秒精度のまま） | 同じ |
-| EntryMode | **新** | `standard`（現行採集フロー） | 空 |
-| DataStatus | **新** | _status の対応値（下表） | 空 → 導出時に _status から導出 |
+| EntryMode | **新** | 採集モード `quick` / `standard`(既定) / `research` | 空 |
+| DataStatus | **新** | 採番時: quick=`raw` / standard=`submitted` / research=`submitted`。以後は _status の遷移に追従（下表） | 空 → 導出時に _status から導出 |
 | SchemaVersion | **新** | `1.5`（本契約） | 空 |
 | AppVersion | **新** | 採集時のアプリ版（例 `v1.5.1`） | 空 |
 

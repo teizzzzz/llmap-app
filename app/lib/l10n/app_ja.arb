@@ -117,5 +117,22 @@
   "sourceType": "ディスコース類型",
   "multilingual": "多言語関係",
   "noteLabel": "備考: {note}",
-  "signMeta": "GPS：{lat}, {lng} · 採集：{time}"
+  "signMeta": "GPS：{lat}, {lng} · 採集：{time}",
+
+  "captureMode": "採集モード",
+  "captureModeNote": "撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。",
+  "modeQuick": "クイックモード",
+  "modeQuickDesc": "框選後すぐ保存。フィールドは後で補完",
+  "modeStandard": "標準モード",
+  "modeStandardDesc": "標識に現れる言語を選ぶだけ（既定）",
+  "modeResearch": "研究モード",
+  "modeResearchDesc": "完全な研究フィールド表単で正式に採集・標注",
+  "fieldScheme": "フィールド構成",
+  "fieldSchemeOfficial": "公式フィールド",
+  "fieldSchemeCustom": "カスタムフィールド",
+  "savedQuick": "記録を保存しました。フィールドは後から補完できます。",
+  "savedStandard": "記録を提出しました。",
+  "savedResearch": "研究記録を保存しました。",
+  "stdLangPrompt": "標識に現れる言語を選択",
+  "stdMoreInfo": "＋ 情報を追加"
 }

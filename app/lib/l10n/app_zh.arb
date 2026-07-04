@@ -117,5 +117,22 @@
   "sourceType": "话语类型",
   "multilingual": "多语关系",
   "noteLabel": "备注：{note}",
-  "signMeta": "GPS：{lat}, {lng} · 采集：{time}"
+  "signMeta": "GPS：{lat}, {lng} · 采集：{time}",
+
+  "captureMode": "采集模式",
+  "captureModeNote": "决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。",
+  "modeQuick": "快速模式",
+  "modeQuickDesc": "拍照框选后直接保存，字段稍后补充",
+  "modeStandard": "标准模式",
+  "modeStandardDesc": "只需选择标识上出现的语言（默认）",
+  "modeResearch": "研究模式",
+  "modeResearchDesc": "完整研究字段表单，用于正式采集标注",
+  "fieldScheme": "字段方案",
+  "fieldSchemeOfficial": "官方字段",
+  "fieldSchemeCustom": "自定义字段",
+  "savedQuick": "记录已保存，可稍后在采集档案中补充字段。",
+  "savedStandard": "记录已提交。",
+  "savedResearch": "研究记录已保存。",
+  "stdLangPrompt": "选择标识中出现的语言",
+  "stdMoreInfo": "＋ 添加更多信息"
 }

@@ -363,4 +363,51 @@ class AppLocalizationsJa extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS：$lat, $lng · 採集：$time';
   }
+  @override
+  String get captureMode => '採集モード';
+
+  @override
+  String get captureModeNote => '撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。';
+
+  @override
+  String get modeQuick => 'クイックモード';
+
+  @override
+  String get modeQuickDesc => '框選後すぐ保存。フィールドは後で補完';
+
+  @override
+  String get modeStandard => '標準モード';
+
+  @override
+  String get modeStandardDesc => '標識に現れる言語を選ぶだけ（既定）';
+
+  @override
+  String get modeResearch => '研究モード';
+
+  @override
+  String get modeResearchDesc => '完全な研究フィールド表単で正式に採集・標注';
+
+  @override
+  String get fieldScheme => 'フィールド構成';
+
+  @override
+  String get fieldSchemeOfficial => '公式フィールド';
+
+  @override
+  String get fieldSchemeCustom => 'カスタムフィールド';
+
+  @override
+  String get savedQuick => '記録を保存しました。フィールドは後から補完できます。';
+
+  @override
+  String get savedStandard => '記録を提出しました。';
+
+  @override
+  String get savedResearch => '研究記録を保存しました。';
+
+  @override
+  String get stdLangPrompt => '標識に現れる言語を選択';
+
+  @override
+  String get stdMoreInfo => '＋ 情報を追加';
 }
