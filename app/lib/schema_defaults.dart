@@ -12,7 +12,12 @@ import 'models.dart';
 // A 識別情報（系統/自動） → 名称 → B 言語·文字 → C 物質·空間·時間 → D 解読·判定。
 const List<String> kCsvHeader = [
   // A 識別情報（システム/自動生成）
-  'SignID', '_status', '写真ID', '写真ファイル名', '全景写真ファイル名',
+  // CaptureID が一意性の中心。写真ID/全景写真ファイル名 は旧CSV互換のため保持
+  // （新規レコードでは 写真ID=CaptureID、全景写真ファイル名=元写真ファイル名）。
+  'SignID', '_status',
+  'CaptureID', 'DisplayID', '採集者ID', '地区コード', 'LocalSeq',
+  'CropSuffix', 'CropRect',
+  '写真ID', '写真ファイル名', '元写真ファイル名', '全景写真ファイル名',
   '緯度', '経度', '採集日時',
   // 名称（暫定保留・AI 下書可）
   '名称',

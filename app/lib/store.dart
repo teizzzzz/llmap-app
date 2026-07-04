@@ -48,10 +48,33 @@ class LocalStore {
     return photoFile(name).exists();
   }
 
-  /// 写真（全景/裁切）を端末に保存。同名は上書き。
-  Future<void> savePhoto(String name, Uint8List bytes) async {
+  /// 写真（元写真/裁切）を端末に保存し、**実際に保存したファイル名**を返す。
+  /// - 同名で内容が同一: 書き込みをスキップしてそのまま返す。
+  /// - 同名で内容が異なる: 静黙上書きせず `名前~2.jpg` 形式の衝突回避名で保存する
+  ///   （多人採集データの取り込み・合并時にデータを失わないための保護）。
+  Future<String> savePhoto(String name, Uint8List bytes) async {
     await _ensure();
-    await photoFile(name).writeAsBytes(bytes, flush: true);
+    var target = name;
+    var n = 2;
+    while (await photoFile(target).exists()) {
+      final existing = await photoFile(target).readAsBytes();
+      if (_sameBytes(existing, bytes)) return target; // 同一内容 → スキップ
+      final dot = name.lastIndexOf('.');
+      final stem = dot < 0 ? name : name.substring(0, dot);
+      final ext = dot < 0 ? '' : name.substring(dot);
+      target = '$stem~$n$ext';
+      n++;
+    }
+    await photoFile(target).writeAsBytes(bytes, flush: true);
+    return target;
+  }
+
+  static bool _sameBytes(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// 採集記録＋セッション（地区/連番）を JSON で保存。変更ごとに呼ぶ。
@@ -102,7 +125,8 @@ class LocalStore {
     // 参照写真を集計（存在するものだけ同梱）。パス解決はメイン側で行う。
     final wanted = <String>{};
     for (final s in signs) {
-      for (final k in ['写真ファイル名', '全景写真ファイル名']) {
+      // 新契約の 元写真ファイル名 と、旧字段（全景写真ファイル名）の両方を対象にする。
+      for (final k in ['写真ファイル名', '元写真ファイル名', '全景写真ファイル名']) {
         final name = s.get(k);
         if (name.isNotEmpty) wanted.add(name);
       }

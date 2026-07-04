@@ -642,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     icon: Icons.delete_outline,
                     iconColor: AppColors.danger,
                     title: t.deleteRecordTitle,
-                    message: t.deleteRecordConfirm(s.id),
+                    message: t.deleteRecordConfirm(s.displayId),
                     primaryLabel: t.delete,
                     onPrimary: () => Navigator.pop(context, true),
                     secondaryLabel: t.cancel,

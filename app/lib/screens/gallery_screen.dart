@@ -231,7 +231,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       style: AppText.body()
                           .copyWith(fontSize: 14, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 2),
-                  Text(s.id,
+                  Text(s.shortLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.caption().copyWith(fontSize: 11)),

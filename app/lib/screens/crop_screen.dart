@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -88,14 +89,19 @@ class _CropScreenState extends State<CropScreen> {
     }
   }
 
-  /// 後端 /extract のローカル版：写真を端末保存し sign 群を組み立てる。
+  /// 後端 /extract のローカル版：元写真を端末保存し sign 群を組み立てる。
+  /// ID は新契約で採番する: CaptureID = AREA-COLLECTORID-YYMMDDHHMMSSmmm。
+  /// 採集者ID＋ミリ秒時刻を含むため多人採集でもファイル名/SignID が衝突しない。
   Future<List<Sign>> _extractLocal(({double lat, double lng})? gps) async {
-    final captured = nowCaptured();
-    final pid = photoId(widget.area, yyyymmdd(captured), widget.seq);
-    final panoName = '$pid.jpg';
-    await LocalStore.instance.savePhoto(panoName, widget.imageBytes);
+    final capturedAt = DateTime.now();
+    final captured = formatCaptured(capturedAt);
+    final captureId = makeCaptureId(widget.area, widget.collector, capturedAt);
 
-    // 框选が無ければ全景1枚を1 sign として扱う。
+    // 元写真（原始完整写真）。衝突時は store が別名を割り当てるため戻り値を使う。
+    final sourceName = await LocalStore.instance
+        .savePhoto(sourcePhotoName(captureId), widget.imageBytes);
+
+    // 框选が無ければ元写真全体を1 sign として扱う（CropRect は 0,0,1,1）。
     final regions = _regions.isEmpty
         ? [CropRegion(suffix: 'a', x: 0, y: 0, w: 1, h: 1)]
         : _regions;
@@ -103,22 +109,27 @@ class _CropScreenState extends State<CropScreen> {
     final signs = <Sign>[];
     for (final r in regions) {
       final isFull = r.w >= 0.999 && r.h >= 0.999;
-      String fname;
-      if (isFull) {
-        fname = panoName;
-      } else {
-        final cropped =
-            await cropJpegAsync(widget.imageBytes, r.x, r.y, r.w, r.h);
-        fname = '$pid-${r.suffix}.jpg';
-        await LocalStore.instance.savePhoto(fname, cropped);
-      }
+      final bytes = isFull
+          ? widget.imageBytes
+          : await cropJpegAsync(widget.imageBytes, r.x, r.y, r.w, r.h);
+      final fname = await LocalStore.instance
+          .savePhoto(cropPhotoName(captureId, r.suffix), bytes);
       signs.add(Sign({
-        'SignID':
-            signId(widget.area, widget.seq, r.suffix, collector: widget.collector),
+        'SignID': makeSignId(captureId, r.suffix),
         '_status': 'pending',
-        '写真ID': pid,
+        'CaptureID': captureId,
+        'DisplayID':
+            makeDisplayId(widget.area, capturedAt, widget.seq, r.suffix),
+        '採集者ID': widget.collector,
+        '地区コード': widget.area.toUpperCase(),
+        'LocalSeq': widget.seq,
+        'CropSuffix': r.suffix,
+        'CropRect': jsonEncode({'x': r.x, 'y': r.y, 'w': r.w, 'h': r.h}),
+        // 旧字段互換: 写真ID は CaptureID と同値、全景写真ファイル名 は 元写真 と同値。
+        '写真ID': captureId,
         '写真ファイル名': fname,
-        '全景写真ファイル名': isFull ? '' : panoName,
+        '元写真ファイル名': sourceName,
+        '全景写真ファイル名': sourceName,
         '緯度': gps?.lat,
         '経度': gps?.lng,
         '採集日時': captured,

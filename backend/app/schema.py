@@ -4,14 +4,21 @@ CSV互換のための標準表頭・分类值・SignID/写真ID規約をここ�
 """
 from __future__ import annotations
 
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Union
+
 from pydantic import BaseModel, ConfigDict, Field
 
 # ── CSV 標準表頭（採集字段定義表 v3 三語重構版） ──
 # A 識別情報（系統/自動）→ 名称 → B 言語·文字 → C 物質·空間·時間 → D 解読·判定。
 CSV_HEADER = [
     # A 識別情報
-    "SignID", "_status", "写真ID", "写真ファイル名", "全景写真ファイル名",
+    # CaptureID が一意性の中心。写真ID/全景写真ファイル名 は旧CSV互換のため保持
+    # （新規レコードでは 写真ID=CaptureID、全景写真ファイル名=元写真ファイル名）。
+    "SignID", "_status",
+    "CaptureID", "DisplayID", "採集者ID", "地区コード", "LocalSeq",
+    "CropSuffix", "CropRect",
+    "写真ID", "写真ファイル名", "元写真ファイル名", "全景写真ファイル名",
     "緯度", "経度", "採集日時",
     # 名称（暫定保留）
     "名称",
@@ -98,7 +105,17 @@ class Sign(BaseModel):
 
     SignID: str
     status: str = Field("pending", alias="_status")
-    写真ID: str
+    # 新契約（アプリ v1.5.0〜）。旧データは空でよい。
+    CaptureID: str = ""
+    DisplayID: str = ""
+    採集者ID: str = ""
+    地区コード: str = ""
+    LocalSeq: Union[int, str] = ""
+    CropSuffix: str = ""
+    CropRect: str = ""  # JSON 文字列 {"x":..,"y":..,"w":..,"h":..}（相対座標 0..1）
+    元写真ファイル名: str = ""
+    # 旧字段（互換のため保持。新規レコードでは 写真ID=CaptureID）
+    写真ID: str = ""
     写真ファイル名: str = ""
     全景写真ファイル名: str = ""
     緯度: Optional[float] = None
@@ -127,11 +144,42 @@ class Sign(BaseModel):
     user_id: Optional[str] = None
 
 
+# ── 新ID契約（アプリ imaging.dart と同一規則。docs/data-contract.md 参照） ──
+
+def make_capture_id(area: str, collector_id: str, captured_at: datetime) -> str:
+    """CaptureID: AREA-COLLECTORID-YYMMDDHHMMSSmmm。1回の撮影イベントの一意ID。"""
+    ts = captured_at.strftime("%y%m%d%H%M%S") + f"{captured_at.microsecond // 1000:03d}"
+    head = area.upper() if not collector_id.strip() else f"{area.upper()}-{collector_id.strip()}"
+    return f"{head}-{ts}"
+
+
+def make_sign_id(capture_id: str, suffix: str) -> str:
+    """SignID: CaptureID-suffix。"""
+    return f"{capture_id}-{suffix}"
+
+
+def make_display_id(area: str, captured_at: datetime, seq: int, suffix: str) -> str:
+    """DisplayID: AREA-YYYYMMDD-SEQ-suffix。表示専用（主キーにしない）。"""
+    return f"{area.upper()}-{captured_at.strftime('%Y%m%d')}-{seq:03d}-{suffix}"
+
+
+def source_photo_name(capture_id: str) -> str:
+    """元写真（原始完整写真）のファイル名: CaptureID-source.jpg。"""
+    return f"{capture_id}-source.jpg"
+
+
+def crop_photo_name(capture_id: str, suffix: str) -> str:
+    """裁切写真のファイル名: CaptureID-<suffix>.jpg。"""
+    return f"{capture_id}-{suffix}.jpg"
+
+
+# ── 旧ID採番（legacy）。旧データの解釈用に保持。新規採番には使わない ──
+
 def photo_id(area: str, yyyymmdd: str, seq: int) -> str:
-    """写真ID: AREA-YYYYMMDD-NNN （§5.2）"""
+    """[legacy] 写真ID: AREA-YYYYMMDD-NNN。新規レコードでは 写真ID=CaptureID。"""
     return f"{area.upper()}-{yyyymmdd}-{seq:03d}"
 
 
 def sign_id(area: str, seq: int, suffix: str) -> str:
-    """SignID: AREA-SNNN-suffix （§5.4）"""
+    """[legacy] SignID: AREA-SNNN-suffix。新規は make_sign_id を使う。"""
     return f"{area.upper()}-S{seq:03d}-{suffix}"

@@ -42,7 +42,7 @@ class SignForm extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(sign.id,
+              child: Text(sign.displayId,
                   style: AppText.body().copyWith(fontWeight: FontWeight.w800)),
             ),
             statusBadge(sign.status),

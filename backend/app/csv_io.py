@@ -27,9 +27,9 @@ def csv_to_signs(text: str) -> list[Sign]:
     for row in reader:
         data = {k: v for k, v in row.items() if k in CSV_HEADER}
         for num in ("緯度", "経度"):
-            if data.get(num):
+            if num in data:  # 空欄は None（GPS なし）として読む
                 try:
-                    data[num] = float(data[num])
+                    data[num] = float(data[num]) if data[num] else None
                 except ValueError:
                     data[num] = None
         out.append(Sign(**data))

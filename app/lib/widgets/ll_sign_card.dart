@@ -105,7 +105,7 @@ class LLSignCard extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            '${sign.id}'
+                            '${sign.shortLabel}'
                             '${sign.mainLang.isEmpty ? '' : ' · ${sign.mainLang}'}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

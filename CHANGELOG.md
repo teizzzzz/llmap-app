@@ -12,6 +12,38 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.5.0 (2026-07-04) — A区域ID刷新（CaptureID / 多人採集で衝突しない命名）
+
+多人採集・データ合并・将来の PC Console 取り込みに向けて、識別字段と写真命名を
+「地区＋日付＋連番」依存から **CaptureID 中心**に刷新（詳細は `docs/data-contract.md`）。
+
+### 新ID契約（`imaging.dart` / `crop_screen.dart` / 後端 `schema.py`）
+- **CaptureID** `AREA-COLLECTORID-YYMMDDHHMMSSmmm` を新設（1回の撮影イベントの一意ID）。
+  Settings の既存ランダム CollectorID（NanoID 8桁）＋ミリ秒時刻を含むため、
+  複数人が同日同地区で採集しても写真ファイル名 / SignID が衝突しない。
+- **SignID** = `CaptureID-suffix`、**写真ファイル名** = `CaptureID-<suffix>.jpg`、
+  **元写真ファイル名** = `CaptureID-source.jpg`（原始完整写真。pano 呼称は廃止）。
+- **DisplayID** `AREA-YYYYMMDD-SEQ-suffix` は表示専用（主キーにしない）。
+  一覧/画廊/地図は短いラベル `OOK #008-a` を表示し、長い CaptureID を出さない。
+- 新CSV列: `CaptureID / DisplayID / 採集者ID / 地区コード / LocalSeq / CropSuffix /
+  CropRect / 元写真ファイル名`。**CropRect** は框选矩形を JSON（相対座標）で保存
+  — 框选なしは `{"x":0,"y":0,"w":1,"h":1}`。PC 端の再裁切の土台。
+- 旧列 `写真ID / 全景写真ファイル名` は保持（新規レコードでは 写真ID=CaptureID、
+  全景写真ファイル名=元写真ファイル名 の互換値を書き込む）。
+
+### 旧データ互換
+- 旧レコードは無変換のまま閲覧・編集・导出可。読取側フォールバック:
+  CaptureID→写真ID / DisplayID→SignID / 元写真→全景写真 / CropSuffix→SignID末尾。
+
+### 写真保存の衝突保護（`store.dart`）
+- `savePhoto` が実際に保存した名前を返すように。同名同内容はスキップ、
+  同名異内容は `名前~2.jpg` の衝突回避名で保存（静黙上書きを廃止）。
+- 导出 ZIP の写真収集に `元写真ファイル名` を追加。
+
+### UI
+- 編集画面に**識別情報カード**（展開で SignID/CaptureID/DisplayID/写真・元写真
+  ファイル名/採集者ID/地区コード/採集日時/緯度/経度 を全表示・コピー可）。
+
 ## v1.4.0 (2026-06-30) — 採集字段の刷新（三語重構版 v3 / Scollon・Reh 準拠）
 
 採集字段定義表を「三語重構版 v3」へ全面刷新。**採集從寬・分析從嚴**の方針で、

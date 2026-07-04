@@ -51,7 +51,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
   bool get _isLast => _index >= widget.signs.length - 1;
 
   CropRegion? _regionFor(Sign sign) {
-    final suffix = sign.id.split('-').last; // AREA-SNNN-suffix
+    final suffix = sign.cropSuffix; // 新: CropSuffix 字段 / 旧: SignID 末尾
     for (final r in widget.regions) {
       if (r.suffix == suffix) return r;
     }
@@ -126,7 +126,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
     final t = AppLocalizations.of(context);
     final total = widget.signs.length;
     final sign = _current;
-    final suffix = sign.id.split('-').last;
+    final suffix = sign.cropSuffix;
     return Scaffold(
       appBar: AppBar(
         title: Text(t.fieldsTitle(suffix, _index + 1, total)),
