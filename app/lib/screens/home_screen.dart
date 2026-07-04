@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final zipPath = await LocalStore.instance.buildBundle(
         _signs,
-        widget.schema.csvHeader,
+        widget.schema,
         onProgress: (done, total) =>
             progress.value = (done: done, total: total),
       );
@@ -234,7 +234,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       } else {
         final dir =
             Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
-        final dest = File('$dir/Downloads/llmap_export.zip');
+        final zipName = zipPath.split(RegExp(r'[/\\]')).last;
+        final dest = File('$dir/Downloads/$zipName');
         await dest.parent.create(recursive: true);
         await File(zipPath).copy(dest.path);
         if (mounted) {

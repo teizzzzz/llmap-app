@@ -16,7 +16,16 @@ import 'models.dart';
 class ExportPhoto {
   final String zipName; // 導出包内・CSV に書く名前
   final String localName; // 端末内の実ファイル名（旧名のまま）
-  const ExportPhoto(this.zipName, this.localName);
+  final String type; // 'crop'（裁切図） | 'source'（元写真）
+  final String captureId; // 所属する撮影イベント
+  final String signId; // crop のみ。source は複数 sign が共有するため ''
+  const ExportPhoto(
+    this.zipName,
+    this.localName, {
+    required this.type,
+    required this.captureId,
+    this.signId = '',
+  });
 }
 
 /// 規範化の結果。rows は入力 signs と同順。
@@ -24,7 +33,13 @@ class NormalizedExport {
   final List<Map<String, dynamic>> rows;
   final List<ExportPhoto> photos; // zipName で一意
   final List<String> sourceMissing; // 元写真が特定できない SignID（導出後の値）
-  const NormalizedExport(this.rows, this.photos, this.sourceMissing);
+
+  /// 導出時に規範化された旧レコードの対応表
+  /// （{signId: 新SignID, legacySignId: 旧SignID, captureId}）。manifest.json 用。
+  final List<Map<String, String>> normalizedLegacy;
+
+  const NormalizedExport(
+      this.rows, this.photos, this.sourceMissing, this.normalizedLegacy);
 }
 
 /// signs を導出用に規範化する。
@@ -34,8 +49,9 @@ class NormalizedExport {
 ///   CaptureID を共有し、元写真の追跡関係を保つ。
 NormalizedExport normalizeForExport(List<Sign> signs) {
   final rows = <Map<String, dynamic>>[];
-  final photoByZip = <String, String>{}; // zipName -> localName
+  final photoByZip = <String, ExportPhoto>{}; // zipName で一意
   final sourceMissing = <String>[];
+  final normalizedLegacy = <Map<String, String>>[];
   final usedCaptureIds = <String>{};
   final usedSignIds = <String>{};
   // 旧レコードは撮影イベント（写真ID）単位で同じ CaptureID を共有する。
@@ -58,10 +74,16 @@ NormalizedExport normalizeForExport(List<Sign> signs) {
       if (s.get('DataStatus').isEmpty) {
         map['DataStatus'] = dataStatusFor(s.status);
       }
-      if (s.fileName.isNotEmpty) photoByZip[s.fileName] = s.fileName;
+      if (s.fileName.isNotEmpty) {
+        photoByZip[s.fileName] = ExportPhoto(s.fileName, s.fileName,
+            type: 'crop', captureId: s.captureId, signId: s.id);
+      }
       final src = s.sourceFileName;
       if (src.isNotEmpty) {
-        photoByZip[src] = src;
+        photoByZip.putIfAbsent(
+            src,
+            () => ExportPhoto(src, src,
+                type: 'source', captureId: s.captureId));
       } else {
         sourceMissing.add(s.id);
       }
@@ -111,7 +133,8 @@ NormalizedExport normalizeForExport(List<Sign> signs) {
     var newCrop = '';
     if (localCrop.isNotEmpty) {
       newCrop = '$captureId-$actualSuffix.jpg';
-      photoByZip[newCrop] = localCrop;
+      photoByZip[newCrop] = ExportPhoto(newCrop, localCrop,
+          type: 'crop', captureId: captureId, signId: newSignId);
     }
     // 元写真: 旧・全景写真ファイル名 があれば -source.jpg として複製。
     // 無い（旧の整図採集は裁切=原図で全景欄が空）場合は捏造せず空のまま、
@@ -120,10 +143,18 @@ NormalizedExport normalizeForExport(List<Sign> signs) {
     var newSource = '';
     if (localSource.isNotEmpty && localSource != localCrop) {
       newSource = '$captureId-source.jpg';
-      photoByZip[newSource] = localSource;
+      photoByZip.putIfAbsent(
+          newSource,
+          () => ExportPhoto(newSource, localSource,
+              type: 'source', captureId: captureId));
     } else {
       sourceMissing.add(newSignId);
     }
+    normalizedLegacy.add({
+      'signId': newSignId,
+      'legacySignId': s.id,
+      'captureId': captureId,
+    });
 
     map['CaptureID'] = captureId;
     map['SignID'] = newSignId;
@@ -150,9 +181,9 @@ NormalizedExport normalizeForExport(List<Sign> signs) {
     rows.add(map);
   }
 
-  final photos = photoByZip.entries.map((e) => ExportPhoto(e.key, e.value)).toList()
+  final photos = photoByZip.values.toList()
     ..sort((a, b) => a.zipName.compareTo(b.zipName));
-  return NormalizedExport(rows, photos, sourceMissing);
+  return NormalizedExport(rows, photos, sourceMissing, normalizedLegacy);
 }
 
 /// 地区コード: 地区コード字段 → SignID/写真ID の先頭セグメント → 'UNK'。

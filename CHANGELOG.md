@@ -12,6 +12,31 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.6.0 (2026-07-04) — LLMap Dataset Package v1.0（標準导出包 / Step 2）
+
+导出を標準 Dataset Package に刷新（`dataset_package.dart` 新設・`store.buildBundle` 改修）。
+将来の Research Console はこの包をそのまま取り込む。
+
+### 包構造（`llmap_dataset_YYYYMMDD_HHMMSS.zip`）
+- `data.csv`（規範化済み・36列）/ `photos/`（裁切図）/ `source_photos/`（元写真、
+  CaptureID 毎に1枚・複数 sign 共有時も重複同梱しない）
+- `metadata.json`（導出日時・件数・app/schema/format 版・欠落数）
+- `schema.json`（headers / systemFields / fieldGroups(A〜D) / enums /
+  statusValues / dataStatusMap / multiFields — Console が字段構成を解釈できる）
+- `manifest.json`（**機械可読の主フォーマット**: files に path/type/signId/
+  captureId/sizeBytes/localName、missingFiles・sourceMissing・
+  normalizedLegacyRecords を記録）＋ `MANIFEST.txt`（人向け補助）＋ `README.md`
+- 写真欠落・元写真なしでも导出は失敗せず manifest.json に記録。包内同名上書きなし。
+
+### 互換に関する注記
+- **导出入口は従来どおり1つ**（メニュー→データ导出）。导出フォーマットは旧
+  `llmap_export.zip`（data.csv＋photos/＋MANIFEST.txt）から Dataset Package に
+  **置き換え**（旧簡易形式は廃止。CSV 列は上位互換、写真が photos/ と
+  source_photos/ に分かれる点のみ構造変更）。
+- 旧データの導出時規範化（v1.5.1）はそのまま適用。本地データは不変。
+- 規範化・包生成は純ロジック（export_normalizer / dataset_package）に分離し、
+  単体テスト `test/dataset_package_test.dart` を追加。
+
 ## v1.5.1 (2026-07-04) — データ契約の験収と補完（Step 1.5）
 
 ### 溯源字段の追加（`models.dart` / `schema_defaults.dart` / 後端 `schema.py`）

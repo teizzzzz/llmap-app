@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'dataset_package.dart';
 import 'export_normalizer.dart';
 import 'imaging.dart';
 import 'models.dart';
@@ -112,57 +113,61 @@ class LocalStore {
     }
   }
 
-  /// CSV＋参照写真を 1つの ZIP にまとめて一時ファイルへ書き出し、パスを返す。
-  /// backend /export_bundle のローカル版（PC off でも書き出せる）。
+  /// Dataset Package（llmap_dataset_YYYYMMDD_HHMMSS.zip）を一時ファイルへ
+  /// 書き出し、パスを返す。構造は dataset_package.dart / docs/data-contract.md §5。
   /// 導出前に規範化（export_normalizer）を通し、旧レコードも新データ契約で出す
   /// （本地の記録・写真ファイルは書き換えない。導出包内でのみ新名に複製）。
   /// [onProgress] は写真を1枚追加するごとに (done, total) を通知する。
   /// 圧縮は**別アイソレート**で実行し、UI スレッドを固めない（進捗はポートで受信）。
   Future<String> buildBundle(
     List<Sign> signs,
-    List<String> csvHeader, {
+    AppSchema schema, {
     void Function(int done, int total)? onProgress,
   }) async {
     await _ensure();
 
     final norm = normalizeForExport(signs);
 
-    // 参照写真を集計（本地に存在するものだけ同梱）。CSV と zip 内の名前は必ず一致。
-    final existing = <ExportPhoto>[];
-    final missing = <String>[];
+    // 参照写真の存在確認（本地に存在するものだけ同梱）。CSV と zip 内の名前は必ず一致。
+    final stats = <PhotoStat>[];
     for (final p in norm.photos) {
-      if (await photoFile(p.localName).exists()) {
-        existing.add(p);
-      } else {
-        missing.add(p.zipName == p.localName
-            ? p.zipName
-            : '${p.zipName} (local: ${p.localName})');
-      }
+      final f = photoFile(p.localName);
+      stats.add(await f.exists()
+          ? PhotoStat(p, exists: true, sizeBytes: await f.length())
+          : PhotoStat(p, exists: false));
     }
-    final total = existing.length;
+    final included = stats.where((s) => s.exists).toList();
+    final total = included.length;
     onProgress?.call(0, total);
 
-    final out = File('${Directory.systemTemp.path}/llmap_export.zip');
+    final exportedAt = DateTime.now();
+    final out =
+        File('${Directory.systemTemp.path}/${datasetFileName(exportedAt)}');
     if (await out.exists()) await out.delete();
 
-    final csvBytes = Uint8List.fromList(
-        utf8.encode(signsToCsv(norm.rows, header: csvHeader)));
-    final manifest = StringBuffer()
-      ..writeln('records: ${signs.length}')
-      ..writeln('photos_included: ${existing.length}')
-      ..writeln('photos_missing: ${missing.length}');
-    for (final m in missing) {
-      manifest.writeln('  - $m');
-    }
-    // 元写真が存在しない（旧・整図採集など）レコードの明示（無音の欠落を避ける）。
-    manifest.writeln('source_missing: ${norm.sourceMissing.length}');
-    for (final id in norm.sourceMissing) {
-      manifest.writeln('  - $id');
-    }
-    final manifestBytes = Uint8List.fromList(utf8.encode(manifest.toString()));
-    // [zip内パス, 実ファイルパス]
+    const json = JsonEncoder.withIndent('  ');
+    Uint8List enc(String s) => Uint8List.fromList(utf8.encode(s));
+    // zip 冒頭に置くテキスト類（[zip内パス, 内容]）。manifest.json が主フォーマット。
+    final textEntries = <List<Object>>[
+      ['data.csv', enc(signsToCsv(norm.rows, header: schema.csvHeader))],
+      [
+        'metadata.json',
+        enc(json.convert(buildMetadataJson(
+          recordCount: signs.length,
+          stats: stats,
+          norm: norm,
+          exportedAt: exportedAt,
+        ))),
+      ],
+      ['schema.json', enc(json.convert(buildSchemaJson(schema)))],
+      ['manifest.json', enc(json.convert(buildManifestJson(stats, norm)))],
+      ['MANIFEST.txt', enc(buildManifestTxt(signs.length, stats, norm))],
+      ['README.md', enc(buildReadme())],
+    ];
+    // [zip内パス, 実ファイルパス]。crop → photos/、source → source_photos/。
     final photos = [
-      for (final p in existing) [p.zipName, photoFile(p.localName).path],
+      for (final s in included)
+        [zipPathFor(s.photo), photoFile(s.photo.localName).path],
     ];
 
     // 別アイソレートで圧縮。進捗・完了・エラーをポートで受け取る。
@@ -170,7 +175,7 @@ class LocalStore {
     final completer = Completer<void>();
     final isolate = await Isolate.spawn(
       _zipWorker,
-      _ZipJob(rp.sendPort, out.path, csvBytes, photos, manifestBytes),
+      _ZipJob(rp.sendPort, out.path, textEntries, photos),
     );
     rp.listen((msg) {
       if (msg is List<int>) {
@@ -198,11 +203,9 @@ class LocalStore {
 class _ZipJob {
   final SendPort port;
   final String outPath;
-  final Uint8List csvBytes;
+  final List<List<Object>> textEntries; // [zip内パス, Uint8List]
   final List<List<String>> photos; // [zip内パス, 実ファイルパス]
-  final Uint8List manifestBytes;
-  _ZipJob(this.port, this.outPath, this.csvBytes, this.photos,
-      this.manifestBytes);
+  _ZipJob(this.port, this.outPath, this.textEntries, this.photos);
 }
 
 /// 別アイソレートで ZIP をストリーミング生成（重い deflate をここで実行）。
@@ -210,17 +213,17 @@ Future<void> _zipWorker(_ZipJob job) async {
   try {
     final encoder = ZipFileEncoder();
     encoder.create(job.outPath);
-    encoder.addArchiveFile(
-        ArchiveFile('data.csv', job.csvBytes.length, job.csvBytes));
+    for (final e in job.textEntries) {
+      final bytes = e[1] as Uint8List;
+      encoder.addArchiveFile(ArchiveFile(e[0] as String, bytes.length, bytes));
+    }
     final total = job.photos.length;
     var done = 0;
     for (final p in job.photos) {
-      await encoder.addFile(File(p[1]), 'photos/${p[0]}');
+      await encoder.addFile(File(p[1]), p[0]);
       done++;
       job.port.send(<int>[done, total]); // 進捗通知
     }
-    encoder.addArchiveFile(ArchiveFile(
-        'MANIFEST.txt', job.manifestBytes.length, job.manifestBytes));
     await encoder.close();
     job.port.send('ok');
   } catch (e) {

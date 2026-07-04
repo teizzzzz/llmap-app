@@ -34,6 +34,43 @@ const List<String> kCsvHeader = [
   '設置主体', 'ディスコース類型', '製作品質', '備考',
 ];
 
+// 字段分组（Dataset Package の schema.json / 将来の Console 用）。
+// kCsvHeader と同じ順序・同じ字段名を A→名称→B→C→D で分组する。
+const List<Map<String, Object>> kFieldGroups = [
+  {
+    'key': 'A',
+    'label': '識別情報（システム/自動生成）',
+    'fields': [
+      'SignID', '_status',
+      'CaptureID', 'DisplayID', '採集者ID', '地区コード', 'LocalSeq',
+      'CropSuffix', 'CropRect',
+      '写真ID', '写真ファイル名', '元写真ファイル名', '全景写真ファイル名',
+      '緯度', '経度', '採集日時',
+      'EntryMode', 'DataStatus', 'SchemaVersion', 'AppVersion',
+    ],
+  },
+  {
+    'key': 'name',
+    'label': '名称',
+    'fields': ['名称'],
+  },
+  {
+    'key': 'B',
+    'label': '言語・文字',
+    'fields': ['文字性', '主要言語', '補助言語', '装飾の言語', '文字体系', '多言語関係'],
+  },
+  {
+    'key': 'C',
+    'label': '物質・空間・時間',
+    'fields': ['担体類型', '空間階層', '時間性', '可読性', '重ね書き'],
+  },
+  {
+    'key': 'D',
+    'label': '解読・判定',
+    'fields': ['設置主体', 'ディスコース類型', '製作品質', '備考'],
+  },
+];
+
 // ステータス（記入者・処理状態）。判定来源を _status に統合。
 //   pending=未処理 / ai=AI下書未校 / human-reviewed=人が記入or校閲 / final=確定。
 const List<String> kStatusValues = ['pending', 'ai', 'human-reviewed', 'final'];

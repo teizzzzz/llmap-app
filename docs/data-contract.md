@@ -1,6 +1,7 @@
 # LLMap データ契約（Data Contract）
 
-アプリ v1.5.1 / SchemaVersion **1.5**（採集字段定義表 三語重構版 v3 ＋ A区域ID刷新）
+アプリ v1.6.0 / SchemaVersion **1.5**（採集字段定義表 三語重構版 v3 ＋ A区域ID刷新）
+/ Dataset Package **1.0**
 
 手机端（LLMap Mobile）が生成・导出するデータの正準定義。
 PC 端（LLMap Research Console / Backend）はこの契約を前提に取り込む。
@@ -92,17 +93,28 @@ B〜D 区（言語・物質・解読字段）は三語重構版 v3 から変更�
 - 同名・異内容 → `名前~2.jpg` `名前~3.jpg` … の衝突回避名で保存し、
   実際に使った名前を呼び出し側（レコード）に返す。
 
-## 5. 导出パッケージ（現行）
+## 5. 导出パッケージ — LLMap Dataset Package v1.0
+
+导出は標準 Dataset Package（`dataset_package.dart`）。Research Console の
+取り込みフォーマットはこれを正とする。
 
 ```text
-llmap_export.zip
-  data.csv        # utf-8-sig・上記表頭（規範化済みの行）
-  photos/         # data.csv の 写真ファイル名/元写真ファイル名 と**完全一致**する JPEG
-  MANIFEST.txt    # 件数・同梱/欠落写真・source_missing の一覧
+llmap_dataset_YYYYMMDD_HHMMSS.zip
+  data.csv          # utf-8-sig・上記表頭（規範化済みの行）
+  photos/           # 裁切図。data.csv の 写真ファイル名 と**完全一致**
+  source_photos/    # 元写真。元写真ファイル名 と一致・CaptureID 毎に1枚（共有時も重複なし）
+  metadata.json     # 包の元情報（導出日時・件数・app/schema/format 版）
+  schema.json       # 字段構成（headers / systemFields / fieldGroups / enums / dataStatusMap）
+  manifest.json     # 機械可読の主フォーマット: files（path/type/signId/captureId/
+                    #   sizeBytes/localName）・missingFiles・sourceMissing・normalizedLegacyRecords
+  MANIFEST.txt      # 人向けの要約（補助）
+  README.md         # 包の説明
 ```
 
-標準 Dataset Package（機械可読 manifest.json、source_photos/ 分離等）は
-次段（Step 2）で定義する。
+- 写真欠落・元写真なしでも导出は失敗しない（manifest.json に記録）。
+- 包内で同名上書きは発生しない（zip 名は全体で一意）。
+- 旧 `llmap_export.zip`（data.csv＋photos/＋MANIFEST.txt のみ）は v1.6.0 で
+  Dataset Package に置き換えた（导出入口は従来どおり1つ）。
 
 ## 6. 導出時規範化（export-time normalization）
 
