@@ -136,5 +136,6 @@
   "stdLangPrompt": "选择标识中出现的语言",
   "stdMoreInfo": "＋ 添加更多信息",
   "fieldScript": "文字体系",
-  "fieldNote": "备注（可选）"
+  "fieldNote": "备注（可选）",
+  "datasetExported": "Dataset Package 已导出"
 }

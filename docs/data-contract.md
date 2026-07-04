@@ -1,6 +1,6 @@
 # LLMap データ契約（Data Contract）
 
-アプリ v1.6.0 / SchemaVersion **1.5**（採集字段定義表 三語重構版 v3 ＋ A区域ID刷新）
+アプリ v1.8.0 / SchemaVersion **1.5**（採集字段定義表 三語重構版 v3 ＋ A区域ID刷新）
 / Dataset Package **1.0**
 
 手机端（LLMap Mobile）が生成・导出するデータの正準定義。
@@ -103,8 +103,10 @@ llmap_dataset_YYYYMMDD_HHMMSS.zip
   data.csv          # utf-8-sig・上記表頭（規範化済みの行）
   photos/           # 裁切図。data.csv の 写真ファイル名 と**完全一致**
   source_photos/    # 元写真。元写真ファイル名 と一致・CaptureID 毎に1枚（共有時も重複なし）
-  metadata.json     # 包の元情報（導出日時・件数・app/schema/format 版）
-  schema.json       # 字段構成（headers / systemFields / fieldGroups / enums / dataStatusMap）
+  metadata.json     # 包の元情報（導出日時・件数・app/schema/format 版・
+                    #   entryModeCounts / dataStatusCounts の分布。空値は unknown）
+  schema.json       # 字段構成（headers / systemFields / standardDefaultFields /
+                    #   standardMoreFields / fieldGroups / enums / dataStatusMap）
   manifest.json     # 機械可読の主フォーマット: files（path/type/signId/captureId/
                     #   sizeBytes/localName）・missingFiles・sourceMissing・normalizedLegacyRecords
   MANIFEST.txt      # 人向けの要約（補助）

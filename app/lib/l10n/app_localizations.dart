@@ -855,6 +855,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'备注（可选）'**
   String get fieldNote;
+
+  /// No description provided for @datasetExported.
+  ///
+  /// In zh, this message translates to:
+  /// **'Dataset Package 已导出'**
+  String get datasetExported;
 }
 
 class _AppLocalizationsDelegate

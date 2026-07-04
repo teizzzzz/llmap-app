@@ -244,6 +244,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           sharePositionOrigin:
               box != null ? box.localToGlobal(Offset.zero) & box.size : null,
         );
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(t.datasetExported)));
+        }
       } else {
         final dir =
             Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;

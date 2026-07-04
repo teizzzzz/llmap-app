@@ -150,5 +150,6 @@
   "stdLangPrompt": "Select the languages on this sign",
   "stdMoreInfo": "+ Add more info",
   "fieldScript": "Script",
-  "fieldNote": "Note (optional)"
+  "fieldNote": "Note (optional)",
+  "datasetExported": "Dataset Package exported"
 }

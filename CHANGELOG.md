@@ -12,6 +12,18 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.8.0 (2026-07-04) — Dataset Package v1 完成（Step 3）
+
+v1.6.0 で導入した Dataset Package を Step 3 仕様どおりに完成させた
+（包構造・manifest.json・規範化は v1.6.0 から不変。formatVersion 1.0 のまま追加のみ）。
+
+- **metadata.json**: `entryModeCounts` / `dataStatusCounts` の分布を追加
+  （規範化後の rows で集計。旧データ等の空値は `unknown`、合計=件数）。
+- **schema.json**: `standardDefaultFields` / `standardMoreFields` を追加
+  （Console が採集モード別の簡易/展開字段を解釈できる）。
+- 導出成功時に「Dataset Package を書き出しました」を表示（三語対応）。
+- テスト: dataset_package_test に分布・schema 追加字段・JSON 往返の検証を追加。
+
 ## v1.7.1 (2026-07-04) — 採集モードの験収と補漏（Step 2.6）
 
 - **UI ラベルと data キーの分離**: 標準モード表単のラベルを本地化文言に

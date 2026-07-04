@@ -413,4 +413,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fieldNote => '备注（可选）';
+  @override
+  String get datasetExported => 'Dataset Package 已导出';
 }

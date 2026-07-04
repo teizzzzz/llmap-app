@@ -55,7 +55,7 @@ class PhotoStat {
   const PhotoStat(this.photo, {required this.exists, this.sizeBytes = 0});
 }
 
-/// metadata.json の内容。
+/// metadata.json の内容。件数は規範化済み rows（= data.csv の行）で数える。
 Map<String, Object> buildMetadataJson({
   required int recordCount,
   required List<PhotoStat> stats,
@@ -65,6 +65,18 @@ Map<String, Object> buildMetadataJson({
   int count(String type, bool exists) => stats
       .where((s) => s.photo.type == type && s.exists == exists)
       .length;
+  // EntryMode / DataStatus の分布（空値=旧データは unknown に集計し、
+  // 合計が recordCount と一致するようにする）。
+  Map<String, int> tally(String key) {
+    final m = <String, int>{};
+    for (final row in norm.rows) {
+      final v = (row[key] ?? '').toString();
+      final k = v.isEmpty ? 'unknown' : v;
+      m[k] = (m[k] ?? 0) + 1;
+    }
+    return m;
+  }
+
   return {
     'format': kDatasetFormat,
     'formatVersion': kDatasetFormatVersion,
@@ -78,6 +90,8 @@ Map<String, Object> buildMetadataJson({
     'missingPhotoCount': count('crop', false),
     // 元写真が包に無い数 = 参照先ファイル欠落 ＋ そもそも元写真を持たない記録。
     'missingSourcePhotoCount': count('source', false) + norm.sourceMissing.length,
+    'entryModeCounts': tally('EntryMode'),
+    'dataStatusCounts': tally('DataStatus'),
   };
 }
 
@@ -86,6 +100,9 @@ Map<String, Object> buildSchemaJson(AppSchema schema) => {
       'schemaVersion': kSchemaVersion,
       'headers': schema.csvHeader,
       'systemFields': AppSchema.systemFields.toList(),
+      // 標準モードの簡易表単が扱う字段（Console が採集モード別の表示に使える）。
+      'standardDefaultFields': kStandardDefaultFields,
+      'standardMoreFields': kStandardMoreFields,
       'fieldGroups': kFieldGroups,
       'statusValues': schema.statusValues,
       'dataStatusMap': kDataStatusMap,

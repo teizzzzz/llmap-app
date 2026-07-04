@@ -59,10 +59,24 @@ void main() {
     expect(m['exportedAt'], startsWith('2026-07-05T12:34:56'));
   });
 
+  test('metadata.json: EntryMode / DataStatus の分布（旧データは unknown）', () {
+    final m = buildMetadataJson(
+        recordCount: 2, stats: stats, norm: norm, exportedAt: exportedAt);
+    // 新レコードは EntryMode なしで作ったため unknown、旧レコードも unknown。
+    expect((m['entryModeCounts'] as Map)['unknown'], 2);
+    // DataStatus は規範化で補完される（pending→raw / ai→ai_drafted）。
+    final ds = m['dataStatusCounts'] as Map;
+    expect(ds['raw'], 1);
+    expect(ds['ai_drafted'], 1);
+    expect(ds.values.fold<int>(0, (a, b) => a + (b as int)), 2); // 合計=件数
+  });
+
   test('schema.json: 表頭・システム字段・分组が入る', () {
     final s = buildSchemaJson(defaultSchema());
     expect(s['headers'], kCsvHeader);
     expect(s['systemFields'], AppSchema.systemFields.toList());
+    expect(s['standardDefaultFields'], kStandardDefaultFields);
+    expect(s['standardMoreFields'], kStandardMoreFields);
     expect((s['fieldGroups'] as List).length, 5);
     // 分组の字段合計 = 表頭の字段数（漏れなし）。
     final grouped = (s['fieldGroups'] as List)

@@ -415,4 +415,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get fieldNote => '備考（任意）';
+  @override
+  String get datasetExported => 'Dataset Package を書き出しました';
 }
