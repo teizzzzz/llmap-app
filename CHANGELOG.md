@@ -12,6 +12,24 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.7.0 (2026-07-04) — Dashboard 看板増強（Step 8B）
+
+Dashboard を統計カードの羅列から研究データ総覧ページへ。
+
+- **Overview cards（8）**: Total records / Datasets / Records with GPS /
+  Waiting for review / Reviewed / Verified (research-ready) / Photos /
+  Source photos。主要カードはクリックで該当ページへ。
+- **分布**: DataStatus / EntryMode / 主要言語 / 地区 / 採集者 を純CSSの
+  横棒バーで表示（図表ライブラリ不使用）。
+- **Data quality**: Missing photos / Missing source photos / Records without
+  GPS・photo・source photo / Unknown EntryMode / Unknown DataStatus。
+- **Shortcuts**: Open Database / Review Queue / Map / Export Data /
+  Import Dataset（Database の既存導入 UI へ）。
+- 実装は backend 変更なし: 待審核数は dataStatusCounts の合算、GPS/写真件数は
+  既存 `/records?hasX=true&pageSize=1` の total から導出。
+- 検証: npm run build 通過。実 backend＋Playwright でカード値と API の一致・
+  分布バー本数・品質区・快捷遷移を確認（offline エラーは従来どおり）。
+
 ## console v0.6.0 (2026-07-04) — Export CSV ページ（Step 8A）
 
 - Export ページを実装: 筛选（Database と同じ RecordsFilters を再利用・
