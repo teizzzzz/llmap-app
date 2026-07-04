@@ -12,6 +12,28 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## console v0.8.0 / backend v0.3.0 (2026-07-04) — AI Processing 骨架（Step 8C）
+
+AI 批処理の**安全な scaffold**（実 AI 呼び出しは一切行わない・API キーは
+リポジトリに置かない）。
+
+- **AI Processing ページ**: ① Batch selection（Status/Mode/Language/Area/
+  Dataset/Photo/GPS 筛选＋`/records?pageSize=1` の該当件数）→
+  ② Task type カード6種（Language identification / OCR / Field suggestion /
+  Translation / Duplicate detection / Privacy risk detection — すべて
+  Coming soon・Requires AI backend configuration）→ ③ Preview/Run
+  （Dry run / Run batch は**無効**、理由 = /ai/status の message）。
+- **Safety rules を常時表示**: AI 提案は下書き・human-reviewed を上書きしない・
+  審核を経て研究データになる / backend 設定まで実行されない / キーは環境変数 /
+  提案は人間確定字段と分離保存（将来案: `_ai.主要言語` `_ai.文字体系`
+  `_ai.confidence` `_ai.provider` `_ai.updatedAt`）・結果は `ai_drafted` として
+  Review 队列に入る。
+- **backend v0.3.0**: `GET /ai/status` を追加（常に
+  `{enabled:false, providers:[], message:"AI backend is not configured."}`。
+  実呼び出しなし・テスト追加、16件全通過）。client に `getAiStatus()`。
+- 検証: npm run build 通過。実 backend＋Playwright で件数連動・カード6枚・
+  Run/Dry run 無効と理由表示・安全説明・offline エラーを確認。
+
 ## console v0.7.0 (2026-07-04) — Dashboard 看板増強（Step 8B）
 
 Dashboard を統計カードの羅列から研究データ総覧ページへ。

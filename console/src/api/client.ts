@@ -1,6 +1,7 @@
 // LLMap backend API client。
 // base URL は .env の VITE_API_BASE_URL（既定 http://localhost:8000）。
 import type {
+  AiStatus,
   Dataset,
   ImportDatasetResult,
   MapQuery,
@@ -114,6 +115,8 @@ export const importDatasetPackage = (file: File) => {
 
 export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');
+
+export const getAiStatus = () => request<AiStatus>('/ai/status');
 
 /** 写真 URL（<img src> 用）。 */
 export const photoUrl = (path: string | null): string | null =>

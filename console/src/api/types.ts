@@ -92,6 +92,13 @@ export interface MapQuery {
   datasetId?: number;
 }
 
+/** GET /ai/status — AI バッチ処理の設定状態（scaffold） */
+export interface AiStatus {
+  enabled: boolean;
+  providers: string[];
+  message: string;
+}
+
 /** POST /datasets/import の導入レポート */
 export interface ImportDatasetResult {
   datasetId: number;

@@ -51,7 +51,19 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "llmap-backend", "version": "0.2.0"}
+    return {"ok": True, "service": "llmap-backend", "version": "0.3.0"}
+
+
+@app.get("/ai/status")
+def ai_status():
+    """Console の AI Processing 用の安全な状態確認。
+    バッチ AI は未実装のため常に disabled を返す（実 API 呼び出しは行わない。
+    将来ここでプロバイダ設定・キーの有無（環境変数）を検査する）。"""
+    return {
+        "enabled": False,
+        "providers": [],
+        "message": "AI backend is not configured.",
+    }
 
 
 @app.get("/schema")

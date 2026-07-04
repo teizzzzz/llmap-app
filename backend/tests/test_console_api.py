@@ -275,6 +275,14 @@ def test_export_csv():
     assert len(list(csv.DictReader(io.StringIO(r2.content.decode("utf-8-sig"))))) == 1
 
 
+def test_ai_status_disabled():
+    # AI バッチは scaffold のみ: 常に disabled・プロバイダ空・実呼び出しなし。
+    s = client.get("/ai/status").json()
+    assert s["enabled"] is False
+    assert s["providers"] == []
+    assert "not configured" in s["message"]
+
+
 def test_broken_package_rejected():
     # manifest.json が壊れている
     zbuf = io.BytesIO()
