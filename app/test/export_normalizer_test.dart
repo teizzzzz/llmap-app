@@ -127,6 +127,31 @@ void main() {
     });
   });
 
+  test('EntryMode/DataStatus: 新レコードの値は導出で書き換えない', () {
+    final quick = Sign({
+      'SignID': 'OOK-7Kx9Qp2A-260701143512482-a',
+      '_status': 'pending',
+      'CaptureID': 'OOK-7Kx9Qp2A-260701143512482',
+      'EntryMode': 'quick',
+      'DataStatus': 'raw',
+    });
+    final r = normalizeForExport([quick]);
+    expect(r.rows.single['EntryMode'], 'quick');
+    expect(r.rows.single['DataStatus'], 'raw'); // submitted 等に上書きしない
+  });
+
+  test('EntryMode/DataStatus: 旧レコードは DataStatus のみ _status から補完', () {
+    final legacy = Sign({
+      'SignID': 'OOK-S008-a',
+      '_status': 'human-reviewed',
+      '写真ID': 'OOK-20260701-008',
+      '採集日時': '2026-07-01 14:35:12',
+    });
+    final r = normalizeForExport([legacy]);
+    expect(r.rows.single['DataStatus'], 'reviewed');
+    expect(r.rows.single['EntryMode'] ?? '', ''); // EntryMode は捏造しない
+  });
+
   test('setStatus は _status と DataStatus を同時に揃える', () {
     final s = Sign({'SignID': 'X-a', '_status': 'pending'});
     s.setStatus('ai');

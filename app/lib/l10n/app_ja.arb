@@ -134,5 +134,7 @@
   "savedStandard": "記録を提出しました。",
   "savedResearch": "研究記録を保存しました。",
   "stdLangPrompt": "標識に現れる言語を選択",
-  "stdMoreInfo": "＋ 情報を追加"
+  "stdMoreInfo": "＋ 情報を追加",
+  "fieldScript": "文字体系",
+  "fieldNote": "備考（任意）"
 }

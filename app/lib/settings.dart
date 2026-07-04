@@ -71,6 +71,21 @@ Future<void> applyLocale(String code) async {
   localeNotifier.value = code == 'system' ? null : Locale(code);
 }
 
+/// 採集モードの表示文言（capture_mode.dart は純ロジックのまま保つ）。
+extension CaptureModeLabels on CaptureMode {
+  String label(AppLocalizations t) => switch (this) {
+        CaptureMode.quick => t.modeQuick,
+        CaptureMode.standard => t.modeStandard,
+        CaptureMode.research => t.modeResearch,
+      };
+
+  String description(AppLocalizations t) => switch (this) {
+        CaptureMode.quick => t.modeQuickDesc,
+        CaptureMode.standard => t.modeStandardDesc,
+        CaptureMode.research => t.modeResearchDesc,
+      };
+}
+
 /// 採集モード。未設定は standard（既定）。
 Future<CaptureMode> loadCaptureMode() async {
   final prefs = await SharedPreferences.getInstance();

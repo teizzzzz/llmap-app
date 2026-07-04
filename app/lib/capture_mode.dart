@@ -5,9 +5,8 @@
 /// - standard : 框选 → 簡易言語選択（既定モード。Lingscape 相当）
 /// - research : 框选 → 完全な研究字段表単（既存 FieldsScreen）
 /// 本機のアプリ設定であり、権限/アカウントの仕組みではない。
+/// 純ロジックのみ（UI ラベルは settings.dart の CaptureModeLabels 拡張にある）。
 library;
-
-import 'l10n/app_localizations.dart';
 
 enum CaptureMode { quick, standard, research }
 
@@ -20,18 +19,6 @@ extension CaptureModeX on CaptureMode {
   /// research=submitted（校閲保存で reviewed へ昇格）。
   String get initialDataStatus =>
       this == CaptureMode.quick ? 'raw' : 'submitted';
-
-  String label(AppLocalizations t) => switch (this) {
-        CaptureMode.quick => t.modeQuick,
-        CaptureMode.standard => t.modeStandard,
-        CaptureMode.research => t.modeResearch,
-      };
-
-  String description(AppLocalizations t) => switch (this) {
-        CaptureMode.quick => t.modeQuickDesc,
-        CaptureMode.standard => t.modeStandardDesc,
-        CaptureMode.research => t.modeResearchDesc,
-      };
 }
 
 /// 保存値 → モード。未知値・未設定は standard（既定モード）。

@@ -84,6 +84,11 @@ const List<String> kLanguages = [
 // 値は「/」区切りの文字列で保存する（併記の慣習に合わせる）。
 const Set<String> kMultiFields = {'主要言語', '補助言語', '装飾の言語', '文字体系'};
 
+// 標準モードの簡易表単が扱う字段。すべて kCsvHeader の正準キーであること
+// （test/capture_mode_test.dart で保証。UI ラベルは i18n、data キーはここ）。
+const List<String> kStandardDefaultFields = ['主要言語', '補助言語', '備考'];
+const List<String> kStandardMoreFields = ['文字体系', '担体類型', '設置主体', '多言語関係'];
+
 const Map<String, List<String>> kEnums = {
   // B 言語·文字（言語3つと文字体系は複数選択・自由追加可 = kMultiFields）
   '文字性': ['含文字', '純記号', '対象外'],

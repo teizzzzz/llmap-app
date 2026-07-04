@@ -418,4 +418,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stdMoreInfo => '+ Add more info';
+  @override
+  String get fieldScript => 'Script';
+
+  @override
+  String get fieldNote => 'Note (optional)';
 }

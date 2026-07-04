@@ -12,6 +12,23 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.7.1 (2026-07-04) — 採集モードの験収と補漏（Step 2.6）
+
+- **UI ラベルと data キーの分離**: 標準モード表単のラベルを本地化文言に
+  （mainLanguage/subLanguage/operator/carrier/multilingual を再利用、
+  fieldScript/fieldNote を新設）。data キーは従来どおり schema 正準キーのまま。
+- **字段キーの契約を定数化**: `kStandardDefaultFields` / `kStandardMoreFields`
+  （schema_defaults）を標準モード表単の駆動に使い、全キーが kCsvHeader に
+  含まれ・システム字段でないことをテストで保証。
+- **capture_mode.dart を純ロジック化**（l10n 依存を settings.dart の
+  CaptureModeLabels 拡張へ分離）→ 単体テスト可能に。
+- テスト追加: `test/capture_mode_test.dart`（既定値/フォールバック・
+  EntryMode/DataStatus 初期値・DataStatus 対応表・字段キー契約）、
+  normalizer テストに EntryMode/DataStatus の直通/補完ケースを追加。
+- 験収結果: 状態は採番時に _status＋DataStatus を成対で書き、以後の遷移は
+  すべて `Sign.setStatus()` 経由（不同期なし）。CaptureID/ファイル命名は
+  3モード共通で不変。旧データの閲覧・導出も不変。
+
 ## v1.7.0 (2026-07-04) — 3つの採集モード（quick / standard / research）
 
 同一の Sign データ構造・同一の地図首页のまま、**框选後のフロー**だけを

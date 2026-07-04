@@ -134,5 +134,7 @@
   "savedStandard": "记录已提交。",
   "savedResearch": "研究记录已保存。",
   "stdLangPrompt": "选择标识中出现的语言",
-  "stdMoreInfo": "＋ 添加更多信息"
+  "stdMoreInfo": "＋ 添加更多信息",
+  "fieldScript": "文字体系",
+  "fieldNote": "备注（可选）"
 }

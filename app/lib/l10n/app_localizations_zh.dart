@@ -408,4 +408,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stdMoreInfo => '＋ 添加更多信息';
+  @override
+  String get fieldScript => '文字体系';
+
+  @override
+  String get fieldNote => '备注（可选）';
 }

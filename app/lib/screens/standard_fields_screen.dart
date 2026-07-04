@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../schema_defaults.dart';
 import '../theme/tokens.dart';
 import '../widgets/crop_preview.dart';
 import '../widgets/ll/ll.dart';
@@ -50,6 +51,18 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
     }
     return null;
   }
+
+  /// UI ラベルは本地化文言、data キーは schema の正準キー（混用しない）。
+  String _labelFor(AppLocalizations t, String field) => switch (field) {
+        '主要言語' => t.mainLanguage,
+        '補助言語' => t.subLanguage,
+        '文字体系' => t.fieldScript,
+        '担体類型' => t.carrier,
+        '設置主体' => t.operator,
+        '多言語関係' => t.multilingual,
+        '備考' => t.fieldNote,
+        _ => field,
+      };
 
   /// 提交して次へ。標準モードの状態は _status=pending / DataStatus=submitted の
   /// まま（採番時に設定済み。校閲は Console / 研究モードの仕事）。
@@ -104,11 +117,11 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
               children: [
                 Text(t.stdLangPrompt, style: AppText.sectionTitle()),
                 const SizedBox(height: AppSpacing.sm),
-                _chipMulti(sign, '主要言語', _langOptions),
+                _chipMulti(t, sign, '主要言語', _langOptions),
                 const SizedBox(height: AppSpacing.sm),
-                _chipMulti(sign, '補助言語', _langOptions),
+                _chipMulti(t, sign, '補助言語', _langOptions),
                 const SizedBox(height: AppSpacing.sm),
-                _noteField(sign),
+                _noteField(t, sign),
               ],
             ),
           ),
@@ -125,12 +138,14 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _chipMulti(
-                      sign, '文字体系', widget.schema.enums['文字体系'] ?? const []),
-                  const SizedBox(height: AppSpacing.sm),
-                  _dropdown(sign, '担体類型'),
-                  _dropdown(sign, '設置主体'),
-                  _dropdown(sign, '多言語関係'),
+                  // 展開字段は kStandardMoreFields（正準キー）で駆動する。
+                  for (final f in kStandardMoreFields) ...[
+                    if (widget.schema.multiFields.contains(f))
+                      _chipMulti(t, sign, f, widget.schema.enums[f] ?? const [])
+                    else
+                      _dropdown(t, sign, f),
+                    const SizedBox(height: AppSpacing.xs),
+                  ],
                 ],
               ),
             ),
@@ -151,12 +166,13 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
   }
 
   /// 複数選択チップ（値は既存慣習どおり「/」区切りで保存）。
-  Widget _chipMulti(Sign sign, String field, List<String> options) {
+  Widget _chipMulti(
+      AppLocalizations t, Sign sign, String field, List<String> options) {
     final selected = splitMulti(sign.get(field));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(field,
+        Text(_labelFor(t, field),
             style: AppText.caption().copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 4),
         Wrap(
@@ -189,7 +205,7 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
     );
   }
 
-  Widget _dropdown(Sign sign, String field) {
+  Widget _dropdown(AppLocalizations t, Sign sign, String field) {
     final options = widget.schema.enums[field] ?? const <String>[];
     final value = sign.get(field);
     final items = [...options];
@@ -200,7 +216,7 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
         initialValue: value.isEmpty ? null : value,
         isExpanded: true,
         decoration: InputDecoration(
-          labelText: field,
+          labelText: _labelFor(t, field),
           isDense: true,
           border: const OutlineInputBorder(),
         ),
@@ -212,13 +228,13 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
     );
   }
 
-  Widget _noteField(Sign sign) => TextFormField(
+  Widget _noteField(AppLocalizations t, Sign sign) => TextFormField(
         key: ValueKey('${sign.id}-備考-std'),
         initialValue: sign.get('備考'),
-        decoration: const InputDecoration(
-          labelText: '備考',
+        decoration: InputDecoration(
+          labelText: _labelFor(t, '備考'),
           isDense: true,
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
         ),
         onChanged: (v) => sign.set('備考', v),
       );

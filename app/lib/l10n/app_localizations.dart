@@ -843,6 +843,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'＋ 添加更多信息'**
   String get stdMoreInfo;
+
+  /// No description provided for @fieldScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'文字体系'**
+  String get fieldScript;
+
+  /// No description provided for @fieldNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注（可选）'**
+  String get fieldNote;
 }
 
 class _AppLocalizationsDelegate

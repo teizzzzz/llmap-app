@@ -148,5 +148,7 @@
   "savedStandard": "Record submitted.",
   "savedResearch": "Research record saved.",
   "stdLangPrompt": "Select the languages on this sign",
-  "stdMoreInfo": "+ Add more info"
+  "stdMoreInfo": "+ Add more info",
+  "fieldScript": "Script",
+  "fieldNote": "Note (optional)"
 }
