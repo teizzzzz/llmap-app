@@ -12,6 +12,16 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.8.1 (2026-07-04) — ビルド修正（設定画面の第二経路）
+
+- **fix**: v1.7.0 で `SettingsScreen` に必須パラメータ `captureMode` を追加した際、
+  設定画面を開く**もう一つの経路**（`main.dart` の `_Boot._editUrl()`＝起動失敗
+  画面の「設定」ボタン）が追随しておらずコンパイルエラーになっていた。
+  `loadCaptureMode()` の読込・受け渡し・戻り値型・`saveCaptureMode()` を補完。
+  実機ビルドで発見された問題（flutter analyze クリーン・リリースビルド成功を確認済）。
+- 既知の注意: Android release 署名はデバッグキーのまま
+  （`build.gradle.kts` の release ブロック）。ストア配布時は本番 keystore が必要。
+
 ## console v0.4.0 (2026-07-04) — Map ページ（Step 6）
 
 Web 地図预览を実装（Leaflet + react-leaflet v4・OpenStreetMap tiles・
