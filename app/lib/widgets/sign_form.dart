@@ -24,7 +24,7 @@ class SignForm extends StatelessWidget {
   // final（確定済）は人の編集でも保持する。
   void _markEdited() {
     if (sign.status == 'pending' || sign.status == 'ai') {
-      sign.set('_status', 'human-reviewed');
+      sign.setStatus('human-reviewed');
     }
   }
 

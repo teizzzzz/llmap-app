@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'export_normalizer.dart';
 import 'imaging.dart';
 import 'models.dart';
 
@@ -113,6 +114,8 @@ class LocalStore {
 
   /// CSV＋参照写真を 1つの ZIP にまとめて一時ファイルへ書き出し、パスを返す。
   /// backend /export_bundle のローカル版（PC off でも書き出せる）。
+  /// 導出前に規範化（export_normalizer）を通し、旧レコードも新データ契約で出す
+  /// （本地の記録・写真ファイルは書き換えない。導出包内でのみ新名に複製）。
   /// [onProgress] は写真を1枚追加するごとに (done, total) を通知する。
   /// 圧縮は**別アイソレート**で実行し、UI スレッドを固めない（進捗はポートで受信）。
   Future<String> buildBundle(
@@ -122,22 +125,18 @@ class LocalStore {
   }) async {
     await _ensure();
 
-    // 参照写真を集計（存在するものだけ同梱）。パス解決はメイン側で行う。
-    final wanted = <String>{};
-    for (final s in signs) {
-      // 新契約の 元写真ファイル名 と、旧字段（全景写真ファイル名）の両方を対象にする。
-      for (final k in ['写真ファイル名', '元写真ファイル名', '全景写真ファイル名']) {
-        final name = s.get(k);
-        if (name.isNotEmpty) wanted.add(name);
-      }
-    }
-    final existing = <String>[];
+    final norm = normalizeForExport(signs);
+
+    // 参照写真を集計（本地に存在するものだけ同梱）。CSV と zip 内の名前は必ず一致。
+    final existing = <ExportPhoto>[];
     final missing = <String>[];
-    for (final name in wanted.toList()..sort()) {
-      if (await photoFile(name).exists()) {
-        existing.add(name);
+    for (final p in norm.photos) {
+      if (await photoFile(p.localName).exists()) {
+        existing.add(p);
       } else {
-        missing.add(name);
+        missing.add(p.zipName == p.localName
+            ? p.zipName
+            : '${p.zipName} (local: ${p.localName})');
       }
     }
     final total = existing.length;
@@ -146,8 +145,8 @@ class LocalStore {
     final out = File('${Directory.systemTemp.path}/llmap_export.zip');
     if (await out.exists()) await out.delete();
 
-    final csvBytes = Uint8List.fromList(utf8.encode(
-        signsToCsv(signs.map((s) => s.toJson()).toList(), header: csvHeader)));
+    final csvBytes = Uint8List.fromList(
+        utf8.encode(signsToCsv(norm.rows, header: csvHeader)));
     final manifest = StringBuffer()
       ..writeln('records: ${signs.length}')
       ..writeln('photos_included: ${existing.length}')
@@ -155,10 +154,15 @@ class LocalStore {
     for (final m in missing) {
       manifest.writeln('  - $m');
     }
+    // 元写真が存在しない（旧・整図採集など）レコードの明示（無音の欠落を避ける）。
+    manifest.writeln('source_missing: ${norm.sourceMissing.length}');
+    for (final id in norm.sourceMissing) {
+      manifest.writeln('  - $id');
+    }
     final manifestBytes = Uint8List.fromList(utf8.encode(manifest.toString()));
     // [zip内パス, 実ファイルパス]
     final photos = [
-      for (final name in existing) [name, photoFile(name).path],
+      for (final p in existing) [p.zipName, photoFile(p.localName).path],
     ];
 
     // 別アイソレートで圧縮。進捗・完了・エラーをポートで受け取る。

@@ -1,6 +1,6 @@
 # LLMap データ契約（Data Contract）
 
-アプリ v1.5.0 / SchemaVersion: 採集字段定義表 三語重構版 v3 ＋ A区域ID刷新
+アプリ v1.5.1 / SchemaVersion **1.5**（採集字段定義表 三語重構版 v3 ＋ A区域ID刷新）
 
 手机端（LLMap Mobile）が生成・导出するデータの正準定義。
 PC 端（LLMap Research Console / Backend）はこの契約を前提に取り込む。
@@ -55,6 +55,20 @@ short label:     OOK #008-a
 | 元写真ファイル名 | **新** | `CaptureID-source.jpg` | 空 → 全景写真ファイル名 にフォールバック |
 | 全景写真ファイル名 | 旧 | **= 元写真ファイル名**（互換値） | 旧形式のまま |
 | 緯度 / 経度 / 採集日時 | 旧 | 同じ（採集日時は秒精度のまま） | 同じ |
+| EntryMode | **新** | `standard`（現行採集フロー） | 空 |
+| DataStatus | **新** | _status の対応値（下表） | 空 → 導出時に _status から導出 |
+| SchemaVersion | **新** | `1.5`（本契約） | 空 |
+| AppVersion | **新** | 採集時のアプリ版（例 `v1.5.1`） | 空 |
+
+**DataStatus 対応表**（端末は `_status` が正。DataStatus は Research Console
+審核フロー互換の派生値で、`Sign.setStatus()` が常に同時更新する）:
+
+| _status（端末） | DataStatus（Console） |
+|---|---|
+| pending | raw |
+| ai | ai_drafted |
+| human-reviewed | reviewed |
+| final | verified |
 
 B〜D 区（言語・物質・解読字段）は三語重構版 v3 から変更なし。
 
@@ -66,10 +80,9 @@ B〜D 区（言語・物質・解読字段）は三語重構版 v3 から変更�
   - 元写真ファイル名 なし → 全景写真ファイル名
   - CropSuffix なし → SignID の末尾セグメント
   - 採集者ID なし → 空表示
-- 旧データの閲覧・編集・导出は従来どおり動作する。CSV は新表頭で出力され、
-  旧レコードの新列は空欄になる（导出は失敗しない）。
-- 旧写真ファイルのリネーム（migration / export-copy）は未実装。実装するまで
-  旧ファイル名のまま导出する。
+- 旧データの閲覧・編集・导出は従来どおり動作する。
+- 导出時は §6 の**導出時規範化**により、旧レコードも新契約形式で CSV/ZIP に出る
+  （本地データは無変換のまま）。
 
 ## 4. 写真保存の衝突保護
 
@@ -83,9 +96,36 @@ B〜D 区（言語・物質・解読字段）は三語重構版 v3 から変更�
 
 ```text
 llmap_export.zip
-  data.csv        # utf-8-sig・上記表頭
-  photos/         # 写真ファイル名・元写真ファイル名（旧: 全景写真ファイル名）で参照される JPEG
-  MANIFEST.txt    # 件数・同梱/欠落写真の一覧
+  data.csv        # utf-8-sig・上記表頭（規範化済みの行）
+  photos/         # data.csv の 写真ファイル名/元写真ファイル名 と**完全一致**する JPEG
+  MANIFEST.txt    # 件数・同梱/欠落写真・source_missing の一覧
 ```
 
-標準 Dataset Package（機械可読 manifest.json 等）は次段（Step 2）で定義する。
+標準 Dataset Package（機械可読 manifest.json、source_photos/ 分離等）は
+次段（Step 2）で定義する。
+
+## 6. 導出時規範化（export-time normalization）
+
+旧レコードは**本地では原様のまま**、导出の瞬間だけ新契約へ変換する
+（`app/lib/export_normalizer.dart`）。本地 project.json・旧写真ファイルは書き換えない。
+
+- CaptureID を持つレコード → そのまま导出（DataStatus のみ欠けていれば _status から補完）。
+- CaptureID の無い旧レコード → 以下の規則で生成:
+
+```text
+CaptureID = AREA-COLLECTOR_OR_LEGACY-YYMMDDHHMMSS000
+  AREA      : 地区コード → SignID/写真ID の先頭セグメント → UNK
+  COLLECTOR : 採集者ID → "legacy"（端末の現IDは入れない＝来源を捏造しない）
+  時刻      : 採集日時（秒精度）＋ミリ秒 000。欠落時は全ゼロ
+SignID      = CaptureID-suffix（CropSuffix → 旧SignID末尾 → a）
+DisplayID   = 既存値 → 旧SignID → AREA-日付-連番-suffix
+CropRect    = 既存値 → {"x":0,"y":0,"w":1,"h":1}
+写真ID      = 旧値のまま（本地ファイルへの追跡用）
+```
+
+- **グループ共有**: 同一 写真ID の裁切群は同じ CaptureID・同じ 元写真 を共有する。
+- **衝突回避**: 同秒の別撮影イベントで CaptureID が重なる場合は `-002` `-003` …を
+  追加。导出包内で同名上書きは発生しない（CSV と zip 内の名前は常に一致）。
+- **写真**: 旧ファイルを导出包内で新名（`CaptureID-<suffix>.jpg` / `-source.jpg`）に
+  複製。旧・整図採集など元写真が特定できない場合、元写真ファイル名 は空とし、
+  MANIFEST.txt の `source_missing:` に SignID を列挙する。

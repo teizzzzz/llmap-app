@@ -8,6 +8,10 @@ library;
 
 import 'models.dart';
 
+/// データ契約のバージョン（docs/data-contract.md）。レコードの SchemaVersion に入る。
+/// 字段構成や ID 規則を変えたら上げる（アプリのパッチ版とは独立）。
+const String kSchemaVersion = '1.5';
+
 // ── CSV 標準表頭（採集字段定義表 v3） ──
 // A 識別情報（系統/自動） → 名称 → B 言語·文字 → C 物質·空間·時間 → D 解読·判定。
 const List<String> kCsvHeader = [
@@ -19,6 +23,7 @@ const List<String> kCsvHeader = [
   'CropSuffix', 'CropRect',
   '写真ID', '写真ファイル名', '元写真ファイル名', '全景写真ファイル名',
   '緯度', '経度', '採集日時',
+  'EntryMode', 'DataStatus', 'SchemaVersion', 'AppVersion',
   // 名称（暫定保留・AI 下書可）
   '名称',
   // B 言語·文字

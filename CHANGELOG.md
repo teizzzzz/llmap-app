@@ -12,6 +12,26 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.5.1 (2026-07-04) — データ契約の験収と補完（Step 1.5）
+
+### 溯源字段の追加（`models.dart` / `schema_defaults.dart` / 後端 `schema.py`）
+- 新CSV列: `EntryMode`（採集方式、現行フローは `standard`）/ `DataStatus`
+  （Console 審核状態: raw/ai_drafted/reviewed/verified、`_status` と対応）/
+  `SchemaVersion`（データ契約版 `1.5`）/ `AppVersion`（採集時のアプリ版）。
+- `Sign.setStatus()` を新設し、`_status` の全遷移箇所（AI下書・校閲・編集）で
+  DataStatus を同時更新。旧レコードは空のままでよい（導出時に補完）。
+
+### 導出時規範化（`export_normalizer.dart` 新設 / `store.buildBundle`）
+- 旧レコードも导出の瞬間に新契約形式へ変換（**本地の project.json・旧写真は不変**）:
+  `CaptureID = AREA-legacy-YYMMDDHHMMSS000`（採集者ID 無しは `legacy` 固定、
+  端末の現IDは入れない）。同一 写真ID の裁切群は CaptureID・元写真を共有。
+- 旧写真は导出包内でのみ新名（`CaptureID-<suffix>.jpg` / `-source.jpg`）に複製し、
+  CSV の 写真ファイル名/元写真ファイル名 と zip 内容を完全一致させる。
+- 同秒衝突は `-002` 序号で回避（导出包内の同名上書きなし）。旧・整図採集など
+  元写真が無いレコードは 元写真ファイル名 空＋MANIFEST の `source_missing:` に明示。
+- 単体テスト `test/export_normalizer_test.dart` を追加（旧単体/裁切群/同秒衝突/
+  整図/壊れた記録/新旧混在/setStatus 同期）。
+
 ## v1.5.0 (2026-07-04) — A区域ID刷新（CaptureID / 多人採集で衝突しない命名）
 
 多人採集・データ合并・将来の PC Console 取り込みに向けて、識別字段と写真命名を

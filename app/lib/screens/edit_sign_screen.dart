@@ -116,6 +116,10 @@ class _EditSignScreenState extends State<EditSignScreen> {
       ('採集日時', s.get('採集日時')),
       ('緯度', s.get('緯度')),
       ('経度', s.get('経度')),
+      ('EntryMode', s.get('EntryMode')),
+      ('DataStatus', s.get('DataStatus')),
+      ('SchemaVersion', s.get('SchemaVersion')),
+      ('AppVersion', s.get('AppVersion')),
     ].where((e) => e.$2.isNotEmpty).toList();
     return LLCard(
       padding: EdgeInsets.zero,

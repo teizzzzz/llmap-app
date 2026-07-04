@@ -8,8 +8,10 @@ import '../capture.dart';
 import '../imaging.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../schema_defaults.dart';
 import '../settings.dart';
 import '../store.dart';
+import '../version.dart';
 import '../theme/tokens.dart';
 import '../widgets/box_selector.dart';
 import '../widgets/ll/ll.dart';
@@ -133,6 +135,11 @@ class _CropScreenState extends State<CropScreen> {
         '緯度': gps?.lat,
         '経度': gps?.lng,
         '採集日時': captured,
+        // 溯源字段: 採集方式・審核状態(Console対応値)・契約/アプリ版。
+        'EntryMode': 'standard',
+        'DataStatus': dataStatusFor('pending'),
+        'SchemaVersion': kSchemaVersion,
+        'AppVersion': kAppVersion,
       }));
     }
     return signs;

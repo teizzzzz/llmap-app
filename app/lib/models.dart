@@ -1,6 +1,18 @@
 /// データモデル。backend(/schema, /extract) と CSV 標準字段に対応。
 library;
 
+/// _status（端末内の処理状態）→ DataStatus（Research Console の審核状態）対応。
+/// 端末は _status を正、DataStatus を Console 互換の派生値として常に併記する。
+const Map<String, String> kDataStatusMap = {
+  'pending': 'raw',
+  'ai': 'ai_drafted',
+  'human-reviewed': 'reviewed',
+  'final': 'verified',
+};
+
+/// _status に対応する DataStatus。未知値は raw 扱い。
+String dataStatusFor(String status) => kDataStatusMap[status] ?? 'raw';
+
 /// 複数選択字段（"日本語/韓国語" など）を個々の値に分割する。
 /// 区切りは「/・、,」を許容し、空と「—」は除外する。
 List<String> splitMulti(String v) => v
@@ -97,6 +109,13 @@ class Sign {
   String get(String key) => (data[key] ?? '').toString();
   void set(String key, String value) => data[key] = value;
 
+  /// _status を更新し、DataStatus（Console 互換の派生値）も同時に揃える。
+  /// 状態遷移は必ずこれを使う（_status 直接 set だと DataStatus が古くなる）。
+  void setStatus(String status) {
+    data['_status'] = status;
+    data['DataStatus'] = dataStatusFor(status);
+  }
+
   Map<String, dynamic> toJson() => data;
 
   static double? _toDouble(dynamic v) {
@@ -145,6 +164,7 @@ class AppSchema {
     'CropSuffix', 'CropRect',
     '写真ID', '写真ファイル名', '元写真ファイル名', '全景写真ファイル名',
     '緯度', '経度', '採集日時',
+    'EntryMode', 'DataStatus', 'SchemaVersion', 'AppVersion',
   };
 
   /// 手動/AI 入力対象の字段（表示順は csvHeader 準拠）。

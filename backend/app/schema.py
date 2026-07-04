@@ -20,6 +20,7 @@ CSV_HEADER = [
     "CropSuffix", "CropRect",
     "写真ID", "写真ファイル名", "元写真ファイル名", "全景写真ファイル名",
     "緯度", "経度", "採集日時",
+    "EntryMode", "DataStatus", "SchemaVersion", "AppVersion",
     # 名称（暫定保留）
     "名称",
     # B 言語·文字
@@ -114,6 +115,11 @@ class Sign(BaseModel):
     CropSuffix: str = ""
     CropRect: str = ""  # JSON 文字列 {"x":..,"y":..,"w":..,"h":..}（相対座標 0..1）
     元写真ファイル名: str = ""
+    # 溯源字段（v1.5.1〜）。旧データは空でよい。
+    EntryMode: str = ""       # 採集方式（現行フローは standard）
+    DataStatus: str = ""      # Console 審核状態（raw/ai_drafted/reviewed/verified…）
+    SchemaVersion: str = ""   # データ契約バージョン（例 1.5）
+    AppVersion: str = ""      # 採集時のアプリ版（例 v1.5.1）
     # 旧字段（互換のため保持。新規レコードでは 写真ID=CaptureID）
     写真ID: str = ""
     写真ファイル名: str = ""

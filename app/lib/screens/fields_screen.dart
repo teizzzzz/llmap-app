@@ -84,7 +84,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
         fields.forEach((k, v) {
           if (v != null && v.toString().isNotEmpty) sign.set(k, v.toString());
         });
-        sign.set('_status', 'ai');
+        sign.setStatus('ai');
       });
     } catch (e) {
       if (mounted) {
@@ -115,7 +115,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
   /// 入力済みとして保存（pending/ai なら human-reviewed に昇格）。
   void _save() {
     if (_current.status == 'pending' || _current.status == 'ai') {
-      _current.set('_status', 'human-reviewed');
+      _current.setStatus('human-reviewed');
     }
     _saved.add(_current);
     _advance();
