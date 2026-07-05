@@ -12,6 +12,30 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## backend (2026-07-05) — PyInstaller backend binary（Step 10C）
+
+Python 未導入の環境でも動く `llmap-backend` binary の再現可能なビルド手順を整備
+（将来の Tauri 桌面 shell が子プロセスとして起動する）。
+
+- **backend/run_backend.py**: binary 用エントリポイント。既定 127.0.0.1:8000、
+  `--host/--port/--data-dir`（環境変数 LLMAP_HOST/LLMAP_PORT/LLMAP_DATA_DIR
+  より優先）、非 localhost 待受時は警告。開発の uvicorn 起動は不変。
+- **backend/llmap-backend.spec**: one-file 採用（Tauri sidecar は単一パスの
+  実行ファイルが最重要）。hidden imports（uvicorn 全 submodule /
+  python-multipart / Pillow JPEG / pydantic_core）を明示。AI SDK
+  （anthropic/google-genai）は遅延 import のため**除外**（binary では /ai
+  無効・体積節約）。tkinter/pytest/numpy 除外。UPX 不使用（杀毒误报対策）。
+  backend/data・テスト・仮想環境は同梱しない。
+- **scripts/build-backend-binary.sh / .ps1**: 依存導入込みの再現ビルド。
+  生成物（backend/build・dist）は .gitignore。
+- **docs/backend-binary-build.md 新設**: 三平台の構築手順（クロスビルド不可の
+  明記）、spec 設計判断、実測値、杀毒误报/Gatekeeper（署名は 10E）等の注意点。
+- **Linux 実機で検証済み**: 体積 約30MB / 起動→health 約1.5秒 / /health /schema /
+  multipart 導入 / SQLite・写真の LLMAP_DATA_DIR 書込 / 目录穿越拒否 /
+  CSV 導出 36 列 / Console（Dashboard・Database）から通常どおり利用可。
+  pytest 17 件通過（backend API 変更なし）。
+- Windows exe / macOS binary は実機ビルド待ち（手順は文書化済み）。
+
 ## docs / scripts (2026-07-05) — Installable Offline Desktop 計画と developer launcher（Step 10A/10B）
 
 - **docs/desktop-offline-design.md 新設**: LLMap Desktop（local-first の離線

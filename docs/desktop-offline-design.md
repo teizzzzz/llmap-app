@@ -269,19 +269,24 @@ scripts/start-llmap-local.bat       # Windows 双击入口（ps1 を呼ぶだけ
 環境変数: `LLMAP_BACKEND_PORT`（既定 8000）/ `LLMAP_CONSOLE_PORT`（既定 5173）/
 `LLMAP_DATA_DIR`（既定 §5 の標準目录）/ `LLMAP_NO_BROWSER=1`（CI・headless 用）。
 
-## 13. Step 10C — PyInstaller backend binary（計画のみ・未実装）
+## 13. Step 10C — PyInstaller backend binary（**実装済み**）
 
-目標成果物:
+詳細は **docs/backend-binary-build.md** 参照。
 
 ```text
-backend/dist/llmap-backend        # macOS / Linux
-backend/dist/llmap-backend.exe    # Windows
+backend/run_backend.py           # binary 用エントリポイント
+                                 #   --host/--port/--data-dir（環境変数 LLMAP_HOST/
+                                 #   LLMAP_PORT/LLMAP_DATA_DIR より優先）
+backend/llmap-backend.spec       # PyInstaller spec（one-file・AI SDK 除外・UPX 無し）
+scripts/build-backend-binary.sh  # macOS / Linux ビルド
+scripts/build-backend-binary.ps1 # Windows ビルド
+→ backend/dist/llmap-backend(.exe)
 ```
 
-- ユーザーは Python を導入せずに backend を起動できるようになる。
-- 想定: `pyinstaller --onefile --name llmap-backend run_server.py`
-  （`run_server.py` は `uvicorn.run(app, host="127.0.0.1", port=env)` の薄い入口）。
-- 注意点: SQLModel/Pydantic の hidden imports、Pillow のネイティブ依存、
-  三平台での個別ビルド、起動速度（--onefile の解凍コスト）と
-  ウイルス対策ソフト誤検知（Windows）。
-- **本 Step では実装しない**（ユーザー確認後に 10C として着手）。
+- Linux 実機で構築・検証済み: 体積 約30MB、起動→/health 約1.5秒、
+  multipart 導入・SQLite/写真の LLMAP_DATA_DIR 書込・目录穿越拒否・
+  Console からの利用まで通常起動と同一動作。
+- 既定 127.0.0.1 のみ待受（非 localhost 指定時は警告）。
+- クロスビルド不可のため Windows/macOS binary は各実機で要構築。
+- binary では /ai エンドポイントは無効（AI SDK を除外して体積節約。
+  桌面 MVP では未使用）。

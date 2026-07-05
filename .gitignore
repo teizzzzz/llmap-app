@@ -32,3 +32,7 @@ backend/data/
 console/node_modules/
 console/dist/
 console/.env
+
+# PyInstaller backend binary artifacts
+backend/build/
+backend/dist/
