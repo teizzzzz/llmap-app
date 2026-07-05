@@ -12,6 +12,31 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## docs / scripts (2026-07-05) — Installable Offline Desktop 計画と developer launcher（Step 10A/10B）
+
+- **docs/desktop-offline-design.md 新設**: LLMap Desktop（local-first の離線
+  桌面研究ツール）の設計文書。产品定位（手机=採集 / 桌面=研究管理 /
+  云端=将来可選）、Flutter Desktop を書き直さない理由、技術路線比較
+  （**Tauri + PyInstaller backend binary を推奨**、Electron は代替）、
+  三平台の包構造、**標準ユーザーデータ目录**（macOS `~/Library/Application
+  Support/LLMap` / Windows `%APPDATA%\LLMap` / Linux `~/.local/share/LLMap`、
+  LLMAP_DATA_DIR で backend に注入・程序と用户データの分離）、起動フロー
+  （空き端口探索 → backend 子プロセス → /health 輪詢 → Console 読込 →
+  終了時回収、異常系5種）、離線能力（OSM 底図のみオンライン。瓦片キャッシュ/
+  MBTiles/無底図視図の将来方案）、opt-in 聯網三層（Backup/Sync/Publish）と
+  **发布隐私規則**（既定 verified のみ・CollectorID/CaptureID 隠蔽・GPS 丸め・
+  source photo 不上传）、MVP 範囲、Step 10C–10H 路線。
+- **scripts/ 新設（developer launcher・最終製品ではない）**:
+  `start-llmap-local.sh`（macOS/Linux: 依存チェック→標準データ目录→端口
+  チェック→backend 起動→/health 待機→console 起動→ブラウザ→Ctrl+C で
+  プロセス樹ごと回収）、`.command`（macOS 双击）、`.ps1`（Windows 同等機能）、
+  `.bat`（ps1 の双击入口）。LLMAP_BACKEND_PORT/LLMAP_CONSOLE_PORT/
+  LLMAP_DATA_DIR/LLMAP_NO_BROWSER で調整可。
+- 検証: Linux 実機で launcher の起動→health→console 応答→SIGINT で両プロセス
+  回収→端口占用の即時エラーを確認（vite 孫プロセス残留を kill_tree で修正）。
+  ps1/bat は本環境に PowerShell が無いため静的検査のみ（Windows 実機確認待ち）。
+- backend / console のコードは不変。
+
 ## console v0.8.1 / backend v0.3.1 (2026-07-04) — Stabilization Pass（全流程験収）
 
 Mobile 导出 → Console 導入 → Database → Map → Review → Dashboard → Export の

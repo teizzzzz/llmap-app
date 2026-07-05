@@ -47,6 +47,22 @@ flutter run -d windows
 後端なしで起動する（v1.1〜）。AI判定を使う場合は、アプリ右上の歯車 →「AI自動識別」をオンにし、
 プロバイダ（Claude / Gemini）と **APIキー**を入力（端末内に保存）。
 
+## PC でまとめて起動する（developer launcher）
+
+backend＋Research Console を一発起動するスクリプトを用意している
+（**最終製品ではない**。将来のインストール版は
+[docs/desktop-offline-design.md](docs/desktop-offline-design.md) 参照）:
+
+```bash
+./scripts/start-llmap-local.sh        # macOS / Linux（.command は macOS 双击用）
+scripts\start-llmap-local.bat         # Windows（ps1 の双击入口）
+```
+
+データは三平台標準のユーザーデータ目录
+（macOS: `~/Library/Application Support/LLMap` / Windows: `%APPDATA%\LLMap` /
+Linux: `~/.local/share/LLMap`）に保存され、`LLMAP_DATA_DIR` で変更できる。
+Ctrl+C で backend / console を両方停止する。
+
 ## backend（採集は不要 / Research Console 用ローカルDBサービス）
 
 採集はスマホ単体で完結する（後端不要）。backend v0.2.0 からは、将来の
