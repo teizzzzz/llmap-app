@@ -1,7 +1,9 @@
 # LLMap Installable Offline Desktop Design
 
 > Step 10A 設計文書。10B（launcher）/10C（backend binary）/10D（Tauri shell
-> prototype）は実装済み（§12–14）。10E 以降は計画のみ。
+> prototype）は実装済み（§12–14）。10E（macOS installable app）は macOS 実機で
+> 構築・検証済み（docs/macos-desktop-build.md）。10F は Windows 実機待ち、
+> 10G 以降は計画のみ。
 
 **LLMap Desktop は local-first の離線桌面研究ツールである。**
 macOS / Windows / Linux にインストールでき、既定で遠隔サーバ・アカウント・
@@ -90,15 +92,21 @@ Tauri（推奨）または Electron で既存 React Console を包み、
 程序ファイル（読み取り専用・升級で置換される）と用户データ（永続・升級で
 保持される）を**必ず分離**する。
 
-macOS app bundle:
+macOS app bundle（10E 実装済みの実レイアウト）:
 
 ```text
 LLMap.app/Contents/
-  MacOS/llmap-desktop          # Tauri shell
+  MacOS/llmap-desktop          # Tauri shell（Console assets は実行ファイルに埋込）
   Resources/
-    console/                   # React Console assets (console/dist)
-    llmap-backend              # PyInstaller binary
+    icon.icns
+    llmap-backend/             # PyInstaller one-dir（実行体 + _internal/）
+      llmap-backend
+      _internal/
 ```
+
+Console assets（console/dist）は Tauri v2 が shell 実行ファイルに埋め込むため
+Resources には現れない。backend が one-dir なのは one-file だと起動毎に
+macOS のコード署名検証で 15〜25 秒かかるため（macos-desktop-build.md §2）。
 
 Windows:
 
@@ -239,7 +247,8 @@ Dashboard / Export / 完全離線動作。
 Step 10B  Developer launcher scripts（実装済み。§12）
 Step 10C  PyInstaller backend binary（実装済み。§13）
 Step 10D  Tauri shell prototype（実装済み。§14 / docs/tauri-desktop-prototype.md）
-Step 10E  macOS installable app（.app / .dmg、署名・公証）— 未着手
+Step 10E  macOS installable app（.app / .dmg）— **実装・実機検証済み**
+          （arm64。署名・公証は未対応 = 正式配布時。docs/macos-desktop-build.md）
 Step 10F  Windows installer prototype（NSIS）— 設定・脚本・文書は完了、
           exe/インストーラ生成は Windows 実機待ち（docs/windows-desktop-build.md）
 Step 10G  Linux AppImage prototype — 未着手
@@ -309,7 +318,8 @@ desktop/
 
 - Console 側は API 地址の**運行時注入**に対応
   （`window.__LLMAP_API_BASE_URL__` → `VITE_API_BASE_URL` → localhost:8000）。
-- sidecar は prototype では `Command` 直接起動（LLMAP_BACKEND_BIN → resource dir
-  → backend/dist の順で探索）。正式は externalBin（10E）。
+- sidecar は `Command` 直接起動（LLMAP_BACKEND_BIN → exe 隣 → resource dir
+  → backend/dist の順で探索）。同梱方式は平台別: Windows/Linux は
+  externalBin（one-file）、macOS は bundle.resources（one-dir。10E）。
 - 異常系（binary missing / 端口全滅 / data dir 不可写 / 15秒 timeout）は
   窗口内に原因つきエラーを表示（白屏なし）。

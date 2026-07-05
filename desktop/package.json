@@ -9,6 +9,7 @@
     "build:backend": "cd .. && ./scripts/build-backend-binary.sh",
     "prepare:sidecar": "cd .. && ./scripts/prepare-tauri-sidecar.sh",
     "prepare:sidecar:win": "powershell -ExecutionPolicy Bypass -File ..\\scripts\\prepare-tauri-sidecar.ps1",
+    "make:dmg": "cd .. && ./scripts/make-macos-dmg.sh",
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri"

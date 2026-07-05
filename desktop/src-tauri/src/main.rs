@@ -76,14 +76,27 @@ fn resolve_data_dir(app: &tauri::AppHandle) -> PathBuf {
 /// 優先順: ① 環境変数 LLMAP_BACKEND_BIN（開発時の明示指定）
 ///        ② App 実行ファイルと同じ目录（Tauri externalBin の実体配置先。
 ///           Windows/Linux は exe 隣、素の名前と target-triple 付きの両方を試す）
-///        ③ Tauri resource dir
-///        ④ リポジトリ内 backend/dist/llmap-backend（prototype 開発時 fallback）
+///        ③ Tauri resource dir（macOS one-dir は
+///           Resources/llmap-backend/llmap-backend に置かれる）
+///        ④ リポジトリ内 backend/dist（prototype 開発時 fallback）
+/// 各目录では 3 つの形を試す:
+///   llmap-backend（素の名前）/ llmap-backend-<triple>（externalBin 規則）/
+///   llmap-backend/llmap-backend（one-dir 配布。macOS — Step 10E 実測で
+///   one-file は起動毎に 15〜25 秒かかるため one-dir を使う）
 fn find_backend_binary(app: &tauri::AppHandle) -> Option<PathBuf> {
     let ext = if cfg!(windows) { ".exe" } else { "" };
     let plain = format!("llmap-backend{ext}");
     // build.rs が cargo:rustc-env で埋め込む（Tauri externalBin の命名規則:
     // 例 llmap-backend-x86_64-pc-windows-msvc.exe）
     let with_triple = format!("llmap-backend-{}{ext}", env!("LLMAP_TARGET_TRIPLE"));
+    let candidates = [
+        PathBuf::from(&plain),
+        PathBuf::from(&with_triple),
+        PathBuf::from("llmap-backend").join(&plain),
+    ];
+    let find_in = |dir: &std::path::Path| -> Option<PathBuf> {
+        candidates.iter().map(|rel| dir.join(rel)).find(|p| p.is_file())
+    };
 
     if let Ok(p) = std::env::var("LLMAP_BACKEND_BIN") {
         let p = PathBuf::from(p);
@@ -93,26 +106,19 @@ fn find_backend_binary(app: &tauri::AppHandle) -> Option<PathBuf> {
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            for name in [&plain, &with_triple] {
-                let p = dir.join(name);
-                if p.is_file() {
-                    return Some(p);
-                }
-            }
-        }
-    }
-    if let Ok(res) = app.path().resource_dir() {
-        for name in [&plain, &with_triple] {
-            let p = res.join(name);
-            if p.is_file() {
+            if let Some(p) = find_in(dir) {
                 return Some(p);
             }
         }
     }
+    if let Ok(res) = app.path().resource_dir() {
+        if let Some(p) = find_in(&res) {
+            return Some(p);
+        }
+    }
     // prototype: desktop/src-tauri から見た相対と、カレントからの相対を試す
     for base in ["../../backend/dist", "../backend/dist", "backend/dist"] {
-        let p = PathBuf::from(base).join(&plain);
-        if p.is_file() {
+        if let Some(p) = find_in(std::path::Path::new(base)) {
             return Some(p.canonicalize().unwrap_or(p));
         }
     }
@@ -181,7 +187,13 @@ window.__LLMAP_API_BASE_URL__ = 'http://127.0.0.1:{port}';
         if (wasDown) location.reload();
         else el.remove();
       }}).catch(function () {{ wasDown = true; }});
-      if (tries > 75) {{ clearInterval(timer); fail('Backend did not become ready within 15s.'); }}
+      // 初回起動は OS のコード署名検証（macOS）や杀毒扫描（Windows）で
+      // 数十秒かかることがあるため 60 秒まで待つ。10 秒過ぎたら文言で案内する。
+      if (tries === 50) {{
+        document.getElementById('__llmap_boot_msg').textContent =
+          'Still starting… the first launch can take up to a minute.';
+      }}
+      if (tries > 300) {{ clearInterval(timer); fail('Backend did not become ready within 60s.'); }}
     }}, 200);
   }});
 }})();
@@ -259,14 +271,14 @@ fn main() {
 
             // 4) 参考ログ: health ready をコンソールにも出す（UI はオーバーレイが担当）
             std::thread::spawn(move || {
-                for _ in 0..75 {
+                for _ in 0..300 {
                     if health_ok(port) {
                         println!("[llmap-desktop] backend ready on 127.0.0.1:{port}");
                         return;
                     }
                     std::thread::sleep(Duration::from_millis(200));
                 }
-                eprintln!("[llmap-desktop] backend did not become ready within 15s");
+                eprintln!("[llmap-desktop] backend did not become ready within 60s");
             });
 
             // 開発/ヘッドレステスト用: 指定 ms 後に正常終了する

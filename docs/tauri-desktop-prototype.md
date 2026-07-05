@@ -73,10 +73,11 @@ externalBin の実体は `scripts/prepare-tauri-sidecar.sh / .ps1` が
 `--host/--port` 引数を渡す。端口は **8000 から空きを探索**して決める。
 ログは `<data dir>/logs/backend.log` へ。
 
-> **正式 sidecar 方案（10E で移行）**: Tauri の `externalBin`
-> （`llmap-backend-$TARGET_TRIPLE` 命名で `src-tauri/binaries/` に配置）を使い、
-> bundle に同梱して resource dir から起動する。permissions は
-> `shell:allow-execute` 相当を capabilities で絞る。
+> **正式 sidecar 方案（10E/10F で実装済み）**: 同梱方式は平台別。
+> Windows/Linux は `externalBin`（`llmap-backend-$TARGET_TRIPLE` 命名で
+> `src-tauri/binaries/` に配置。one-file）、macOS は `bundle.resources`
+> （one-dir フォルダ同梱。one-file だと起動毎の署名検証で 15〜25 秒かかる
+> ため — docs/macos-desktop-build.md §2/§3）。
 
 ### 用户数据目录
 
@@ -91,7 +92,9 @@ Windows: `%APPDATA%\LLMap` / Linux: `~/.local/share/LLMap`）。
 
 窗口は即時に開き、注入スクリプトが「Starting LLMap local backend…」の
 オーバーレイを表示。/health が通った瞬間に一度だけ reload して Console を
-正常状態で表示する。15 秒で ready にならない、または起動前エラー
+正常状態で表示する。60 秒で ready にならない（10 秒経過で案内文言に切替。
+初回起動は OS の検証で数十秒かかり得るため — 10E で 15 秒から延長）、
+または起動前エラー
 （binary missing / data dir not writable / spawn 失敗）の場合は、原因つきの
 失敗メッセージを表示する（白屏にしない）。
 
@@ -117,8 +120,8 @@ Windows: `%APPDATA%\LLMap` / Linux: `~/.local/share/LLMap`）。
 
 ## 三平台の後続計画
 
-| 平台 | 次の Step | 主な作業 |
+| 平台 | Step | 状態 |
 |---|---|---|
-| macOS | 10E | externalBin 化・.app/.dmg・署名/公証 |
-| Windows | 10F | 実機での backend.exe ビルド・MSI/NSIS・杀毒対策 |
-| Linux | 10G | AppImage・glibc 互換ビルド |
+| macOS | 10E | **実装・実機検証済み**（.app/.dmg。docs/macos-desktop-build.md。署名/公証は正式配布時） |
+| Windows | 10F | 設定・脚本・文書は完了。実機での backend.exe ビルド・NSIS 検証待ち |
+| Linux | 10G | 未着手（AppImage・glibc 互換ビルド） |

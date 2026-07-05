@@ -5,9 +5,16 @@ FastAPI backend を **PyInstaller** で単体実行ファイル化する手順�
 起動できる（将来の Tauri 桌面 shell はこの binary を子プロセスとして起動する）。
 
 ```text
-backend/dist/llmap-backend        # macOS / Linux
-backend/dist/llmap-backend.exe    # Windows
+backend/dist/llmap-backend        # Linux（one-file）
+backend/dist/llmap-backend/       # macOS（one-dir: llmap-backend + _internal/）
+backend/dist/llmap-backend.exe    # Windows（one-file）
 ```
+
+macOS だけ one-dir なのは、one-file だと起動のたびに展開される dylib 群へ
+macOS のコード署名検証が走り /health ready まで**毎回 15〜25 秒**かかるため
+（Step 10E 実測。one-dir は 2 回目以降 ~0.6 秒。詳細は
+docs/macos-desktop-build.md §2）。`scripts/build-backend-binary.sh` が
+`uname` で自動判別する（spec の `LLMAP_PYI_ONEDIR=1` スイッチ）。
 
 ## 重要な前提: クロスビルド不可
 
@@ -75,7 +82,9 @@ curl http://127.0.0.1:8010/schema
   tkinter / pytest / numpy 等の不要物、`backend/data/`・テスト・仮想環境。
 - **UPX 不使用**: Windows の杀毒误报を悪化させるため。
 
-## 計測（Linux x86_64・Python 3.11 での実測）
+## 計測
+
+Linux x86_64・Python 3.11（one-file）:
 
 | 項目 | 実測値 |
 |---|---|
@@ -83,12 +92,20 @@ curl http://127.0.0.1:8010/schema
 | 起動 → /health ready | 約 1.5 秒（one-file の自己展開込み） |
 | multipart 導入 / SQLite / 写真書込 / CSV導出 | すべて通常起動と同一動作を確認 |
 
+macOS arm64 (M4 Pro)・Python 3.11（Step 10E 実測）:
+
+| 項目 | 実測値 |
+|---|---|
+| one-file 起動 → ready | **毎回 15〜25 秒**（起動毎の署名検証。採用せず） |
+| one-dir 体積 / 起動 → ready | 約 46 MB / 初回 約25秒・**以後 約0.6秒**（採用） |
+
 ## 既知の注意点
 
 - **Windows 杀毒误报**: PyInstaller onefile は誤検知されやすい。UPX 不使用で
   低減しているが、配布時はコード署名（10F）と Defender への申告が最終対策。
-- **macOS Gatekeeper**: 未署名 binary は初回起動でブロックされる。署名・公証は
-  **Step 10E で扱う**（本 Step の範囲外）。
+- **macOS Gatekeeper**: 本機ビルドはそのまま起動できるが、**配布**（quarantine
+  付き）では初回起動がブロックされる。回避手順と初回検証の遅延は
+  docs/macos-desktop-build.md §6 参照。Developer ID 署名・公証は正式配布時に対応。
 - **一時展開ディレクトリ**: one-file は起動時に一時領域へ自己展開する。
   異常終了で一時ファイルが残ることがある（OS が定期清掃する）。
 - **/ai エンドポイント**: 上記のとおり binary では無効（開発用 uvicorn 起動では

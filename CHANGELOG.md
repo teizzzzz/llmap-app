@@ -12,6 +12,39 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## desktop (2026-07-06) — macOS installable app prototype（Step 10E・実機検証済み）
+
+macOS（Apple Silicon / macOS 26.5）実機で `LLMap.app` と
+`LLMap_0.1.0_aarch64.dmg` を構築し、起動〜E2E〜終了まで検証した
+（docs/macos-desktop-build.md。署名・公証は正式配布時の課題として残す）。
+
+- **backend は one-dir に切替（macOS のみ・実測駆動）**: one-file は起動の
+  たびに展開した dylib 群へ macOS の署名検証が走り /health ready まで
+  **毎回 15〜25 秒**（M4 Pro）。one-dir は初回 25 秒（検証は cdhash 単位で
+  キャッシュ）・**以後 0.6 秒**。spec に `LLMAP_PYI_ONEDIR=1` スイッチを追加し
+  `build-backend-binary.sh` が Darwin で自動有効化（Linux/Windows は
+  one-file のまま不変）。
+- **sidecar 同梱は bundle.resources 方式**: one-dir は単一ファイルでないため
+  externalBin 不可。`tauri.macos.conf.json`（macOS でのみ自動マージ）で
+  `binaries/llmap-backend-onedir/` → `Resources/llmap-backend/` に同梱
+  （実行権限の保持を実機確認）。`prepare-tauri-sidecar.sh` に Darwin 分岐追加。
+  main.rs の探索に one-dir 形（`llmap-backend/llmap-backend`）を追加
+  （exe 隣 / resource dir / repo dist の各所で 3 形を試す）。
+- **起動オーバーレイの待機を 15s → 60s に延長**: 初回起動は OS 検証で
+  数十秒かかり得るため（10 秒経過で「first launch can take up to a
+  minute」に文言切替）。
+- **icon.icns 新設**: 既存 128px pin を 1024px で再描画（tangent 計算で
+  尾翼を滑らかに）→ iconutil で icns 生成。icon-1024.png も保存。
+- **scripts/make-macos-dmg.sh 新設**: Tauri 標準 dmg バンドラは Finder への
+  AppleScript 権限が必要でヘッドレス不可（実機で確認）。hdiutil のみで
+  App + /Applications リンク入り UDZO dmg を生成する。
+- **実機検証（チェックリストは docs §10）**: pytest 17件 / E2E 9項目
+  （import zip → datasets → records → photo → map → review PATCH →
+  export CSV → stats）を実 App の backend に対して PASS /
+  `~/Library/Application Support/LLMap` 生成と再起動後のデータ保持 /
+  正常終了で backend 残留 0 / 8000 占用時に 8001 へ自動移行 /
+  sidecar 欠落時はエラー表示（白屏・クラッシュなし）/ dmg マウント内容確認。
+
 ## desktop (2026-07-05) — Windows installable app prototype 準備（Step 10F）
 
 Windows 向けの sidecar/バンドル設定・脚本・文書を整備。Linux で検証可能な部分
