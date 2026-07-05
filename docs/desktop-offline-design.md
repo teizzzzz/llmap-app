@@ -1,6 +1,7 @@
 # LLMap Installable Offline Desktop Design
 
-> Step 10A 設計文書（実装計画を含む。10C 以降は本文書の計画のみで未実装）
+> Step 10A 設計文書。10B（launcher）/10C（backend binary）/10D（Tauri shell
+> prototype）は実装済み（§12–14）。10E 以降は計画のみ。
 
 **LLMap Desktop は local-first の離線桌面研究ツールである。**
 macOS / Windows / Linux にインストールでき、既定で遠隔サーバ・アカウント・
@@ -235,9 +236,9 @@ Dashboard / Export / 完全離線動作。
 ## 11. 開発路線
 
 ```text
-Step 10B  Developer launcher scripts（本 PR で実装済み。§12）
-Step 10C  PyInstaller backend binary（計画のみ。§13）
-Step 10D  Tauri shell prototype（ウィンドウ＋backend 子プロセス＋health 待機）
+Step 10B  Developer launcher scripts（実装済み。§12）
+Step 10C  PyInstaller backend binary（実装済み。§13）
+Step 10D  Tauri shell prototype（実装済み。§14 / docs/tauri-desktop-prototype.md）
 Step 10E  macOS installable app（.app / .dmg、署名・公証）
 Step 10F  Windows installer prototype（MSI or NSIS）
 Step 10G  Linux AppImage prototype
@@ -290,3 +291,24 @@ scripts/build-backend-binary.ps1 # Windows ビルド
 - クロスビルド不可のため Windows/macOS binary は各実機で要構築。
 - binary では /ai エンドポイントは無効（AI SDK を除外して体積節約。
   桌面 MVP では未使用）。
+
+## 14. Step 10D — Tauri shell prototype（**実装済み**）
+
+詳細は **docs/tauri-desktop-prototype.md** 参照。
+
+```text
+desktop/
+  package.json               # @tauri-apps/cli、build:console / dev / build
+  src-tauri/
+    tauri.conf.json          # frontendDist = ../../console/dist、bundle 無効
+    Cargo.toml / build.rs
+    src/main.rs              # 全ロジック: 数据目录→空き端口→sidecar起動→
+                             #   /health オーバーレイ→注入→終了時回収
+```
+
+- Console 側は API 地址の**運行時注入**に対応
+  （`window.__LLMAP_API_BASE_URL__` → `VITE_API_BASE_URL` → localhost:8000）。
+- sidecar は prototype では `Command` 直接起動（LLMAP_BACKEND_BIN → resource dir
+  → backend/dist の順で探索）。正式は externalBin（10E）。
+- 異常系（binary missing / 端口全滅 / data dir 不可写 / 15秒 timeout）は
+  窗口内に原因つきエラーを表示（白屏なし）。

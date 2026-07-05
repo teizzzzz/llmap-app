@@ -12,6 +12,31 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## desktop v0.1.0 / console v0.8.2 (2026-07-05) — Tauri shell prototype（Step 10D）
+
+`desktop/` に最小の Tauri 2 桌面壳を新設（職責は包装のみ。console/・backend/
+の職責は不変）。Linux 実機（Xvfb）で起動〜終了まで検証済み。
+
+- **desktop/src-tauri/src/main.rs**: 用户数据目录（`app_data_dir()`、取得不能時
+  `.llmap-desktop-data/` fallback・TODO 明記）→ 空き端口探索（8000〜）→
+  llmap-backend sidecar 起動（LLMAP_BACKEND_BIN → resource dir →
+  backend/dist の順で探索。LLMAP_DATA_DIR/HOST/PORT 注入・logs/backend.log）→
+  注入スクリプトで起動オーバーレイ（Starting…/原因つき失敗表示・白屏なし）と
+  `window.__LLMAP_API_BASE_URL__` 設定 → 終了時回収。
+- **プロセスグループ回収（実測で発見・修正）**: PyInstaller onefile は
+  親子2プロセスのため `Child::kill()` では server が残留する。unix は
+  `process_group(0)`＋グループ SIGTERM/SIGKILL、Windows は `taskkill /T /F`。
+  CloseRequested 時点でも先に回収。`LLMAP_AUTOEXIT_MS` 開発フックで
+  正常終了経路をヘッドレス検証可能に。
+- **console v0.8.2**: API 地址の運行時注入対応
+  （`window.__LLMAP_API_BASE_URL__` → `VITE_API_BASE_URL` → localhost:8000）。
+  Web dev / 既存デプロイの動作は不変（Playwright で注入あり/なし両方を検証）。
+- **docs/tauri-desktop-prototype.md 新設**: prerequisites・実行手順・実装要点・
+  実測で判明した注意点・制限・三平台の後続計画。desktop-offline-design §14 更新。
+- 検証（Linux/Xvfb）: cargo check/build 通過、shell 起動 → sidecar 起動 →
+  標準データ目录に SQLite 生成 → /health ready → 正常終了で backend
+  プロセス 0 残留・端口解放。tauri.conf は bundle 無効（インストーラは 10E–10G）。
+
 ## backend (2026-07-05) — PyInstaller backend binary（Step 10C）
 
 Python 未導入の環境でも動く `llmap-backend` binary の再現可能なビルド手順を整備

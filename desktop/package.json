@@ -1,0 +1,17 @@
+{
+  "name": "llmap-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LLMap Desktop — Tauri shell prototype (local backend + Research Console)",
+  "type": "module",
+  "scripts": {
+    "build:console": "cd ../console && npm run build",
+    "build:backend": "cd .. && ./scripts/build-backend-binary.sh",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0"
+  }
+}

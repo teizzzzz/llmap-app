@@ -13,8 +13,19 @@ import type {
   StatsSummary,
 } from './types';
 
+// 桌面版（Tauri shell）は起動時に backend の動的端口を注入する。
+// 優先順: ① 運行時注入 ② 編譯期 env ③ 既定 localhost:8000。
+// Web dev（npm run dev / VITE_API_BASE_URL）の従来動作は不変。
+declare global {
+  interface Window {
+    __LLMAP_API_BASE_URL__?: string;
+  }
+}
+
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+  (typeof window !== 'undefined' && window.__LLMAP_API_BASE_URL__) ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8000';
 
 /** backend 未起動などの通信失敗を UI で見分けるためのエラー型。 */
 export class ApiError extends Error {
