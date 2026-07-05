@@ -12,6 +12,33 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## desktop (2026-07-05) — Windows installable app prototype 準備（Step 10F）
+
+Windows 向けの sidecar/バンドル設定・脚本・文書を整備。Linux で検証可能な部分
+（sidecar 探索・データ目录・回収）は実測済み。**exe/NSIS の生成と実機検証は
+Windows 待ち**（チェックリストを docs/windows-desktop-build.md §10 に用意）。
+
+- **externalBin 対応（Tauri v2 規則）**: `tauri.windows.conf.json`（Windows での
+  み自動マージ）に `bundle.externalBin: ["binaries/llmap-backend"]`・NSIS
+  （currentUser 導入）・`icon.ico`（多サイズ生成済み）・WebView2
+  downloadBootstrapper を設定。実体は
+  `scripts/prepare-tauri-sidecar.ps1 / .sh` が
+  `binaries/llmap-backend-<target triple>[.exe]` に配置（triple は rustc から
+  自動取得）。
+- **sidecar 探索の拡張（main.rs）**: LLMAP_BACKEND_BIN → **App exe と同じ目录**
+  （素の名前 / triple 付き名。インストール後の配置先）→ resource dir →
+  repo backend/dist。triple は build.rs が `LLMAP_TARGET_TRIPLE` として埋込。
+- **データ目录を §5 の標準に統一**: identifier 由来の app_data_dir から
+  `<OS data dir>/LLMap`（Windows: `%APPDATA%\LLMap`）へ変更。
+  **developer launcher と同一パス**になり、launcher のデータをそのまま開ける
+  （10D の TODO 解消）。
+- **docs/windows-desktop-build.md 新設**: prerequisites / backend exe ビルド /
+  sidecar 配置 / NSIS ビルド / WebView2 / 未署名実行・SmartScreen・Defender
+  誤検知対応 / `%APPDATA%\LLMap` / Troubleshooting / 実機チェックリスト。
+- **Linux 実測（安装版レイアウトの模擬）**: exe 隣の triple 名 sidecar が
+  repo fallback より優先で発見され、データ目录 `~/.local/share/LLMap` に
+  SQLite 生成、正常終了で backend プロセス残留 0。cargo build 通過。
+
 ## desktop v0.1.0 / console v0.8.2 (2026-07-05) — Tauri shell prototype（Step 10D）
 
 `desktop/` に最小の Tauri 2 桌面壳を新設（職責は包装のみ。console/・backend/

@@ -52,15 +52,22 @@ Console は接続先を次の優先順で決める（`console/src/api/client.ts`
 
 `npm run dev` や既存のデプロイ済み console の動作は不変。
 
-### backend sidecar の起動（prototype 方式）
+### backend sidecar の起動
 
-prototype は `std::process::Command` で直接起動する。binary の探索順:
+`std::process::Command` で直接起動する。binary の探索順（10F で拡張）:
 
 ```text
-1. 環境変数 LLMAP_BACKEND_BIN（明示指定）
-2. Tauri resource dir（正式 bundle 時の置き場）
-3. リポジトリ内 backend/dist/llmap-backend（開発時）
+1. 環境変数 LLMAP_BACKEND_BIN（開発時の明示指定）
+2. App 実行ファイルと同じ目录（externalBin の実体配置先。
+   素の名前と llmap-backend-<target triple> 名の両方を試す）
+3. Tauri resource dir
+4. リポジトリ内 backend/dist/llmap-backend（開発時 fallback）
 ```
+
+externalBin の実体は `scripts/prepare-tauri-sidecar.sh / .ps1` が
+`desktop/src-tauri/binaries/llmap-backend-<triple>[.exe]` に配置する
+（Windows のバンドル設定は `tauri.windows.conf.json`。
+詳細は docs/windows-desktop-build.md）。
 
 環境変数 `LLMAP_DATA_DIR` / `LLMAP_HOST=127.0.0.1` / `LLMAP_PORT` と
 `--host/--port` 引数を渡す。端口は **8000 から空きを探索**して決める。
@@ -73,11 +80,12 @@ prototype は `std::process::Command` で直接起動する。binary の探索�
 
 ### 用户数据目录
 
-`app_data_dir()`（macOS: `~/Library/Application Support/app.llmap.desktop` /
-Windows: `%APPDATA%\app.llmap.desktop` / Linux: `~/.local/share/app.llmap.desktop`）。
+OS の data dir + `LLMap`（macOS: `~/Library/Application Support/LLMap` /
+Windows: `%APPDATA%\LLMap` / Linux: `~/.local/share/LLMap`）。
+**developer launcher（10B）と同一パス**のため、launcher で作ったデータを
+そのまま桌面 App でも開ける（10F で identifier 由来の目录名から変更済み）。
 取得不能時は作業目録の `.llmap-desktop-data/` に fallback
-（TODO: 正式版では fallback を廃止してエラー画面にする。また identifier 由来の
-目录名を `LLMap` に揃えるかは 10E で決める）。
+（TODO: 正式版では fallback を廃止してエラー画面にする）。
 
 ### 起動オーバーレイ / エラー画面
 

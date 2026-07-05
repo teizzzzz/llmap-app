@@ -239,9 +239,10 @@ Dashboard / Export / 完全離線動作。
 Step 10B  Developer launcher scripts（実装済み。§12）
 Step 10C  PyInstaller backend binary（実装済み。§13）
 Step 10D  Tauri shell prototype（実装済み。§14 / docs/tauri-desktop-prototype.md）
-Step 10E  macOS installable app（.app / .dmg、署名・公証）
-Step 10F  Windows installer prototype（MSI or NSIS）
-Step 10G  Linux AppImage prototype
+Step 10E  macOS installable app（.app / .dmg、署名・公証）— 未着手
+Step 10F  Windows installer prototype（NSIS）— 設定・脚本・文書は完了、
+          exe/インストーラ生成は Windows 実機待ち（docs/windows-desktop-build.md）
+Step 10G  Linux AppImage prototype — 未着手
 Step 10H  Optional upload / sync design（§8-9 の詳細設計）
 ```
 

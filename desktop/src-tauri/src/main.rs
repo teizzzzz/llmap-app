@@ -57,38 +57,61 @@ fn find_free_port() -> u16 {
     8000
 }
 
-/// 用户数据目录。OS 標準の app data dir（macOS: Application Support/LLMap /
-/// Windows: AppData/Roaming/LLMap 相当 / Linux: ~/.local/share/LLMap）。
-/// 取得できない場合は作業目録の .llmap-desktop-data/ に fallback する
+/// 用户数据目录（desktop-offline-design.md §5 の標準目录）:
+///   macOS   ~/Library/Application Support/LLMap
+///   Windows %APPDATA%\LLMap
+///   Linux   ~/.local/share/LLMap
+/// identifier ベースの app_data_dir ではなく OS の data dir + "LLMap" を使う。
+/// developer launcher（10B）と同一パスなので、launcher で作ったデータを
+/// そのまま桌面 App でも開ける。取得不能時は .llmap-desktop-data/ に fallback
 /// （TODO: 正式版では fallback を廃止しエラー画面にする）。
 fn resolve_data_dir(app: &tauri::AppHandle) -> PathBuf {
-    match app.path().app_data_dir() {
-        Ok(dir) => dir,
+    match app.path().data_dir() {
+        Ok(dir) => dir.join("LLMap"),
         Err(_) => PathBuf::from(".llmap-desktop-data"),
     }
 }
 
 /// backend sidecar binary を探す。
 /// 優先順: ① 環境変数 LLMAP_BACKEND_BIN（開発時の明示指定）
-///        ② Tauri resource dir（正式 bundle 時の sidecar 置き場）
-///        ③ リポジトリ内 backend/dist/llmap-backend（prototype 開発時）
+///        ② App 実行ファイルと同じ目录（Tauri externalBin の実体配置先。
+///           Windows/Linux は exe 隣、素の名前と target-triple 付きの両方を試す）
+///        ③ Tauri resource dir
+///        ④ リポジトリ内 backend/dist/llmap-backend（prototype 開発時 fallback）
 fn find_backend_binary(app: &tauri::AppHandle) -> Option<PathBuf> {
-    let exe_name = if cfg!(windows) { "llmap-backend.exe" } else { "llmap-backend" };
+    let ext = if cfg!(windows) { ".exe" } else { "" };
+    let plain = format!("llmap-backend{ext}");
+    // build.rs が cargo:rustc-env で埋め込む（Tauri externalBin の命名規則:
+    // 例 llmap-backend-x86_64-pc-windows-msvc.exe）
+    let with_triple = format!("llmap-backend-{}{ext}", env!("LLMAP_TARGET_TRIPLE"));
+
     if let Ok(p) = std::env::var("LLMAP_BACKEND_BIN") {
         let p = PathBuf::from(p);
         if p.is_file() {
             return Some(p);
         }
     }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            for name in [&plain, &with_triple] {
+                let p = dir.join(name);
+                if p.is_file() {
+                    return Some(p);
+                }
+            }
+        }
+    }
     if let Ok(res) = app.path().resource_dir() {
-        let p = res.join(exe_name);
-        if p.is_file() {
-            return Some(p);
+        for name in [&plain, &with_triple] {
+            let p = res.join(name);
+            if p.is_file() {
+                return Some(p);
+            }
         }
     }
     // prototype: desktop/src-tauri から見た相対と、カレントからの相対を試す
     for base in ["../../backend/dist", "../backend/dist", "backend/dist"] {
-        let p = PathBuf::from(base).join(exe_name);
+        let p = PathBuf::from(base).join(&plain);
         if p.is_file() {
             return Some(p.canonicalize().unwrap_or(p));
         }
