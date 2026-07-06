@@ -188,5 +188,6 @@
   "exportConfirmBody": "選択された記録と必要な写真のみを含むデータセットパッケージを作成します。",
   "noRecordsToExport": "書き出す記録がありません。",
   "exportAction": "書き出す",
-  "exportSelected": "選択中を書き出す"
+  "exportSelected": "選択中を書き出す",
+  "exportPickAlbum": "アルバムから選ぶ…"
 }

@@ -13,10 +13,13 @@ photos / source_photos / metadata / schema / manifest / README）は不変で、
 **中身の記録と写真だけ**が範囲に従う。
 
 ```text
-Home メニュー導出      → 全部 / 未分類 / 分類済み
-Gallery 通常モード導出  → 現在の表示 / 現在のアルバム / 全部（件数つき）
+Home メニュー導出      → 全部 / 未分類 / 分類済み / アルバムから選ぶ…
+Gallery 通常モード導出  → 現在の表示 / 現在のアルバム / 全部 / アルバムから選ぶ…（件数つき）
 Gallery 選択モード導出  → 選択中の記録（0 件は無効）
 ```
+
+「アルバムから選ぶ…」（`ExportScope.album`）は二段目シートで任意の相册を
+件数つきで選ぶ。いま開いている相册に限らない。相册ゼロのときは非表示。
 
 - 範囲は record_ops.dart の `ExportScope` + `exportCandidates()`（純ロジック）。
   「現在の表示」は Gallery の `_visible` をそのまま使い、過濾を再実装しない

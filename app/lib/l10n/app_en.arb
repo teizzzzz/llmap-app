@@ -210,5 +210,6 @@
   "exportConfirmBody": "This will create a Dataset Package containing only the selected records and required photos.",
   "noRecordsToExport": "No records to export.",
   "exportAction": "Export",
-  "exportSelected": "Export selected"
+  "exportSelected": "Export selected",
+  "exportPickAlbum": "Choose an album…"
 }

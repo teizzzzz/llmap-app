@@ -602,4 +602,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportSelected => 'Export selected';
+
+  @override
+  String get exportPickAlbum => 'Choose an album…';
 }

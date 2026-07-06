@@ -590,4 +590,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get exportSelected => '選択中を書き出す';
+
+  @override
+  String get exportPickAlbum => 'アルバムから選ぶ…';
 }

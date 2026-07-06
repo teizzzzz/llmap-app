@@ -50,6 +50,17 @@ void main() {
       );
     });
 
+    test('album: 選んだ相册の記録のみ（規則は currentAlbum と同一）', () {
+      final album = Album.create('選択用')..addAll(['S-a', 'S-gone']);
+      final out = exportCandidates(
+          scope: ExportScope.album, allSigns: all, currentAlbum: album);
+      expect(out.map((s) => s.id).toList(), ['S-a']); // 削除済み ID は無視
+      expect(
+        exportCandidates(scope: ExportScope.album, allSigns: all),
+        isEmpty, // 相册未指定は空
+      );
+    });
+
     test('unfiled / filed: 归納状態と同じ規則', () {
       final albums = [Album.create('A')..addAll(['S-b'])];
       expect(

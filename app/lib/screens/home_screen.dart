@@ -253,6 +253,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Navigator.pop(context);
             _confirmAndExport(filed);
           }),
+      // 任意の相册を選んで導出（範囲 5）。相册が無ければ出さない。
+      if (albums.isNotEmpty)
+        LLSheetTile(
+            icon: Icons.collections_bookmark_outlined,
+            label: t.exportPickAlbum,
+            onTap: () {
+              Navigator.pop(context);
+              _openAlbumExportPicker(albums);
+            }),
+      LLSheetTile(
+          icon: Icons.close,
+          label: t.cancel,
+          color: AppColors.textSecondary,
+          showChevron: false,
+          onTap: () => Navigator.pop(context)),
+    ]);
+  }
+
+  /// 相册を1つ選んで導出する二段目シート（件数つき）。
+  void _openAlbumExportPicker(List<Album> albums) {
+    final t = AppLocalizations.of(context);
+    showLLBottomSheet(context, title: t.exportPickAlbum, children: [
+      for (final a in albums)
+        LLSheetTile(
+            icon: Icons.photo_album_outlined,
+            label: '${a.name} (${_signs.where((s) => a.contains(s.id)).length})',
+            onTap: () {
+              Navigator.pop(context);
+              _confirmAndExport(exportCandidates(
+                scope: ExportScope.album,
+                allSigns: _signs,
+                currentAlbum: a,
+              ));
+            }),
       LLSheetTile(
           icon: Icons.close,
           label: t.cancel,

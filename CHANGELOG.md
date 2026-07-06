@@ -12,6 +12,14 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.10.1 (2026-07-07) — 導出範囲に「アルバムから選ぶ」を追加（Step 14 完善）
+
+導出シートに **任意の相册を選んで導出** する範囲を追加（`ExportScope.album`）。
+いま開いている相册でなくても、二段目シートで相册（件数つき）を選べる。
+Home / Gallery 両方の導出シートに追加（相册ゼロのときは非表示）。
+抽出規則は currentAlbum と同一で、削除済み recordId は無視。
+l10n 1 キー × ja/zh/en。`flutter test` **65 件 PASS**（単体1・widget 1 追加）。
+
 ## v1.10.0 (2026-07-07) — 選択性導出 / Selective Export（Step 14）
 
 Dataset Package の導出前に**範囲を選べる**ようにした。従来の

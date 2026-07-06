@@ -587,4 +587,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportSelected => '导出已选';
+
+  @override
+  String get exportPickAlbum => '按相册选择…';
 }

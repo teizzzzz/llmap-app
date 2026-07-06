@@ -315,4 +315,60 @@ void main() {
         find.widgetWithIcon(IconButton, Icons.ios_share));
     expect(exportBtn.onPressed, isNull);
   });
+
+  testWidgets('相册指定導出: 範囲シート→相册ピッカー→件数つき確認（Step 14 範囲5）',
+      (tester) async {
+    final signs = [
+      _sign('F-1', '相册行き', '2026-07-01 10:00:00'),
+      _sign('F-2', 'そのまま', '2026-07-02 10:00:00'),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('ja'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: GalleryScreen(
+          signs: signs,
+          schema: _schema(),
+          onDeleteMany: (_) async {},
+          onChanged: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 相册なしの間は範囲シートにピッカーが出ない
+    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.pumpAndSettle();
+    expect(find.text('アルバムから選ぶ…'), findsNothing);
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+
+    // 相册を作って 1 件入れる
+    await tester.tap(find.text('+ 新規アルバム'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '輸出相册');
+    await tester.tap(find.text('確定'));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('相册行き'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.photo_album_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('輸出相册'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+
+    // 範囲シート → アルバムから選ぶ → 件数つき相册 → 確認に 1 件
+    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('アルバムから選ぶ…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('輸出相册 (1)').last);
+    await tester.pumpAndSettle();
+    expect(find.text('1 件の記録を書き出しますか？'), findsOneWidget);
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 件の記録を書き出しますか？'), findsNothing);
+  });
 }

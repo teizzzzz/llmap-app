@@ -1167,6 +1167,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export selected'**
   String get exportSelected;
+
+  /// No description provided for @exportPickAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an album…'**
+  String get exportPickAlbum;
 }
 
 class _AppLocalizationsDelegate

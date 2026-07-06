@@ -188,5 +188,6 @@
   "exportConfirmBody": "将创建一个只包含所选记录及其所需照片的数据集包。",
   "noRecordsToExport": "没有可导出的记录。",
   "exportAction": "导出",
-  "exportSelected": "导出已选"
+  "exportSelected": "导出已选",
+  "exportPickAlbum": "按相册选择…"
 }
