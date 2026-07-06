@@ -179,5 +179,14 @@
   "noUnfiledRecords": "没有未归纳的记录",
   "allRecordsFiled": "所有记录都已经整理到相册中",
   "noFiledRecords": "没有已归纳的记录",
-  "recordsAddedToAlbumsAppearHere": "将记录加入相册后会显示在这里"
+  "recordsAddedToAlbumsAppearHere": "将记录加入相册后会显示在这里",
+  "exportDataset": "导出数据集包",
+  "exportScopeCurrentView": "当前显示结果",
+  "exportScopeSelected": "已选择记录",
+  "exportScopeAlbum": "当前相册",
+  "exportConfirmTitle": "要导出 {count} 条记录吗？",
+  "exportConfirmBody": "将创建一个只包含所选记录及其所需照片的数据集包。",
+  "noRecordsToExport": "没有可导出的记录。",
+  "exportAction": "导出",
+  "exportSelected": "导出已选"
 }

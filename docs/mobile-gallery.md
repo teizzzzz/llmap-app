@@ -1,10 +1,33 @@
-# Mobile Gallery 管理増強（Step 12 / 12.1）
+# Mobile Gallery 管理増強（Step 12 / 12.1 / 14）
 
 手機端の采集档案（Gallery）を「相册 / 档案管理器」に近づける増強。
 **app/（Flutter）のみ変更** — backend / Console / Desktop / Dataset Package v1 /
 SignID・CaptureID・DisplayID / 写真ファイル名は一切変更しない。
 
 ## 機能
+
+### 選択性導出（Step 14）
+
+Dataset Package の導出前に**範囲を選ぶ**。導出包の構造（data.csv /
+photos / source_photos / metadata / schema / manifest / README）は不変で、
+**中身の記録と写真だけ**が範囲に従う。
+
+```text
+Home メニュー導出      → 全部 / 未分類 / 分類済み
+Gallery 通常モード導出  → 現在の表示 / 現在のアルバム / 全部（件数つき）
+Gallery 選択モード導出  → 選択中の記録（0 件は無効）
+```
+
+- 範囲は record_ops.dart の `ExportScope` + `exportCandidates()`（純ロジック）。
+  「現在の表示」は Gallery の `_visible` をそのまま使い、過濾を再実装しない
+  （CSV 行順は現在の排序に従う）。
+- 実行は export_flow.dart の共通フロー（home から抽出。進捗ダイアログ →
+  buildBundle → 共有/保存）。導出前に件数つき確認、空範囲は
+  「書き出す記録がありません」。
+- 写真は buildBundle が渡された記録から収束: 参照される crop / 元写真のみ
+  同梱、共有元写真は 1 回だけ、欠図は manifest missingFiles（従来どおり）。
+- 導出は非破壊: 記録・選択状態・相册所属を変えない。albums.json は
+  導出包に入らない。
 
 ### 相册归納状態視図（Step 12.1）
 

@@ -1113,6 +1113,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Records added to albums will appear here'**
   String get recordsAddedToAlbumsAppearHere;
+
+  /// No description provided for @exportDataset.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Dataset Package'**
+  String get exportDataset;
+
+  /// No description provided for @exportScopeCurrentView.
+  ///
+  /// In en, this message translates to:
+  /// **'Current view'**
+  String get exportScopeCurrentView;
+
+  /// No description provided for @exportScopeSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected records'**
+  String get exportScopeSelected;
+
+  /// No description provided for @exportScopeAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Current album'**
+  String get exportScopeAlbum;
+
+  /// No description provided for @exportConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export {count} records?'**
+  String exportConfirmTitle(int count);
+
+  /// No description provided for @exportConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will create a Dataset Package containing only the selected records and required photos.'**
+  String get exportConfirmBody;
+
+  /// No description provided for @noRecordsToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No records to export.'**
+  String get noRecordsToExport;
+
+  /// No description provided for @exportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportAction;
+
+  /// No description provided for @exportSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Export selected'**
+  String get exportSelected;
 }
 
 class _AppLocalizationsDelegate

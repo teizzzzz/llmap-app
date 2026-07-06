@@ -12,6 +12,32 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.10.0 (2026-07-07) — 選択性導出 / Selective Export（Step 14）
+
+Dataset Package の導出前に**範囲を選べる**ようにした。従来の
+「常に全件」から、整理フローの成果だけを書き出せる形へ。
+
+- **導出範囲**（`ExportScope`）: 全部 / 現在の表示（相册視図・归納状態・
+  筛选・排序を反映した表示リストそのもの）/ 選択中の記録 / 現在のアルバム /
+  未分類 / 分類済み。
+- **入口**: Home メニューの導出 → 範囲シート（全部・未分類・分類済み）。
+  Gallery 通常モードの共有アイコン → 範囲シート（現在の表示・現在の
+  アルバム・全部、件数つき）。選択モードの共有アイコン → 選択中を導出
+  （0 件時は無効）。いずれも件数つき確認ダイアログ → 共通フロー
+  （export_flow.dart に home の導出処理を抽出）で実行。
+- **写真の収束は従来ロジックのまま**: buildBundle は渡された記録が参照する
+  crop / 元写真だけを同梱し、共有元写真は 1 回だけ（zipName 一意）。
+  欠図は従来どおり manifest の missingFiles。導出は非破壊で、選択状態も
+  保持する（続けて相册追加・削除に使える）。
+- **Dataset Package v1 の構造・CSV header・schema・ID・写真名は不変**。
+  albums.json は導出包に入れない。metadata への exportScope 記録も
+  第一版では見送り（backend 依存を作らないため）。
+- 相册に削除済み recordId が残っていても解決不能分は自然に無視（崩れない）。
+- l10n 9 キー × ja/zh/en 追加。`flutter analyze` 追加警告 0 /
+  `flutter test` **63 件 PASS**（範囲選択の単体 6・共有元写真の部分集合
+  導出 1・widget 1 を追加）。
+- backend / Console / Desktop は不変。
+
 ## v1.9.1 (2026-07-06) — Gallery 相册归納状態視図（Step 12.1）
 
 Gallery 主視図に「未分類 / すべて / 分類済み」の切替（segmented）を追加。

@@ -200,5 +200,15 @@
   "noUnfiledRecords": "No unfiled records",
   "allRecordsFiled": "All records have been organized into albums",
   "noFiledRecords": "No filed records",
-  "recordsAddedToAlbumsAppearHere": "Records added to albums will appear here"
+  "recordsAddedToAlbumsAppearHere": "Records added to albums will appear here",
+  "exportDataset": "Export Dataset Package",
+  "exportScopeCurrentView": "Current view",
+  "exportScopeSelected": "Selected records",
+  "exportScopeAlbum": "Current album",
+  "exportConfirmTitle": "Export {count} records?",
+  "@exportConfirmTitle": {"placeholders": {"count": {"type": "int"}}},
+  "exportConfirmBody": "This will create a Dataset Package containing only the selected records and required photos.",
+  "noRecordsToExport": "No records to export.",
+  "exportAction": "Export",
+  "exportSelected": "Export selected"
 }

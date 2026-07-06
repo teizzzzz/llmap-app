@@ -558,4 +558,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get recordsAddedToAlbumsAppearHere => '将记录加入相册后会显示在这里';
+
+  @override
+  String get exportDataset => '导出数据集包';
+
+  @override
+  String get exportScopeCurrentView => '当前显示结果';
+
+  @override
+  String get exportScopeSelected => '已选择记录';
+
+  @override
+  String get exportScopeAlbum => '当前相册';
+
+  @override
+  String exportConfirmTitle(int count) {
+    return '要导出 $count 条记录吗？';
+  }
+
+  @override
+  String get exportConfirmBody => '将创建一个只包含所选记录及其所需照片的数据集包。';
+
+  @override
+  String get noRecordsToExport => '没有可导出的记录。';
+
+  @override
+  String get exportAction => '导出';
+
+  @override
+  String get exportSelected => '导出已选';
 }

@@ -240,4 +240,79 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LLCard), findsNWidgets(2)); // 全員未分類に戻った
   });
+
+  testWidgets('選択導出: 範囲シートの件数 → 確認ダイアログ → 選択保持 → 0件は無効',
+      (tester) async {
+    final signs = [
+      _sign('E-1', '日本語の記録', '2026-07-01 10:00:00'),
+      Sign({
+        'SignID': 'E-2',
+        '名称': '韓国語の記録',
+        '主要言語': '韓国語',
+        '採集日時': '2026-07-02 10:00:00',
+        '_status': 'pending',
+      }),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('ja'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: GalleryScreen(
+          signs: signs,
+          schema: _schema(),
+          onDeleteMany: (_) async {},
+          onChanged: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1) 通常モード: 範囲シートに件数つきの選択肢が出る
+    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.pumpAndSettle();
+    expect(find.text('現在の表示 (2)'), findsOneWidget);
+    expect(find.text('すべての記録 (2)'), findsOneWidget);
+
+    // 「現在の表示」→ 確認ダイアログに件数 → キャンセルで中止
+    await tester.tap(find.text('現在の表示 (2)'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 件の記録を書き出しますか？'), findsOneWidget);
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 件の記録を書き出しますか？'), findsNothing);
+
+    // 2) 筛选後の「現在の表示」は絞った件数になる
+    await tester.tap(find.byIcon(Icons.filter_list));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('韓国語').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('完了'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.pumpAndSettle();
+    expect(find.text('現在の表示 (1)'), findsOneWidget);
+    expect(find.text('すべての記録 (2)'), findsOneWidget); // 全部は不変
+    await tester.tap(find.text('キャンセル')); // シートを閉じる
+    await tester.pumpAndSettle();
+
+    // 3) 選択モード: 選択中を書き出す → 確認に選択数 → キャンセル後も選択保持
+    await tester.longPress(find.text('韓国語の記録'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 件選択中'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.pumpAndSettle();
+    expect(find.text('1 件の記録を書き出しますか？'), findsOneWidget);
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 件選択中'), findsOneWidget); // 導出フローは選択を壊さない
+
+    // 4) 選択 0 件では導出ボタン無効
+    await tester.tap(find.text('韓国語の記録')); // 選択解除
+    await tester.pumpAndSettle();
+    expect(find.text('0 件選択中'), findsOneWidget);
+    final exportBtn = tester.widget<IconButton>(
+        find.widgetWithIcon(IconButton, Icons.ios_share));
+    expect(exportBtn.onPressed, isNull);
+  });
 }

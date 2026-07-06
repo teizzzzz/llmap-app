@@ -179,5 +179,14 @@
   "noUnfiledRecords": "未分類の記録はありません",
   "allRecordsFiled": "すべての記録がアルバムに整理されています",
   "noFiledRecords": "分類済みの記録はありません",
-  "recordsAddedToAlbumsAppearHere": "記録をアルバムに追加すると、ここに表示されます"
+  "recordsAddedToAlbumsAppearHere": "記録をアルバムに追加すると、ここに表示されます",
+  "exportDataset": "データセットパッケージを書き出す",
+  "exportScopeCurrentView": "現在の表示",
+  "exportScopeSelected": "選択中の記録",
+  "exportScopeAlbum": "現在のアルバム",
+  "exportConfirmTitle": "{count} 件の記録を書き出しますか？",
+  "exportConfirmBody": "選択された記録と必要な写真のみを含むデータセットパッケージを作成します。",
+  "noRecordsToExport": "書き出す記録がありません。",
+  "exportAction": "書き出す",
+  "exportSelected": "選択中を書き出す"
 }

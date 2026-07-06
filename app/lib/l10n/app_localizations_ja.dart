@@ -561,4 +561,33 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get recordsAddedToAlbumsAppearHere => '記録をアルバムに追加すると、ここに表示されます';
+
+  @override
+  String get exportDataset => 'データセットパッケージを書き出す';
+
+  @override
+  String get exportScopeCurrentView => '現在の表示';
+
+  @override
+  String get exportScopeSelected => '選択中の記録';
+
+  @override
+  String get exportScopeAlbum => '現在のアルバム';
+
+  @override
+  String exportConfirmTitle(int count) {
+    return '$count 件の記録を書き出しますか？';
+  }
+
+  @override
+  String get exportConfirmBody => '選択された記録と必要な写真のみを含むデータセットパッケージを作成します。';
+
+  @override
+  String get noRecordsToExport => '書き出す記録がありません。';
+
+  @override
+  String get exportAction => '書き出す';
+
+  @override
+  String get exportSelected => '選択中を書き出す';
 }

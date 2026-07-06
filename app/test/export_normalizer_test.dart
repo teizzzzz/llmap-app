@@ -160,4 +160,28 @@ void main() {
     s.setStatus('final');
     expect(s.get('DataStatus'), 'verified');
   });
+
+  test('選択導出: 共有元写真は部分集合でも導出包に1回だけ入る（Step 14）', () {
+    Sign make(String suffix) => Sign({
+          'SignID': 'OOK-AB12-260706120000000-$suffix',
+          'CaptureID': 'OOK-AB12-260706120000000',
+          '写真ファイル名': 'OOK-AB12-260706120000000-$suffix.jpg',
+          '元写真ファイル名': 'OOK-AB12-260706120000000-source.jpg',
+          '_status': 'pending',
+        });
+    final a = make('a');
+    final b = make('b');
+
+    // 片方だけ導出 → crop 1 + source 1
+    final one = normalizeForExport([a]);
+    expect(one.photos.where((p) => p.type == 'source').length, 1);
+    expect(one.photos.where((p) => p.type == 'crop').length, 1);
+
+    // 両方導出 → crop 2 + source は共有なので 1 のまま
+    final both = normalizeForExport([a, b]);
+    expect(both.photos.where((p) => p.type == 'source').length, 1);
+    expect(both.photos.where((p) => p.type == 'crop').length, 2);
+    // 元データは不変（本地ファイル名を書き換えない）
+    expect(a.get('元写真ファイル名'), 'OOK-AB12-260706120000000-source.jpg');
+  });
 }

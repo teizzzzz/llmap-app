@@ -572,4 +572,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get recordsAddedToAlbumsAppearHere =>
       'Records added to albums will appear here';
+
+  @override
+  String get exportDataset => 'Export Dataset Package';
+
+  @override
+  String get exportScopeCurrentView => 'Current view';
+
+  @override
+  String get exportScopeSelected => 'Selected records';
+
+  @override
+  String get exportScopeAlbum => 'Current album';
+
+  @override
+  String exportConfirmTitle(int count) {
+    return 'Export $count records?';
+  }
+
+  @override
+  String get exportConfirmBody =>
+      'This will create a Dataset Package containing only the selected records and required photos.';
+
+  @override
+  String get noRecordsToExport => 'No records to export.';
+
+  @override
+  String get exportAction => 'Export';
+
+  @override
+  String get exportSelected => 'Export selected';
 }

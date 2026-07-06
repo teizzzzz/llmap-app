@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../albums.dart';
+import '../export_flow.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../record_ops.dart';
@@ -340,6 +341,67 @@ class _GalleryScreenState extends State<GalleryScreen> {
         SnackBar(content: Text(t.removedFromAlbum(removed))));
   }
 
+  // ── 導出（Step 14: 範囲つき。実行は export_flow の共通経路） ──
+
+  Future<void> _confirmAndExport(List<Sign> signs) async {
+    if (!await confirmDatasetExport(context, signs.length)) return;
+    if (!mounted) return;
+    await runDatasetExport(context, signs: signs, schema: widget.schema);
+    // 導出は非破壊なので選択状態は保持する（続けて相册追加・削除に使える）。
+  }
+
+  /// 選択モードの「選択中を書き出す」。0 件時はボタン側で無効化済み。
+  Future<void> _exportSelected() => _confirmAndExport(exportCandidates(
+        scope: ExportScope.selected,
+        allSigns: widget.signs,
+        selected: _selected,
+      ));
+
+  /// 通常モードの導出範囲シート（現在の表示 / 現在のアルバム / すべて）。
+  void _openExportSheet() {
+    final t = AppLocalizations.of(context);
+    final visible = _visible;
+    final album = _currentAlbum;
+    final albumSigns = album == null
+        ? const <Sign>[]
+        : exportCandidates(
+            scope: ExportScope.currentAlbum,
+            allSigns: widget.signs,
+            currentAlbum: album,
+          );
+    showLLBottomSheet(context, title: t.exportDataset, children: [
+      // 現在の表示 = 相册視図・归納状態・筛选・排序を反映した表示リストそのもの
+      LLSheetTile(
+          icon: Icons.visibility_outlined,
+          label: '${t.exportScopeCurrentView} (${visible.length})',
+          onTap: () {
+            Navigator.pop(context);
+            _confirmAndExport(visible);
+          }),
+      if (album != null)
+        LLSheetTile(
+            icon: Icons.photo_album_outlined,
+            label: '${t.exportScopeAlbum}: ${album.name} (${albumSigns.length})',
+            onTap: () {
+              Navigator.pop(context);
+              _confirmAndExport(albumSigns);
+            }),
+      LLSheetTile(
+          icon: Icons.folder_zip_outlined,
+          label: '${t.allRecords} (${widget.signs.length})',
+          onTap: () {
+            Navigator.pop(context);
+            _confirmAndExport(List<Sign>.of(widget.signs));
+          }),
+      LLSheetTile(
+          icon: Icons.close,
+          label: t.cancel,
+          color: AppColors.textSecondary,
+          showChevron: false,
+          onTap: () => Navigator.pop(context)),
+    ]);
+  }
+
   // ── 排序シート ──
   void _openSortSheet() {
     final t = AppLocalizations.of(context);
@@ -522,6 +584,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       Text(allVisibleSelected ? t.deselectAll : t.selectAll),
                 ),
                 IconButton(
+                  icon: const Icon(Icons.ios_share),
+                  tooltip: t.exportSelected,
+                  onPressed: _selected.isEmpty ? null : _exportSelected,
+                ),
+                IconButton(
                   icon: const Icon(Icons.photo_album_outlined),
                   tooltip: t.addToAlbum,
                   onPressed: _selected.isEmpty ? null : _addSelectedToAlbum,
@@ -544,6 +611,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
           : AppBar(
               title: Text(t.galleryTitle),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.ios_share),
+                  tooltip: t.exportDataset,
+                  onPressed: widget.signs.isEmpty ? null : _openExportSheet,
+                ),
                 IconButton(
                   icon: const Icon(Icons.swap_vert),
                   tooltip: t.sortTitle,

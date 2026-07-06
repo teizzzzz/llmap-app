@@ -105,6 +105,46 @@ List<Sign> applyAlbumStatusFilter(
   }
 }
 
+// ── 導出範囲（Step 14: Selective Export） ────────────────────────────
+
+/// Dataset Package の導出範囲。**導出対象の選択だけ**を変え、導出包の
+/// 構造（data.csv / photos / source_photos / metadata / manifest…）は
+/// 一切変えない。写真の収束は store.buildBundle が渡された記録から導く。
+enum ExportScope { all, currentView, selected, currentAlbum, unfiled, filed }
+
+/// 範囲に応じた導出候補を**新しいリスト**で返す（元データは変更しない）。
+/// - currentView: Gallery の表示リストをそのまま使う（相册視図・归納状態・
+///   筛选・排序を反映済み）。過濾ロジックをここで再実装しない。
+/// - selected: 選択集合に一致する記録。順序は allSigns 順で安定させる
+///   （筛选変更で表示から外れた選択も含む — ユーザーの選択が正）。
+/// - currentAlbum: album.recordIds に対応する記録のみ。既に削除された
+///   recordId は解決できないため自然に無視される（崩れない）。
+List<Sign> exportCandidates({
+  required ExportScope scope,
+  required List<Sign> allSigns,
+  List<Sign> visible = const [],
+  Set<Sign> selected = const {},
+  Album? currentAlbum,
+  List<Album> albums = const [],
+}) {
+  switch (scope) {
+    case ExportScope.all:
+      return List<Sign>.of(allSigns);
+    case ExportScope.currentView:
+      return List<Sign>.of(visible);
+    case ExportScope.selected:
+      return allSigns.where(selected.contains).toList();
+    case ExportScope.currentAlbum:
+      final album = currentAlbum;
+      if (album == null) return const [];
+      return allSigns.where((s) => album.contains(s.id)).toList();
+    case ExportScope.unfiled:
+      return applyAlbumStatusFilter(allSigns, albums, AlbumStatusFilter.unfiled);
+    case ExportScope.filed:
+      return applyAlbumStatusFilter(allSigns, albums, AlbumStatusFilter.filed);
+  }
+}
+
 /// DataStatus の実効値。旧データで DataStatus 未併記なら _status から導出。
 String effectiveDataStatus(Sign s) {
   final v = s.get('DataStatus');

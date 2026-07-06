@@ -6,6 +6,84 @@ import 'package:llmap_app/record_ops.dart';
 Sign sign(Map<String, dynamic> data) => Sign(Map<String, dynamic>.from(data));
 
 void main() {
+  group('exportCandidates（導出範囲 / Step 14）', () {
+    final a = sign({'SignID': 'S-a', '主要言語': '日本語'});
+    final b = sign({'SignID': 'S-b', '主要言語': '韓国語'});
+    final c = sign({'SignID': 'S-c', '主要言語': '中国語'});
+    final all = [a, b, c];
+
+    test('all: 全記録（旧行動）を新しいリストで返す', () {
+      final out = exportCandidates(scope: ExportScope.all, allSigns: all);
+      expect(out.map((s) => s.id).toList(), ['S-a', 'S-b', 'S-c']);
+      out.removeAt(0);
+      expect(all.length, 3); // 元リストは不変
+    });
+
+    test('currentView: 渡された表示リストをそのまま使う（過濾は再実装しない）', () {
+      final out = exportCandidates(
+          scope: ExportScope.currentView, allSigns: all, visible: [c, a]);
+      expect(out.map((s) => s.id).toList(), ['S-c', 'S-a']); // 表示順を保持
+    });
+
+    test('selected: 選択集合に一致する記録。空選択は空。順序は allSigns 順', () {
+      expect(
+        exportCandidates(
+            scope: ExportScope.selected, allSigns: all, selected: {c, a})
+            .map((s) => s.id)
+            .toList(),
+        ['S-a', 'S-c'],
+      );
+      expect(
+        exportCandidates(scope: ExportScope.selected, allSigns: all),
+        isEmpty,
+      );
+    });
+
+    test('currentAlbum: recordIds 対応のみ。削除済み ID は無視。相册なしは空', () {
+      final album = Album.create('A')..addAll(['S-b', 'S-deleted', 'S-c']);
+      final out = exportCandidates(
+          scope: ExportScope.currentAlbum, allSigns: all, currentAlbum: album);
+      expect(out.map((s) => s.id).toList(), ['S-b', 'S-c']);
+      expect(
+        exportCandidates(scope: ExportScope.currentAlbum, allSigns: all),
+        isEmpty,
+      );
+    });
+
+    test('unfiled / filed: 归納状態と同じ規則', () {
+      final albums = [Album.create('A')..addAll(['S-b'])];
+      expect(
+        exportCandidates(
+                scope: ExportScope.unfiled, allSigns: all, albums: albums)
+            .map((s) => s.id)
+            .toList(),
+        ['S-a', 'S-c'],
+      );
+      expect(
+        exportCandidates(
+                scope: ExportScope.filed, allSigns: all, albums: albums)
+            .map((s) => s.id)
+            .toList(),
+        ['S-b'],
+      );
+    });
+
+    test('どの範囲も記録データ本体を変更しない', () {
+      final before = a.data.toString();
+      for (final scope in ExportScope.values) {
+        exportCandidates(
+          scope: scope,
+          allSigns: all,
+          visible: [a],
+          selected: {a},
+          currentAlbum: Album.create('X')..addAll(['S-a']),
+          albums: [Album.create('Y')..addAll(['S-b'])],
+        );
+      }
+      expect(a.data.toString(), before);
+    });
+  });
+
   group('AlbumStatusFilter（相册归納状態 / Step 12.1）', () {
     final unfiledSign = sign({'SignID': 'S-unfiled', '主要言語': '日本語',
         'EntryMode': 'quick', '採集日時': '2026-07-01 10:00:00'});

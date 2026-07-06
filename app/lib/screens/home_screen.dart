@@ -1,15 +1,15 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../albums.dart';
 import '../api.dart';
 import '../capture.dart';
 import '../capture_mode.dart';
+import '../export_flow.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../record_ops.dart';
@@ -214,80 +214,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// CSV＋写真を ZIP で一括エクスポート（端末内生成・進捗ダイアログ表示）。
+  /// Dataset Package の導出（Step 14: 範囲選択つき）。
+  /// 入口は従来どおりメニューの「データをエクスポート」だが、押した直後に
+  /// 範囲（全部 / 未分類 / 分類済み）を選ぶ。実行は export_flow の共通経路。
+  /// 表示中の Gallery 筛选・選択・相册の導出は Gallery 側の入口が担う。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
-    final t = AppLocalizations.of(context);
-    final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
-    final sw = Stopwatch()..start();
-    // 進捗ダイアログは1回だけ閉じる（success と catch の二重 pop で
-    // 本体ページまで pop してしまい黒画面になるのを防ぐ）。
-    var dialogOpen = true;
-    void closeDialog() {
-      if (dialogOpen && mounted) {
-        dialogOpen = false;
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LLProgressDialog(
-        title: t.exporting,
-        unit: t.unitPhotos,
-        progress: progress,
-      ),
-    );
+    // 归納状態の件数計算のため相册を読む（失敗しても全部導出は可能なまま）。
+    List<Album> albums = const [];
     try {
-      final zipPath = await LocalStore.instance.buildBundle(
-        _signs,
-        widget.schema,
-        onProgress: (done, total) =>
-            progress.value = (done: done, total: total),
-      );
-      // 少量でも進捗→完成が見えるよう、最低 ~0.9 秒は表示する。
-      final remain = 900 - sw.elapsedMilliseconds;
-      if (remain > 0) {
-        await Future.delayed(Duration(milliseconds: remain));
-      }
-      if (!mounted) return;
-      closeDialog(); // 進捗ダイアログを閉じる
-      if (isMobile) {
-        // iPad では sharePositionOrigin 必須（無いと presentation で例外）。
-        final box = context.findRenderObject() as RenderBox?;
-        await Share.shareXFiles(
-          [XFile(zipPath)],
-          text: 'LLMap',
-          sharePositionOrigin:
-              box != null ? box.localToGlobal(Offset.zero) & box.size : null,
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(t.datasetExported)));
-        }
-      } else {
-        final dir =
-            Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
-        final zipName = zipPath.split(RegExp(r'[/\\]')).last;
-        final dest = File('$dir/Downloads/$zipName');
-        await dest.parent.create(recursive: true);
-        await File(zipPath).copy(dest.path);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t.exportedTo(dest.path))),
-          );
-        }
-      }
-    } catch (e) {
-      closeDialog(); // 進捗ダイアログを閉じる（まだ開いていれば）
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(t.exportFailed('$e'))));
-      }
-    } finally {
-      progress.dispose();
-    }
+      albums = await LocalStore.instance.loadAlbums();
+    } catch (_) {}
+    if (!mounted) return;
+    final t = AppLocalizations.of(context);
+    final unfiled = exportCandidates(
+        scope: ExportScope.unfiled, allSigns: _signs, albums: albums);
+    final filed = exportCandidates(
+        scope: ExportScope.filed, allSigns: _signs, albums: albums);
+    showLLBottomSheet(context, title: t.exportDataset, children: [
+      LLSheetTile(
+          icon: Icons.folder_zip_outlined,
+          label: '${t.allRecords} (${_signs.length})',
+          onTap: () {
+            Navigator.pop(context);
+            _confirmAndExport(List<Sign>.of(_signs));
+          }),
+      LLSheetTile(
+          icon: Icons.inbox_outlined,
+          label: '${t.unfiled} (${unfiled.length})',
+          onTap: () {
+            Navigator.pop(context);
+            _confirmAndExport(unfiled);
+          }),
+      LLSheetTile(
+          icon: Icons.photo_album_outlined,
+          label: '${t.filed} (${filed.length})',
+          onTap: () {
+            Navigator.pop(context);
+            _confirmAndExport(filed);
+          }),
+      LLSheetTile(
+          icon: Icons.close,
+          label: t.cancel,
+          color: AppColors.textSecondary,
+          showChevron: false,
+          onTap: () => Navigator.pop(context)),
+    ]);
+  }
+
+  Future<void> _confirmAndExport(List<Sign> signs) async {
+    if (!await confirmDatasetExport(context, signs.length)) return;
+    if (!mounted) return;
+    await runDatasetExport(context, signs: signs, schema: widget.schema);
   }
 
   Future<void> _openSettings() async {
