@@ -1,12 +1,15 @@
-/// 采集档案（筛选型档案画廊）。采集記録を缩略图カード网格で閲覧し、
-/// 言語・来源でフィルタ、タップで編集。HomeScreen が状態オーナーのまま、
-/// 編集/削除は callback で委譲する（業務ロジックは複製しない）。
+/// 采集档案（相册型画廊, Step 12）。缩略图网格＋批量選択/削除＋筛选＋排序＋相册。
+/// HomeScreen が記録の状態オーナーのまま、削除は onDeleteMany へ委譲する
+/// （写真の安全削除は Home 側の共通経路。ここでは複製しない）。
+/// 相册は端末内の整理機能（albums.json）で、記録本体・導出には影響しない。
 library;
 
 import 'package:flutter/material.dart';
 
+import '../albums.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
 import '../store.dart';
 import '../theme.dart' show statusBadge;
 import '../theme/tokens.dart';
@@ -16,14 +19,15 @@ import 'edit_sign_screen.dart';
 class GalleryScreen extends StatefulWidget {
   final List<Sign> signs; // HomeScreen._signs の参照（共有）
   final AppSchema schema;
-  final void Function(Sign sign) onDelete; // 削除を Home に委譲
+  /// 削除を Home に委譲（単発/批量とも同一経路。写真の孤児清掃込み）。
+  final Future<void> Function(List<Sign> signs) onDeleteMany;
   final VoidCallback onChanged; // 保存後の Home 再描画・永続化
 
   const GalleryScreen({
     super.key,
     required this.signs,
     required this.schema,
-    required this.onDelete,
+    required this.onDeleteMany,
     required this.onChanged,
   });
 
@@ -32,15 +36,46 @@ class GalleryScreen extends StatefulWidget {
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
-  static const _all = '全部';
-  String _lang = _all;
-  String _source = _all;
+  final GalleryFilter _filter = GalleryFilter();
+  GallerySort _sort = GallerySort.newestFirst;
+
+  // 選択モード（iPhone 相册式: 長押しで開始、タップで増減）。
+  bool _selecting = false;
+  final Set<Sign> _selected = {};
+
+  // 相册。null = すべての記録。
+  List<Album> _albums = [];
+  String? _albumId;
+
+  @override
+  void initState() {
+    super.initState();
+    // path_provider が使えない環境（widget テスト等）でも画面自体は動かす。
+    LocalStore.instance.loadAlbums().then((a) {
+      if (mounted) setState(() => _albums = a);
+    }).catchError((_) {});
+  }
+
+  Album? get _currentAlbum {
+    for (final a in _albums) {
+      if (a.id == _albumId) return a;
+    }
+    return null;
+  }
+
+  // ── 表示対象（相册 → 筛选 → 排序。表示のみで記録は変更しない） ──
+  List<Sign> get _visible {
+    final album = _currentAlbum;
+    Iterable<Sign> base = widget.signs;
+    if (album != null) base = base.where((s) => album.contains(s.id));
+    return sortedSigns(base.where(_filter.matches).toList(), _sort);
+  }
 
   // multi=true の字段（主要言語など）は "/" 区切りを個々の値に展開する。
   List<String> _distinct(String key, {bool multi = false}) {
     final set = <String>{};
     for (final s in widget.signs) {
-      final v = s.get(key);
+      final v = key == 'DataStatus' ? effectiveDataStatus(s) : s.get(key);
       if (v.isEmpty || v == '—') continue;
       if (multi) {
         set.addAll(splitMulti(v));
@@ -48,16 +83,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
         set.add(v);
       }
     }
-    return [_all, ...set];
+    return set.toList();
   }
 
-  List<Sign> get _filtered => widget.signs.where((s) {
-        final okLang =
-            _lang == _all || splitMulti(s.get('主要言語')).contains(_lang);
-        final okSrc = _source == _all || s.get('設置主体') == _source;
-        return okLang && okSrc;
-      }).toList();
+  Future<void> _saveAlbums() => LocalStore.instance.saveAlbums(_albums);
 
+  // ── 編集（通常モードのタップ） ──
   Future<void> _edit(Sign s) async {
     final r = await Navigator.push<String>(
       context,
@@ -67,7 +98,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
     );
     if (!mounted) return;
     if (r == 'deleted') {
-      widget.onDelete(s);
+      await widget.onDeleteMany([s]);
+      _forgetDeleted([s]);
       setState(() {});
     } else if (r == 'saved') {
       widget.onChanged();
@@ -75,91 +107,546 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final langs = _distinct('主要言語', multi: true);
-    final sources = _distinct('設置主体');
-    final filtered = _filtered;
+  // ── 選択モード ──
+  /// 長押し起点はその項目を選択済みで開始、Select ボタン起点は空で開始
+  /// （iPhone 相册と同じ）。
+  void _enterSelection([Sign? s]) => setState(() {
+        _selecting = true;
+        _selected.clear();
+        if (s != null) _selected.add(s);
+      });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.galleryTitle),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(96),
-          child: Column(
-            children: [
-              _filterRow(t.langFilter, langs, _lang, true,
-                  (v) => setState(() => _lang = v)),
-              _filterRow(t.sourceFilter, sources, _source, false,
-                  (v) => setState(() => _source = v)),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-          ),
-        ),
-      ),
-      body: filtered.isEmpty
-          ? Center(
-              child: Text(
-                  widget.signs.isEmpty ? t.emptyTitle : t.noMatch,
-                  style: AppText.body().copyWith(color: AppColors.textSecondary)),
-            )
-          : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xl),
-              gridDelegate:
-                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220,
-                mainAxisExtent: 232,
-                crossAxisSpacing: AppSpacing.md,
-                mainAxisSpacing: AppSpacing.md,
-              ),
-              itemCount: filtered.length,
-              itemBuilder: (_, i) => _card(filtered[i]),
-            ),
-    );
+  void _exitSelection() => setState(() {
+        _selecting = false;
+        _selected.clear();
+      });
+
+  void _toggle(Sign s) => setState(() {
+        if (!_selected.remove(s)) _selected.add(s);
+      });
+
+  void _toggleSelectAll() {
+    final visible = _visible;
+    setState(() {
+      if (_selected.length >= visible.length) {
+        _selected.clear();
+      } else {
+        _selected
+          ..clear()
+          ..addAll(visible);
+      }
+    });
   }
 
-  Widget _filterRow(String label, List<String> options, String selected,
-      bool colored, ValueChanged<String> onPick) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.lg, top: AppSpacing.xs),
-      child: Row(
-        children: [
-          SizedBox(
-              width: 36, child: Text(label, style: AppText.caption())),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(right: AppSpacing.lg),
-              child: Row(
+  /// 削除済み記録の後始末: 選択集合と全相册の所属から外して保存する。
+  void _forgetDeleted(List<Sign> deleted) {
+    final ids = deleted.map((s) => s.id).where((id) => id.isNotEmpty).toList();
+    _selected.removeAll(deleted);
+    var changed = false;
+    for (final a in _albums) {
+      if (a.removeAll(ids) > 0) changed = true;
+    }
+    if (changed) _saveAlbums();
+  }
+
+  Future<void> _deleteSelected() async {
+    final t = AppLocalizations.of(context);
+    final targets = _selected.toList();
+    if (targets.isEmpty) return;
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.delete_outline,
+      iconColor: AppColors.danger,
+      title: t.deleteMultipleTitle(targets.length),
+      message: t.deleteIrreversibleBody,
+      primaryLabel: t.delete,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok != true || !mounted) return;
+    await widget.onDeleteMany(targets);
+    if (!mounted) return;
+    _forgetDeleted(targets);
+    _exitSelection();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(t.deletedCount(targets.length))));
+  }
+
+  // ── 相册操作 ──
+  Future<String?> _askAlbumName({String? initial}) async {
+    final t = AppLocalizations.of(context);
+    final ctrl = TextEditingController(text: initial ?? '');
+    final v = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(initial == null ? t.newAlbum : t.renameAlbum),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(hintText: t.albumNameHint),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: Text(t.cancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+              child: Text(t.confirm)),
+        ],
+      ),
+    );
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  Future<Album?> _createAlbum() async {
+    final name = await _askAlbumName();
+    if (name == null) return null;
+    final album = Album.create(name);
+    setState(() => _albums.add(album));
+    await _saveAlbums();
+    return album;
+  }
+
+  Future<void> _renameAlbum(Album a) async {
+    final name = await _askAlbumName(initial: a.name);
+    if (name == null) return;
+    setState(() => a.rename(name));
+    await _saveAlbums();
+  }
+
+  /// 相册の削除は相册本体のみ。中の記録・写真は一切消さない。
+  Future<void> _deleteAlbum(Album a) async {
+    final t = AppLocalizations.of(context);
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.delete_outline,
+      iconColor: AppColors.danger,
+      title: t.deleteAlbumTitle(a.name),
+      message: t.deleteAlbumBody,
+      primaryLabel: t.delete,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok != true || !mounted) return;
+    setState(() {
+      _albums.remove(a);
+      if (_albumId == a.id) _albumId = null;
+    });
+    await _saveAlbums();
+  }
+
+  void _albumChipMenu(Album a) {
+    final t = AppLocalizations.of(context);
+    showLLBottomSheet(context, title: a.name, children: [
+      LLSheetTile(
+          icon: Icons.drive_file_rename_outline,
+          label: t.renameAlbum,
+          onTap: () {
+            Navigator.pop(context);
+            _renameAlbum(a);
+          }),
+      LLSheetTile(
+          icon: Icons.delete_outline,
+          label: t.deleteAlbum,
+          color: AppColors.danger,
+          onTap: () {
+            Navigator.pop(context);
+            _deleteAlbum(a);
+          }),
+      LLSheetTile(
+          icon: Icons.close,
+          label: t.cancel,
+          color: AppColors.textSecondary,
+          showChevron: false,
+          onTap: () => Navigator.pop(context)),
+    ]);
+  }
+
+  Future<void> _addSelectedToAlbum() async {
+    final t = AppLocalizations.of(context);
+    if (_selected.isEmpty) return;
+    // 戻り値: Album=既存相册を選択 / '_new_'=新規作成 / null=シートを閉じた。
+    final picked = await showModalBottomSheet<Object>(
+      context: context,
+      backgroundColor: AppColors.surfaceIvory,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text(t.addToAlbum, style: AppText.sectionTitle()),
+            ),
+            for (final a in _albums)
+              ListTile(
+                leading: const Icon(Icons.photo_album_outlined),
+                title: Text(a.name, style: AppText.body()),
+                subtitle: Text(t.recordsCount(a.recordIds.length),
+                    style: AppText.caption()),
+                onTap: () => Navigator.pop(ctx, a),
+              ),
+            ListTile(
+              leading: const Icon(Icons.add,
+                  color: AppColors.accentTerracotta),
+              title: Text(t.newAlbum,
+                  style: AppText.body()
+                      .copyWith(color: AppColors.accentTerracotta)),
+              onTap: () => Navigator.pop(ctx, '_new_'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return; // シート外タップ等は何もしない
+    final target = picked is Album ? picked : await _createAlbum();
+    if (target == null || !mounted) return;
+    final ids = _selected.map((s) => s.id).where((id) => id.isNotEmpty);
+    final added = target.addAll(ids);
+    await _saveAlbums();
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.addedToAlbum(added, target.name))));
+  }
+
+  Future<void> _removeSelectedFromAlbum() async {
+    final t = AppLocalizations.of(context);
+    final album = _currentAlbum;
+    if (album == null || _selected.isEmpty) return;
+    final removed =
+        album.removeAll(_selected.map((s) => s.id).where((id) => id.isNotEmpty));
+    await _saveAlbums();
+    if (!mounted) return;
+    setState(() => _selected.clear());
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.removedFromAlbum(removed))));
+  }
+
+  // ── 排序シート ──
+  void _openSortSheet() {
+    final t = AppLocalizations.of(context);
+    final options = [
+      (GallerySort.newestFirst, t.sortNewestFirst, Icons.south),
+      (GallerySort.oldestFirst, t.sortOldestFirst, Icons.north),
+      (GallerySort.displayIdAsc, t.sortIdAsc, Icons.sort_by_alpha),
+      (GallerySort.displayIdDesc, t.sortIdDesc, Icons.sort_by_alpha),
+    ];
+    showLLBottomSheet(context, title: t.sortTitle, children: [
+      for (final (value, label, icon) in options)
+        LLSheetTile(
+          icon: _sort == value ? Icons.check : icon,
+          label: label,
+          color: _sort == value ? AppColors.accentTerracotta : null,
+          showChevron: false,
+          onTap: () {
+            Navigator.pop(context);
+            setState(() => _sort = value);
+          },
+        ),
+    ]);
+  }
+
+  // ── 筛选シート（即時反映） ──
+  void _openFilterSheet() {
+    final t = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceIvory,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, sheetSetState) {
+          // シート内の変更を両方（シート・背後の一覧）へ即時反映する。
+          void apply(VoidCallback fn) {
+            sheetSetState(fn);
+            setState(() {});
+          }
+
+          Widget chips<T>(String label, List<T> options, T? selected,
+              String Function(T) nameOf, void Function(T?) onPick) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final o in options)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: _choiceChip(
-                        o == _all ? AppLocalizations.of(context).all : o,
-                        o == selected,
-                        () => onPick(o),
-                        dotColor: colored && o != _all
-                            ? parseHexColor(
-                                widget.schema.languageColors[o] ?? '#888888')
-                            : null,
-                      ),
+                  Text(label, style: AppText.caption()),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _chip(t.all, selected == null, () => apply(() => onPick(null))),
+                      for (final o in options)
+                        _chip(nameOf(o), selected == o,
+                            () => apply(() => onPick(selected == o ? null : o))),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+
+          Widget triState(String label, bool? value, void Function(bool?) set) {
+            return chips<bool>(
+              label,
+              const [true, false],
+              value,
+              (v) => v ? t.yes : t.no,
+              set,
+            );
+          }
+
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.75),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+                    child: Row(
+                      children: [
+                        Text(t.filterTitle, style: AppText.sectionTitle()),
+                        const Spacer(),
+                        Text(t.resultsCount(_visible.length),
+                            style: AppText.caption()),
+                      ],
                     ),
+                  ),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        chips<String>(t.langFilter,
+                            _distinct('主要言語', multi: true), _filter.language,
+                            (v) => v, (v) => _filter.language = v),
+                        chips<String>(t.sourceFilter, _distinct('設置主体'),
+                            _filter.source, (v) => v, (v) => _filter.source = v),
+                        chips<String>(t.filterMode, _distinct('EntryMode'),
+                            _filter.entryMode, (v) => v,
+                            (v) => _filter.entryMode = v),
+                        chips<String>(t.filterStatus, _distinct('DataStatus'),
+                            _filter.dataStatus, (v) => v,
+                            (v) => _filter.dataStatus = v),
+                        if (_distinct('地区コード').isNotEmpty)
+                          chips<String>(t.filterArea, _distinct('地区コード'),
+                              _filter.areaCode, (v) => v,
+                              (v) => _filter.areaCode = v),
+                        if (_distinct('採集者ID').isNotEmpty)
+                          chips<String>(t.filterCollector, _distinct('採集者ID'),
+                              _filter.collectorId, (v) => v,
+                              (v) => _filter.collectorId = v),
+                        triState(t.filterGps, _filter.hasGps,
+                            (v) => _filter.hasGps = v),
+                        triState(t.filterPhoto, _filter.hasPhoto,
+                            (v) => _filter.hasPhoto = v),
+                        triState(t.filterSource, _filter.hasSource,
+                            (v) => _filter.hasSource = v),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: LLSecondaryButton(
+                            label: t.clearFilters,
+                            onPressed: () => apply(_filter.clear),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: LLPrimaryButton(
+                            label: t.done,
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── build ──
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final visible = _visible;
+    final allVisibleSelected =
+        visible.isNotEmpty && _selected.length >= visible.length;
+
+    return Scaffold(
+      appBar: _selecting
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: t.cancel,
+                onPressed: _exitSelection,
+              ),
+              title: Text(t.selectedCount(_selected.length)),
+              actions: [
+                TextButton(
+                  onPressed: visible.isEmpty ? null : _toggleSelectAll,
+                  child:
+                      Text(allVisibleSelected ? t.deselectAll : t.selectAll),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.photo_album_outlined),
+                  tooltip: t.addToAlbum,
+                  onPressed: _selected.isEmpty ? null : _addSelectedToAlbum,
+                ),
+                if (_albumId != null)
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    tooltip: t.removeFromAlbum,
+                    onPressed:
+                        _selected.isEmpty ? null : _removeSelectedFromAlbum,
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  color: AppColors.danger,
+                  tooltip: t.delete,
+                  onPressed: _selected.isEmpty ? null : _deleteSelected,
+                ),
+              ],
+            )
+          : AppBar(
+              title: Text(t.galleryTitle),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.swap_vert),
+                  tooltip: t.sortTitle,
+                  onPressed: _openSortSheet,
+                ),
+                IconButton(
+                  icon: Badge(
+                    isLabelVisible: _filter.isActive,
+                    label: Text('${_filter.activeCount}'),
+                    child: const Icon(Icons.filter_list),
+                  ),
+                  tooltip: t.filterTitle,
+                  onPressed: _openFilterSheet,
+                ),
+                if (visible.isNotEmpty)
+                  TextButton(
+                    onPressed: _enterSelection,
+                    child: Text(t.select),
+                  ),
+              ],
+            ),
+      body: Column(
+        children: [
+          _albumBar(t),
+          _resultsBar(t, visible.length),
+          Expanded(
+            child: visible.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.signs.isEmpty
+                          ? t.emptyTitle
+                          : (_currentAlbum != null && !_filter.isActive
+                              ? t.albumEmpty
+                              : t.noMatch),
+                      textAlign: TextAlign.center,
+                      style: AppText.body()
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                        AppSpacing.sm, AppSpacing.lg, AppSpacing.xl),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 220,
+                      mainAxisExtent: 232,
+                      crossAxisSpacing: AppSpacing.md,
+                      mainAxisSpacing: AppSpacing.md,
+                    ),
+                    itemCount: visible.length,
+                    itemBuilder: (_, i) => _card(visible[i]),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _choiceChip(String label, bool selected, VoidCallback onTap,
-      {Color? dotColor}) {
+  /// 相册切替バー（All Records / 各相册 / 新規）。長押しで改名・削除。
+  Widget _albumBar(AppLocalizations t) {
+    return SizedBox(
+      height: 46,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg, vertical: 7),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: _chip(t.allRecords, _albumId == null,
+                () => setState(() => _albumId = null)),
+          ),
+          for (final a in _albums)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: _chip(
+                '${a.name} (${widget.signs.where((s) => a.contains(s.id)).length})',
+                _albumId == a.id,
+                () => setState(() => _albumId = a.id),
+                onLongPress: () => _albumChipMenu(a),
+              ),
+            ),
+          _chip('+ ${t.newAlbum}', false, _createAlbum),
+        ],
+      ),
+    );
+  }
+
+  /// 件数＋筛选状態の行。
+  Widget _resultsBar(AppLocalizations t, int count) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, 4),
+      child: Row(
+        children: [
+          Text(t.resultsCount(count), style: AppText.caption()),
+          const Spacer(),
+          if (_filter.isActive)
+            GestureDetector(
+              onTap: () => setState(_filter.clear),
+              child: Text(
+                t.clearFilters,
+                style: AppText.caption().copyWith(
+                    color: AppColors.accentTerracotta,
+                    fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool selected, VoidCallback onTap,
+      {VoidCallback? onLongPress, Color? dotColor}) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -197,9 +684,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
   Widget _card(Sign s) {
     final lang = s.get('主要言語');
     final source = s.get('設置主体');
-    return LLCard(
+    final selected = _selected.contains(s);
+    final card = LLCard(
       padding: EdgeInsets.zero,
-      onTap: () => _edit(s),
+      onTap: _selecting ? () => _toggle(s) : () => _edit(s),
+      onLongPress: _selecting ? null : () => _enterSelection(s),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -252,6 +741,46 @@ class _GalleryScreenState extends State<GalleryScreen> {
           ),
         ],
       ),
+    );
+
+    if (!_selecting) return card;
+    // 選択モード: check circle と選択枠を重ねる（iPhone 相册式）。
+    return Stack(
+      children: [
+        Positioned.fill(child: card),
+        if (selected)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border:
+                      Border.all(color: AppColors.accentTerracotta, width: 2.5),
+                ),
+              ),
+            ),
+          ),
+        Positioned(
+          top: 6,
+          left: 6,
+          child: IgnorePointer(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: AppShadows.card,
+              ),
+              child: Icon(
+                selected ? Icons.check_circle : Icons.circle_outlined,
+                size: 22,
+                color: selected
+                    ? AppColors.accentTerracotta
+                    : AppColors.borderSubtle,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

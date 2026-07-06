@@ -361,6 +361,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS：$lat, $lng · 采集：$time';
   }
+
   @override
   String get captureMode => '采集模式';
 
@@ -408,11 +409,135 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stdMoreInfo => '＋ 添加更多信息';
+
   @override
   String get fieldScript => '文字体系';
 
   @override
   String get fieldNote => '备注（可选）';
+
   @override
   String get datasetExported => 'Dataset Package 已导出';
+
+  @override
+  String get select => '选择';
+
+  @override
+  String selectedCount(int count) {
+    return '已选择 $count 项';
+  }
+
+  @override
+  String get selectAll => '全选';
+
+  @override
+  String get deselectAll => '取消全选';
+
+  @override
+  String deleteMultipleTitle(int count) {
+    return '删除 $count 条记录？';
+  }
+
+  @override
+  String get deleteIrreversibleBody => '此操作无法撤销。';
+
+  @override
+  String deletedCount(int count) {
+    return '已删除 $count 条记录';
+  }
+
+  @override
+  String get sortTitle => '排序';
+
+  @override
+  String get sortNewestFirst => '最新优先';
+
+  @override
+  String get sortOldestFirst => '最旧优先';
+
+  @override
+  String get sortIdAsc => 'ID 升序';
+
+  @override
+  String get sortIdDesc => 'ID 降序';
+
+  @override
+  String get filterTitle => '筛选';
+
+  @override
+  String get clearFilters => '清除筛选';
+
+  @override
+  String resultsCount(int count) {
+    return '显示 $count 条';
+  }
+
+  @override
+  String get filterMode => '模式';
+
+  @override
+  String get filterStatus => '状态';
+
+  @override
+  String get filterArea => '地区';
+
+  @override
+  String get filterCollector => '采集者';
+
+  @override
+  String get filterGps => 'GPS';
+
+  @override
+  String get filterPhoto => '照片';
+
+  @override
+  String get filterSource => '原图';
+
+  @override
+  String get yes => '有';
+
+  @override
+  String get no => '无';
+
+  @override
+  String get allRecords => '全部记录';
+
+  @override
+  String get newAlbum => '新建相册';
+
+  @override
+  String get albumNameHint => '相册名称';
+
+  @override
+  String get renameAlbum => '重命名相册';
+
+  @override
+  String get deleteAlbum => '删除相册';
+
+  @override
+  String deleteAlbumTitle(String name) {
+    return '删除“$name”？';
+  }
+
+  @override
+  String get deleteAlbumBody => '相册中的记录不会被删除。';
+
+  @override
+  String get addToAlbum => '加入相册';
+
+  @override
+  String get removeFromAlbum => '从相册移除';
+
+  @override
+  String addedToAlbum(int count, String name) {
+    return '已将 $count 条加入“$name”';
+  }
+
+  @override
+  String removedFromAlbum(int count) {
+    return '已从相册移除 $count 条';
+  }
+
+  @override
+  String get albumEmpty => '该相册还没有记录。';
 }

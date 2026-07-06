@@ -363,11 +363,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS：$lat, $lng · 採集：$time';
   }
+
   @override
   String get captureMode => '採集モード';
 
   @override
-  String get captureModeNote => '撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。';
+  String get captureModeNote =>
+      '撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。';
 
   @override
   String get modeQuick => 'クイックモード';
@@ -410,11 +412,135 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get stdMoreInfo => '＋ 情報を追加';
+
   @override
   String get fieldScript => '文字体系';
 
   @override
   String get fieldNote => '備考（任意）';
+
   @override
   String get datasetExported => 'Dataset Package を書き出しました';
+
+  @override
+  String get select => '選択';
+
+  @override
+  String selectedCount(int count) {
+    return '$count 件選択中';
+  }
+
+  @override
+  String get selectAll => 'すべて選択';
+
+  @override
+  String get deselectAll => '選択解除';
+
+  @override
+  String deleteMultipleTitle(int count) {
+    return '$count 件の記録を削除しますか？';
+  }
+
+  @override
+  String get deleteIrreversibleBody => 'この操作は取り消せません。';
+
+  @override
+  String deletedCount(int count) {
+    return '$count 件削除しました';
+  }
+
+  @override
+  String get sortTitle => '並べ替え';
+
+  @override
+  String get sortNewestFirst => '新しい順';
+
+  @override
+  String get sortOldestFirst => '古い順';
+
+  @override
+  String get sortIdAsc => 'ID 昇順';
+
+  @override
+  String get sortIdDesc => 'ID 降順';
+
+  @override
+  String get filterTitle => '絞り込み';
+
+  @override
+  String get clearFilters => '絞り込みをクリア';
+
+  @override
+  String resultsCount(int count) {
+    return '$count 件を表示';
+  }
+
+  @override
+  String get filterMode => 'モード';
+
+  @override
+  String get filterStatus => '状態';
+
+  @override
+  String get filterArea => '地区';
+
+  @override
+  String get filterCollector => '採集者';
+
+  @override
+  String get filterGps => 'GPS';
+
+  @override
+  String get filterPhoto => '写真';
+
+  @override
+  String get filterSource => '元写真';
+
+  @override
+  String get yes => 'あり';
+
+  @override
+  String get no => 'なし';
+
+  @override
+  String get allRecords => 'すべての記録';
+
+  @override
+  String get newAlbum => '新規アルバム';
+
+  @override
+  String get albumNameHint => 'アルバム名';
+
+  @override
+  String get renameAlbum => 'アルバム名を変更';
+
+  @override
+  String get deleteAlbum => 'アルバムを削除';
+
+  @override
+  String deleteAlbumTitle(String name) {
+    return '「$name」を削除しますか？';
+  }
+
+  @override
+  String get deleteAlbumBody => 'アルバム内の記録は削除されません。';
+
+  @override
+  String get addToAlbum => 'アルバムに追加';
+
+  @override
+  String get removeFromAlbum => 'アルバムから外す';
+
+  @override
+  String addedToAlbum(int count, String name) {
+    return '「$name」に $count 件追加しました';
+  }
+
+  @override
+  String removedFromAlbum(int count) {
+    return 'アルバムから $count 件外しました';
+  }
+
+  @override
+  String get albumEmpty => 'このアルバムにはまだ記録がありません。';
 }

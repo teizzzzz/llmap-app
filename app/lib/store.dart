@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'albums.dart';
 import 'dataset_package.dart';
 import 'export_normalizer.dart';
 import 'imaging.dart';
@@ -42,7 +43,44 @@ class LocalStore {
 
   File _projectFile() => File('${_root!.path}/project.json');
 
+  File _albumsFile() => File('${_root!.path}/albums.json');
+
   File photoFile(String name) => File('${_photos!.path}/$name');
+
+  /// 写真ファイルを削除する（存在しないものは無視）。削除できた数を返す。
+  /// **必ず record_ops.orphanedPhotos で「残る記録から参照されない」名前だけを
+  /// 渡すこと** — 共有元写真（1图多sign）を誤って消さないため。
+  Future<int> deletePhotos(Set<String> names) async {
+    await _ensure();
+    var deleted = 0;
+    for (final name in names) {
+      if (name.isEmpty) continue;
+      final f = photoFile(name);
+      if (await f.exists()) {
+        await f.delete();
+        deleted++;
+      }
+    }
+    return deleted;
+  }
+
+  /// 相册一覧を読む（無ければ空。壊れた保存は無視して空扱い）。
+  Future<List<Album>> loadAlbums() async {
+    await _ensure();
+    final f = _albumsFile();
+    if (!await f.exists()) return [];
+    try {
+      return albumsFromJson(await f.readAsString());
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// 相册一覧を保存する。相册は端末内の整理機能で、Dataset Package には入らない。
+  Future<void> saveAlbums(List<Album> albums) async {
+    await _ensure();
+    await _albumsFile().writeAsString(albumsToJson(albums), flush: true);
+  }
 
   Future<bool> hasPhoto(String name) async {
     if (name.isEmpty) return false;

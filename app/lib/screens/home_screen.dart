@@ -12,6 +12,7 @@ import '../capture.dart';
 import '../capture_mode.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
 import '../settings.dart';
 import '../store.dart';
 import '../theme/tokens.dart';
@@ -123,6 +124,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _persist() =>
       LocalStore.instance.saveProject(_signs, _area, _nextSeq);
+
+  /// 記録を削除し、**残る記録から参照されない**写真ファイルだけを一緒に消す
+  /// （複数 sign が同じ元写真を共有するケースを壊さない）。単発削除・
+  /// Gallery の批量削除の両方がこの経路を通る。
+  Future<void> _deleteSigns(List<Sign> toDelete) async {
+    if (toDelete.isEmpty) return;
+    final del = toDelete.toSet();
+    final remaining = _signs.where((s) => !del.contains(s)).toList();
+    final orphans = orphanedPhotos(deleting: del, remaining: remaining);
+    setState(() {
+      _signs
+        ..clear()
+        ..addAll(remaining);
+    });
+    await _persist(); // 先に記録を確定してから写真を消す（途中断でも参照切れ側に倒す）
+    await LocalStore.instance.deletePhotos(orphans);
+  }
 
   /// 撮影直後に Activity 再生成で失われた写真を image_picker から復旧。
   Future<void> _recoverLostData() async {
@@ -316,10 +334,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (_) => GalleryScreen(
           signs: _signs,
           schema: widget.schema,
-          onDelete: (s) {
-            setState(() => _signs.remove(s));
-            _persist();
-          },
+          onDeleteMany: _deleteSigns, // 単発/批量とも写真安全削除の同一経路
           onChanged: () {
             setState(() {});
             _persist();
@@ -330,16 +345,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _editSign(int i) async {
+    final sign = _signs[i];
     final r = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditSignScreen(sign: _signs[i], schema: widget.schema),
+        builder: (_) => EditSignScreen(sign: sign, schema: widget.schema),
       ),
     );
     if (!mounted) return;
     if (r == 'deleted') {
-      setState(() => _signs.removeAt(i));
-      _persist();
+      await _deleteSigns([sign]);
     } else if (r == 'saved') {
       setState(() {});
       _persist();
@@ -688,10 +703,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     secondaryLabel: t.cancel,
                     onSecondary: () => Navigator.pop(context, false),
                   ),
-                  onDismissed: (_) {
-                    setState(() => _signs.removeAt(i));
-                    _persist();
-                  },
+                  onDismissed: (_) => _deleteSigns([s]),
                   child: LLSignCard(
                       sign: s, index: i, onTap: () => _editSign(i)),
                 ),

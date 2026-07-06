@@ -371,11 +371,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS: $lat, $lng · Collected: $time';
   }
+
   @override
   String get captureMode => 'Capture mode';
 
   @override
-  String get captureModeNote => 'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.';
+  String get captureModeNote =>
+      'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.';
 
   @override
   String get modeQuick => 'Quick mode';
@@ -387,13 +389,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modeStandard => 'Standard mode';
 
   @override
-  String get modeStandardDesc => 'Just pick the languages on the sign (default)';
+  String get modeStandardDesc =>
+      'Just pick the languages on the sign (default)';
 
   @override
   String get modeResearch => 'Research mode';
 
   @override
-  String get modeResearchDesc => 'Full research field form for formal annotation';
+  String get modeResearchDesc =>
+      'Full research field form for formal annotation';
 
   @override
   String get fieldScheme => 'Field scheme';
@@ -418,11 +422,135 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stdMoreInfo => '+ Add more info';
+
   @override
   String get fieldScript => 'Script';
 
   @override
   String get fieldNote => 'Note (optional)';
+
   @override
   String get datasetExported => 'Dataset Package exported';
+
+  @override
+  String get select => 'Select';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String get deselectAll => 'Deselect all';
+
+  @override
+  String deleteMultipleTitle(int count) {
+    return 'Delete $count records?';
+  }
+
+  @override
+  String get deleteIrreversibleBody => 'This action cannot be undone.';
+
+  @override
+  String deletedCount(int count) {
+    return 'Deleted $count records';
+  }
+
+  @override
+  String get sortTitle => 'Sort';
+
+  @override
+  String get sortNewestFirst => 'Newest first';
+
+  @override
+  String get sortOldestFirst => 'Oldest first';
+
+  @override
+  String get sortIdAsc => 'ID ascending';
+
+  @override
+  String get sortIdDesc => 'ID descending';
+
+  @override
+  String get filterTitle => 'Filters';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String resultsCount(int count) {
+    return '$count shown';
+  }
+
+  @override
+  String get filterMode => 'Mode';
+
+  @override
+  String get filterStatus => 'Status';
+
+  @override
+  String get filterArea => 'Area';
+
+  @override
+  String get filterCollector => 'Collector';
+
+  @override
+  String get filterGps => 'GPS';
+
+  @override
+  String get filterPhoto => 'Photo';
+
+  @override
+  String get filterSource => 'Source photo';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get allRecords => 'All records';
+
+  @override
+  String get newAlbum => 'New album';
+
+  @override
+  String get albumNameHint => 'Album name';
+
+  @override
+  String get renameAlbum => 'Rename album';
+
+  @override
+  String get deleteAlbum => 'Delete album';
+
+  @override
+  String deleteAlbumTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get deleteAlbumBody => 'Records in this album are not deleted.';
+
+  @override
+  String get addToAlbum => 'Add to album';
+
+  @override
+  String get removeFromAlbum => 'Remove from album';
+
+  @override
+  String addedToAlbum(int count, String name) {
+    return 'Added $count to “$name”';
+  }
+
+  @override
+  String removedFromAlbum(int count) {
+    return 'Removed $count from album';
+  }
+
+  @override
+  String get albumEmpty => 'No records in this album yet.';
 }

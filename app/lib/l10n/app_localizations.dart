@@ -750,117 +750,333 @@ abstract class AppLocalizations {
 
   /// No description provided for @captureMode.
   ///
-  /// In zh, this message translates to:
-  /// **'采集模式'**
+  /// In en, this message translates to:
+  /// **'Capture mode'**
   String get captureMode;
 
   /// No description provided for @captureModeNote.
   ///
-  /// In zh, this message translates to:
-  /// **'决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。'**
+  /// In en, this message translates to:
+  /// **'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.'**
   String get captureModeNote;
 
   /// No description provided for @modeQuick.
   ///
-  /// In zh, this message translates to:
-  /// **'快速模式'**
+  /// In en, this message translates to:
+  /// **'Quick mode'**
   String get modeQuick;
 
   /// No description provided for @modeQuickDesc.
   ///
-  /// In zh, this message translates to:
-  /// **'拍照框选后直接保存，字段稍后补充'**
+  /// In en, this message translates to:
+  /// **'Save right after boxing; fill fields later'**
   String get modeQuickDesc;
 
   /// No description provided for @modeStandard.
   ///
-  /// In zh, this message translates to:
-  /// **'标准模式'**
+  /// In en, this message translates to:
+  /// **'Standard mode'**
   String get modeStandard;
 
   /// No description provided for @modeStandardDesc.
   ///
-  /// In zh, this message translates to:
-  /// **'只需选择标识上出现的语言（默认）'**
+  /// In en, this message translates to:
+  /// **'Just pick the languages on the sign (default)'**
   String get modeStandardDesc;
 
   /// No description provided for @modeResearch.
   ///
-  /// In zh, this message translates to:
-  /// **'研究模式'**
+  /// In en, this message translates to:
+  /// **'Research mode'**
   String get modeResearch;
 
   /// No description provided for @modeResearchDesc.
   ///
-  /// In zh, this message translates to:
-  /// **'完整研究字段表单，用于正式采集标注'**
+  /// In en, this message translates to:
+  /// **'Full research field form for formal annotation'**
   String get modeResearchDesc;
 
   /// No description provided for @fieldScheme.
   ///
-  /// In zh, this message translates to:
-  /// **'字段方案'**
+  /// In en, this message translates to:
+  /// **'Field scheme'**
   String get fieldScheme;
 
   /// No description provided for @fieldSchemeOfficial.
   ///
-  /// In zh, this message translates to:
-  /// **'官方字段'**
+  /// In en, this message translates to:
+  /// **'Official fields'**
   String get fieldSchemeOfficial;
 
   /// No description provided for @fieldSchemeCustom.
   ///
-  /// In zh, this message translates to:
-  /// **'自定义字段'**
+  /// In en, this message translates to:
+  /// **'Custom fields'**
   String get fieldSchemeCustom;
 
   /// No description provided for @savedQuick.
   ///
-  /// In zh, this message translates to:
-  /// **'记录已保存，可稍后在采集档案中补充字段。'**
+  /// In en, this message translates to:
+  /// **'Record saved. You can add fields later.'**
   String get savedQuick;
 
   /// No description provided for @savedStandard.
   ///
-  /// In zh, this message translates to:
-  /// **'记录已提交。'**
+  /// In en, this message translates to:
+  /// **'Record submitted.'**
   String get savedStandard;
 
   /// No description provided for @savedResearch.
   ///
-  /// In zh, this message translates to:
-  /// **'研究记录已保存。'**
+  /// In en, this message translates to:
+  /// **'Research record saved.'**
   String get savedResearch;
 
   /// No description provided for @stdLangPrompt.
   ///
-  /// In zh, this message translates to:
-  /// **'选择标识中出现的语言'**
+  /// In en, this message translates to:
+  /// **'Select the languages on this sign'**
   String get stdLangPrompt;
 
   /// No description provided for @stdMoreInfo.
   ///
-  /// In zh, this message translates to:
-  /// **'＋ 添加更多信息'**
+  /// In en, this message translates to:
+  /// **'+ Add more info'**
   String get stdMoreInfo;
 
   /// No description provided for @fieldScript.
   ///
-  /// In zh, this message translates to:
-  /// **'文字体系'**
+  /// In en, this message translates to:
+  /// **'Script'**
   String get fieldScript;
 
   /// No description provided for @fieldNote.
   ///
-  /// In zh, this message translates to:
-  /// **'备注（可选）'**
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
   String get fieldNote;
 
   /// No description provided for @datasetExported.
   ///
-  /// In zh, this message translates to:
-  /// **'Dataset Package 已导出'**
+  /// In en, this message translates to:
+  /// **'Dataset Package exported'**
   String get datasetExported;
+
+  /// No description provided for @select.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get select;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(int count);
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @deselectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Deselect all'**
+  String get deselectAll;
+
+  /// No description provided for @deleteMultipleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} records?'**
+  String deleteMultipleTitle(int count);
+
+  /// No description provided for @deleteIrreversibleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone.'**
+  String get deleteIrreversibleBody;
+
+  /// No description provided for @deletedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} records'**
+  String deletedCount(int count);
+
+  /// No description provided for @sortTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sortTitle;
+
+  /// No description provided for @sortNewestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get sortNewestFirst;
+
+  /// No description provided for @sortOldestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest first'**
+  String get sortOldestFirst;
+
+  /// No description provided for @sortIdAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'ID ascending'**
+  String get sortIdAsc;
+
+  /// No description provided for @sortIdDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'ID descending'**
+  String get sortIdDesc;
+
+  /// No description provided for @filterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filterTitle;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @resultsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} shown'**
+  String resultsCount(int count);
+
+  /// No description provided for @filterMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get filterMode;
+
+  /// No description provided for @filterStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get filterStatus;
+
+  /// No description provided for @filterArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Area'**
+  String get filterArea;
+
+  /// No description provided for @filterCollector.
+  ///
+  /// In en, this message translates to:
+  /// **'Collector'**
+  String get filterCollector;
+
+  /// No description provided for @filterGps.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS'**
+  String get filterGps;
+
+  /// No description provided for @filterPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get filterPhoto;
+
+  /// No description provided for @filterSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source photo'**
+  String get filterSource;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @allRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'All records'**
+  String get allRecords;
+
+  /// No description provided for @newAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'New album'**
+  String get newAlbum;
+
+  /// No description provided for @albumNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Album name'**
+  String get albumNameHint;
+
+  /// No description provided for @renameAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename album'**
+  String get renameAlbum;
+
+  /// No description provided for @deleteAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete album'**
+  String get deleteAlbum;
+
+  /// No description provided for @deleteAlbumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String deleteAlbumTitle(String name);
+
+  /// No description provided for @deleteAlbumBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Records in this album are not deleted.'**
+  String get deleteAlbumBody;
+
+  /// No description provided for @addToAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to album'**
+  String get addToAlbum;
+
+  /// No description provided for @removeFromAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from album'**
+  String get removeFromAlbum;
+
+  /// No description provided for @addedToAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {count} to “{name}”'**
+  String addedToAlbum(int count, String name);
+
+  /// No description provided for @removedFromAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {count} from album'**
+  String removedFromAlbum(int count);
+
+  /// No description provided for @albumEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No records in this album yet.'**
+  String get albumEmpty;
 }
 
 class _AppLocalizationsDelegate
