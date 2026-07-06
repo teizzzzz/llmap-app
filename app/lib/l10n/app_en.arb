@@ -194,5 +194,11 @@
   "@addedToAlbum": {"placeholders": {"count": {"type": "int"}, "name": {"type": "String"}}},
   "removedFromAlbum": "Removed {count} from album",
   "@removedFromAlbum": {"placeholders": {"count": {"type": "int"}}},
-  "albumEmpty": "No records in this album yet."
+  "albumEmpty": "No records in this album yet.",
+  "unfiled": "Unfiled",
+  "filed": "Filed",
+  "noUnfiledRecords": "No unfiled records",
+  "allRecordsFiled": "All records have been organized into albums",
+  "noFiledRecords": "No filed records",
+  "recordsAddedToAlbumsAppearHere": "Records added to albums will appear here"
 }

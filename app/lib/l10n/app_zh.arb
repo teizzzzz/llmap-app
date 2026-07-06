@@ -173,5 +173,11 @@
   "removeFromAlbum": "从相册移除",
   "addedToAlbum": "已将 {count} 条加入“{name}”",
   "removedFromAlbum": "已从相册移除 {count} 条",
-  "albumEmpty": "该相册还没有记录。"
+  "albumEmpty": "该相册还没有记录。",
+  "unfiled": "未归纳",
+  "filed": "已归纳",
+  "noUnfiledRecords": "没有未归纳的记录",
+  "allRecordsFiled": "所有记录都已经整理到相册中",
+  "noFiledRecords": "没有已归纳的记录",
+  "recordsAddedToAlbumsAppearHere": "将记录加入相册后会显示在这里"
 }

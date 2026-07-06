@@ -540,4 +540,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get albumEmpty => '该相册还没有记录。';
+
+  @override
+  String get unfiled => '未归纳';
+
+  @override
+  String get filed => '已归纳';
+
+  @override
+  String get noUnfiledRecords => '没有未归纳的记录';
+
+  @override
+  String get allRecordsFiled => '所有记录都已经整理到相册中';
+
+  @override
+  String get noFiledRecords => '没有已归纳的记录';
+
+  @override
+  String get recordsAddedToAlbumsAppearHere => '将记录加入相册后会显示在这里';
 }

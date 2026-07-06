@@ -173,5 +173,11 @@
   "removeFromAlbum": "アルバムから外す",
   "addedToAlbum": "「{name}」に {count} 件追加しました",
   "removedFromAlbum": "アルバムから {count} 件外しました",
-  "albumEmpty": "このアルバムにはまだ記録がありません。"
+  "albumEmpty": "このアルバムにはまだ記録がありません。",
+  "unfiled": "未分類",
+  "filed": "分類済み",
+  "noUnfiledRecords": "未分類の記録はありません",
+  "allRecordsFiled": "すべての記録がアルバムに整理されています",
+  "noFiledRecords": "分類済みの記録はありません",
+  "recordsAddedToAlbumsAppearHere": "記録をアルバムに追加すると、ここに表示されます"
 }

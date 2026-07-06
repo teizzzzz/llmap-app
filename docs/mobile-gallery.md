@@ -1,10 +1,32 @@
-# Mobile Gallery 管理増強（Step 12）
+# Mobile Gallery 管理増強（Step 12 / 12.1）
 
 手機端の采集档案（Gallery）を「相册 / 档案管理器」に近づける増強。
 **app/（Flutter）のみ変更** — backend / Console / Desktop / Dataset Package v1 /
 SignID・CaptureID・DisplayID / 写真ファイル名は一切変更しない。
 
 ## 機能
+
+### 相册归納状態視図（Step 12.1）
+
+Gallery 主視図の上部 segmented で「**未分類 / すべて / 分類済み**」を切替。
+**既定は未分類** = どの相册にも属さない記録だけを表示する整理待ち Inbox。
+
+```text
+採集 → 未分類に現れる → 選択して相册へ → 未分類から即時消失
+必要なら「すべて」「分類済み」「該当相册」で閲覧
+全相册から外れた記録は未分類へ自動復帰（相册削除時も同様）
+```
+
+- 判定は `isFiled(sign, albums)`（いずれかの相册の recordIds に SignID がある）。
+  純ロジックは record_ops.dart の `AlbumStatusFilter` / `applyAlbumStatusFilter`。
+- **具体的な相册を開いている間は适用しない**（相册視図が優先。segmented も
+  非表示にして混乱を避ける）。
+- 既存の筛选・排序と叠加可能。複数相册所属でも「分類済み」に 1 回だけ表示。
+- 空状態: 未分類空=「未分類の記録はありません」＋副文言、分類済み空=
+  「分類済みの記録はありません」＋副文言。筛选起因の空は noMatch を優先。
+- l10n: unfiled / filed / noUnfiledRecords / allRecordsFiled /
+  noFiledRecords / recordsAddedToAlbumsAppearHere × ja/zh/en
+  （「すべて」は既存 `all` キーを再利用）。
 
 ### 批量選択（iPhone 相册式）
 

@@ -39,6 +39,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
   final GalleryFilter _filter = GalleryFilter();
   GallerySort _sort = GallerySort.newestFirst;
 
+  // 归納状態視図（Step 12.1）。既定は未分類 = 整理待ち Inbox。
+  // 具体的な相册を開いている間は適用しない（相册視図が優先）。
+  AlbumStatusFilter _albumStatus = AlbumStatusFilter.unfiled;
+
   // 選択モード（iPhone 相册式: 長押しで開始、タップで増減）。
   bool _selecting = false;
   final Set<Sign> _selected = {};
@@ -63,11 +67,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return null;
   }
 
-  // ── 表示対象（相册 → 筛选 → 排序。表示のみで記録は変更しない） ──
+  // ── 表示対象（相册 or 归納状態 → 筛选 → 排序。表示のみで記録は変更しない） ──
   List<Sign> get _visible {
     final album = _currentAlbum;
-    Iterable<Sign> base = widget.signs;
-    if (album != null) base = base.where((s) => album.contains(s.id));
+    final Iterable<Sign> base = album != null
+        // 相册視図: その相册の記録のみ（未分類/全部/分類済みは適用しない）
+        ? widget.signs.where((s) => album.contains(s.id))
+        // 主視図: 归納状態（既定 unfiled）で絞る
+        : applyAlbumStatusFilter(widget.signs, _albums, _albumStatus);
     return sortedSigns(base.where(_filter.matches).toList(), _sort);
   }
 
@@ -86,7 +93,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return set.toList();
   }
 
-  Future<void> _saveAlbums() => LocalStore.instance.saveAlbums(_albums);
+  Future<void> _saveAlbums() async {
+    try {
+      await LocalStore.instance.saveAlbums(_albums);
+    } catch (_) {
+      // 保存失敗（テスト環境等）でも画面上の相册操作は継続する
+    }
+  }
 
   // ── 編集（通常モードのタップ） ──
   Future<void> _edit(Sign s) async {
@@ -555,21 +568,26 @@ class _GalleryScreenState extends State<GalleryScreen> {
       body: Column(
         children: [
           _albumBar(t),
+          // 归納状態の切替（主視図のみ。相册視図では隠して混乱を避ける）
+          if (_albumId == null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: LLSegmentedControl<AlbumStatusFilter>(
+                segments: [
+                  LLSegment(AlbumStatusFilter.unfiled, t.unfiled),
+                  LLSegment(AlbumStatusFilter.all, t.all),
+                  LLSegment(AlbumStatusFilter.filed, t.filed),
+                ],
+                selected: _albumStatus,
+                activeColor: AppColors.accentTerracotta,
+                activeTextColor: AppColors.surfaceIvory,
+                onChanged: (v) => setState(() => _albumStatus = v),
+              ),
+            ),
           _resultsBar(t, visible.length),
           Expanded(
             child: visible.isEmpty
-                ? Center(
-                    child: Text(
-                      widget.signs.isEmpty
-                          ? t.emptyTitle
-                          : (_currentAlbum != null && !_filter.isActive
-                              ? t.albumEmpty
-                              : t.noMatch),
-                      textAlign: TextAlign.center,
-                      style: AppText.body()
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                  )
+                ? _emptyState(t)
                 : GridView.builder(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
                         AppSpacing.sm, AppSpacing.lg, AppSpacing.xl),
@@ -584,6 +602,44 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     itemBuilder: (_, i) => _card(visible[i]),
                   ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 空状態。優先順: 記録ゼロ → 筛选起因（noMatch）→ 相册空 → 归納状態別。
+  Widget _emptyState(AppLocalizations t) {
+    final String title;
+    String? subtitle;
+    if (widget.signs.isEmpty) {
+      title = t.emptyTitle;
+    } else if (_filter.isActive) {
+      title = t.noMatch; // 筛选条件による空を最優先で伝える
+    } else if (_currentAlbum != null) {
+      title = t.albumEmpty;
+    } else if (_albumStatus == AlbumStatusFilter.unfiled) {
+      title = t.noUnfiledRecords;
+      subtitle = t.allRecordsFiled;
+    } else if (_albumStatus == AlbumStatusFilter.filed) {
+      title = t.noFiledRecords;
+      subtitle = t.recordsAddedToAlbumsAppearHere;
+    } else {
+      title = t.emptyTitle; // all で空 = 記録ゼロ（通常は先頭分岐で到達しない）
+    }
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(title,
+              textAlign: TextAlign.center,
+              style:
+                  AppText.body().copyWith(color: AppColors.textSecondary)),
+          if (subtitle != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: AppText.caption()),
+          ],
         ],
       ),
     );

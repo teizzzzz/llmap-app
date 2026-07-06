@@ -543,4 +543,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get albumEmpty => 'このアルバムにはまだ記録がありません。';
+
+  @override
+  String get unfiled => '未分類';
+
+  @override
+  String get filed => '分類済み';
+
+  @override
+  String get noUnfiledRecords => '未分類の記録はありません';
+
+  @override
+  String get allRecordsFiled => 'すべての記録がアルバムに整理されています';
+
+  @override
+  String get noFiledRecords => '分類済みの記録はありません';
+
+  @override
+  String get recordsAddedToAlbumsAppearHere => '記録をアルバムに追加すると、ここに表示されます';
 }

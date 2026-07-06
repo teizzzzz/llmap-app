@@ -1077,6 +1077,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No records in this album yet.'**
   String get albumEmpty;
+
+  /// No description provided for @unfiled.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfiled'**
+  String get unfiled;
+
+  /// No description provided for @filed.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed'**
+  String get filed;
+
+  /// No description provided for @noUnfiledRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'No unfiled records'**
+  String get noUnfiledRecords;
+
+  /// No description provided for @allRecordsFiled.
+  ///
+  /// In en, this message translates to:
+  /// **'All records have been organized into albums'**
+  String get allRecordsFiled;
+
+  /// No description provided for @noFiledRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'No filed records'**
+  String get noFiledRecords;
+
+  /// No description provided for @recordsAddedToAlbumsAppearHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Records added to albums will appear here'**
+  String get recordsAddedToAlbumsAppearHere;
 }
 
 class _AppLocalizationsDelegate

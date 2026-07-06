@@ -1,8 +1,10 @@
-/// Gallery 管理（Step 12）の純ロジック: 筛选・排序・安全削除の写真参照計算。
-/// UI から切り離し、純 Dart テスト（test/record_ops_test.dart）で検証する。
+/// Gallery 管理（Step 12 / 12.1）の純ロジック: 筛选・排序・相册归納状態・
+/// 安全削除の写真参照計算。UI から切り離し、純 Dart テスト
+/// （test/record_ops_test.dart）で検証する。
 /// 記録データ・SignID・写真ファイル名は一切変更しない（表示と削除計算のみ）。
 library;
 
+import 'albums.dart';
 import 'models.dart';
 
 // ── 写真参照（安全削除） ──────────────────────────────────────────────
@@ -75,6 +77,33 @@ List<Sign> sortedSigns(List<Sign> signs, GallerySort sort) {
 }
 
 // ── 筛选 ─────────────────────────────────────────────────────────────
+
+// ── 相册归納状態（Step 12.1） ────────────────────────────────────────
+
+/// Gallery 主視図の归納状態筛选。既定は unfiled（未分類 = 整理待ち Inbox）。
+/// 具体的な相册を開いている間は適用しない（相册視図が優先）。
+enum AlbumStatusFilter { unfiled, all, filed }
+
+/// 記録がいずれかの相册に所属しているか（= 分類済み）。
+bool isFiled(Sign s, List<Album> albums) =>
+    albums.any((a) => a.contains(s.id));
+
+/// 归納状態で絞った**新しいリスト**を返す（表示のみ・記録は不変）。
+/// 複数相册に所属する記録も filed で 1 回だけ現れる（入力順を保持）。
+List<Sign> applyAlbumStatusFilter(
+  List<Sign> signs,
+  List<Album> albums,
+  AlbumStatusFilter status,
+) {
+  switch (status) {
+    case AlbumStatusFilter.all:
+      return List<Sign>.of(signs);
+    case AlbumStatusFilter.unfiled:
+      return signs.where((s) => !isFiled(s, albums)).toList();
+    case AlbumStatusFilter.filed:
+      return signs.where((s) => isFiled(s, albums)).toList();
+  }
+}
 
 /// DataStatus の実効値。旧データで DataStatus 未併記なら _status から導出。
 String effectiveDataStatus(Sign s) {

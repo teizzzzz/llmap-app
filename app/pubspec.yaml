@@ -18,7 +18,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # of the product and file versions while build-number is used as the build suffix.
 # 表示名は MAJOR.MINOR.PATCH（再採番で 1.9→1.2.6）。
 # versionCode(+N) は名前表記に関わらず単調増加させる（更新の整合性のため）。
-version: 1.9.0+24
+version: 1.9.1+25
 
 environment:
   sdk: ^3.12.2

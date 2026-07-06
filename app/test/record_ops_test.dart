@@ -1,10 +1,86 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:llmap_app/albums.dart';
 import 'package:llmap_app/models.dart';
 import 'package:llmap_app/record_ops.dart';
 
 Sign sign(Map<String, dynamic> data) => Sign(Map<String, dynamic>.from(data));
 
 void main() {
+  group('AlbumStatusFilter（相册归納状態 / Step 12.1）', () {
+    final unfiledSign = sign({'SignID': 'S-unfiled', '主要言語': '日本語',
+        'EntryMode': 'quick', '採集日時': '2026-07-01 10:00:00'});
+    final filedSign = sign({'SignID': 'S-filed', '主要言語': '韓国語',
+        'EntryMode': 'research', '採集日時': '2026-07-02 10:00:00'});
+    final doubleFiled = sign({'SignID': 'S-double', '主要言語': '日本語',
+        '採集日時': '2026-07-03 10:00:00'});
+    List<Album> albums() => [
+          Album.create('A')..addAll(['S-filed', 'S-double']),
+          Album.create('B')..addAll(['S-double']),
+        ];
+    final signs = [unfiledSign, filedSign, doubleFiled];
+
+    test('isFiled: いずれかの相册に所属していれば true', () {
+      final a = albums();
+      expect(isFiled(unfiledSign, a), isFalse);
+      expect(isFiled(filedSign, a), isTrue);
+      expect(isFiled(doubleFiled, a), isTrue);
+      expect(isFiled(filedSign, const []), isFalse); // 相册ゼロなら全員未分類
+    });
+
+    test('unfiled: どの相册にも属さない記録のみ', () {
+      final out = applyAlbumStatusFilter(signs, albums(), AlbumStatusFilter.unfiled);
+      expect(out.map((s) => s.id).toList(), ['S-unfiled']);
+    });
+
+    test('all: すべての記録（分類済みも含む）', () {
+      final out = applyAlbumStatusFilter(signs, albums(), AlbumStatusFilter.all);
+      expect(out.length, 3);
+    });
+
+    test('filed: 少なくとも1つの相册に属する記録。複数相册所属でも1回だけ', () {
+      final out = applyAlbumStatusFilter(signs, albums(), AlbumStatusFilter.filed);
+      expect(out.map((s) => s.id).toList(), ['S-filed', 'S-double']);
+      expect(out.where((s) => s.id == 'S-double').length, 1);
+    });
+
+    test('相册から全部外す/相册削除 → unfiled に戻る', () {
+      final a = albums();
+      // 全相册から外す
+      for (final album in a) {
+        album.removeAll(['S-double']);
+      }
+      var out = applyAlbumStatusFilter(signs, a, AlbumStatusFilter.unfiled);
+      expect(out.map((s) => s.id).toSet(), {'S-unfiled', 'S-double'});
+      // 相册削除（リストから除去）→ 他の相册に属さない記録は unfiled へ
+      final b = albums()..removeWhere((al) => al.name == 'A');
+      out = applyAlbumStatusFilter(signs, b, AlbumStatusFilter.unfiled);
+      expect(out.map((s) => s.id).toSet(), {'S-unfiled', 'S-filed'});
+      // S-double は相册 B にまだ属するので filed のまま
+      expect(isFiled(doubleFiled, b), isTrue);
+    });
+
+    test('归納状態は既存筛选と叠加できる（表示のみ・記録は不変）', () {
+      final f = GalleryFilter()..language = '日本語';
+      final unfiledJa = applyAlbumStatusFilter(signs, albums(), AlbumStatusFilter.unfiled)
+          .where(f.matches)
+          .toList();
+      expect(unfiledJa.map((s) => s.id).toList(), ['S-unfiled']);
+      final filedJa = applyAlbumStatusFilter(signs, albums(), AlbumStatusFilter.filed)
+          .where(f.matches)
+          .toList();
+      expect(filedJa.map((s) => s.id).toList(), ['S-double']);
+      expect(signs.length, 3); // 元データは不変
+    });
+
+    test('归納状態のあとに排序も従来どおり効く', () {
+      final out = sortedSigns(
+        applyAlbumStatusFilter(signs, albums(), AlbumStatusFilter.filed),
+        GallerySort.newestFirst,
+      );
+      expect(out.map((s) => s.id).toList(), ['S-double', 'S-filed']);
+    });
+  });
+
   group('orphanedPhotos（批量削除の写真安全計算）', () {
     test('共有元写真は残る記録が参照している限り削除対象にしない', () {
       // 1枚の元写真 pano.jpg から a/b の2つの sign を切り出したケース。

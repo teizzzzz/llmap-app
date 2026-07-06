@@ -12,6 +12,52 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.9.1 (2026-07-06) — Gallery 相册归納状態視図（Step 12.1）
+
+Gallery 主視図に「未分類 / すべて / 分類済み」の切替（segmented）を追加。
+既定は**未分類**（どの相册にも属さない記録のみ）で、採集後の整理待ち
+インボックスとして使える。
+
+- 記録を相册に加えると未分類から**即時に消え**、「すべて / 分類済み /
+  該当相册」から見られる。全相册から外れる・相册削除で他の相册に
+  属さなくなった記録は未分類へ戻る。
+- 具体的な相册を開いている間は归納状態を適用しない（segmented も非表示）。
+- 既存の筛选・排序とそのまま叠加（表示のみ・記録本体は不変）。
+  複数相册に所属する記録も「分類済み」に 1 回だけ表示。
+- 純ロジックは record_ops.dart の `AlbumStatusFilter` / `isFiled` /
+  `applyAlbumStatusFilter`。空状態文言も状態別に用意し、筛选起因の空は
+  従来の noMatch を優先。l10n 6 キー × ja/zh/en 追加。
+- `flutter analyze` 追加警告 0 / `flutter test` **55 件 PASS**
+  （単体 7 件＋widget 1 件を追加）。
+- backend / Console / Desktop / Dataset Package / 字段 schema は不変。
+
+## v1.9.0 (2026-07-06) — Gallery 批量管理と本地相册（Step 12）
+
+（クラウド作業分の記載補填）Gallery を「相册 / 档案管理器」に増強。
+
+- **批量選択**: iPhone 相册式（長押しで選択モード・タップで多選・
+  全選/解除・「N 件選択中」表示・確認つき批量削除）。
+- **写真の安全削除**: `orphanedPhotos()` が「残る記録から参照されない
+  ファイルだけ」を計算。共有元写真（1图多sign）を誤削除しない。
+  批量/編集画面/首页スワイプの全削除経路を `_deleteSigns()` に統一し、
+  従来の**孤児写真リーク（記録だけ消え写真が残る）を解消**。
+- **筛选**: 言語/設置主体/EntryMode/DataStatus/地区/採集者/GPS/写真/元写真
+  （表示のみ）。**排序**: 採集日時 新旧 / DisplayID 昇降（欠損日時は末尾）。
+- **本地相册**: `albums.json`（SignID 参照のみ・複数所属可）。相册は
+  CSV / Dataset Package に**入らない**。相册削除は記録を消さない。
+- l10n 36 キー × ja/zh/en。`flutter test` 47 件 PASS（本 Step からクラウド
+  環境でも Flutter SDK を取得して analyze/test を実行検証）。
+
+## console (2026-07-06) — Console 多言語 UI ja/zh/en（Step 11）
+
+（クラウド作業分の記載補填）Research Console を i18next + react-i18next で
+3 言語対応（**既定 ja-JP** → localStorage → ブラウザ言語の順で決定）。
+Settings に言語切替（即時反映・端末に保存・Tauri Desktop でも持続）。
+**データ字段キー・CSV ヘッダー・backend API・内部状態値は不変**
+（UI 表示層のみ翻訳。select の option も value は内部値のまま）。
+Playwright E2E 19 項目 PASS。設計は docs/console-i18n.md。
+Desktop 起動オーバーレイの i18n は先送り（main.rs に TODO 記載）。
+
 ## desktop (2026-07-06) — macOS installable app prototype（Step 10E・実機検証済み）
 
 macOS（Apple Silicon / macOS 26.5）実機で `LLMap.app` と

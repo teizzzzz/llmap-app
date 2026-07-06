@@ -159,4 +159,85 @@ void main() {
     expect(find.byType(LLCard), findsNWidgets(2));
     expect(signs.length, 2);
   });
+
+  testWidgets('归納状態視図: 既定は未分類 → 加入相册で即時消失 → All/Filed → 相册視図は独立',
+      (tester) async {
+    final signs = [
+      _sign('D-1', '整理対象', '2026-07-01 10:00:00'),
+      _sign('D-2', '未整理のまま', '2026-07-02 10:00:00'),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('ja'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: GalleryScreen(
+          signs: signs,
+          schema: _schema(),
+          onDeleteMany: (_) async {},
+          onChanged: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1) 既定 = 未分類（segmented 表示・相册ゼロなので全件が未分類）
+    expect(find.text('未分類'), findsOneWidget);
+    expect(find.byType(LLCard), findsNWidgets(2));
+    expect(find.text('2 件を表示'), findsOneWidget);
+
+    // 2) 相册を新規作成（UI 経由）
+    await tester.tap(find.text('+ 新規アルバム'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'テスト相册');
+    await tester.tap(find.text('確定'));
+    await tester.pumpAndSettle();
+    expect(find.text('テスト相册 (0)'), findsOneWidget);
+
+    // 3) D-1 を選択して相册へ → 未分類から即時消失
+    await tester.longPress(find.text('整理対象'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.photo_album_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('テスト相册')); // 追加先シートの行
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.close)); // 選択モード終了
+    await tester.pumpAndSettle();
+    expect(find.text('整理対象'), findsNothing); // 未分類視図から消えた
+    expect(find.text('未整理のまま'), findsOneWidget);
+    expect(find.text('1 件を表示'), findsOneWidget);
+
+    // 4) すべて = 2 件 / 分類済み = 1 件
+    await tester.tap(find.text('すべて'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LLCard), findsNWidgets(2));
+    await tester.tap(find.text('分類済み'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LLCard), findsOneWidget);
+    expect(find.text('整理対象'), findsOneWidget);
+
+    // 5) 相册視図は归納状態と無関係に表示・segmented は隠れる
+    await tester.tap(find.text('テスト相册 (1)'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LLCard), findsOneWidget);
+    expect(find.text('未分類'), findsNothing); // segmented 非表示
+
+    // 6) 相册から外す → 相册は空 → 主視図の未分類に戻る
+    await tester.longPress(find.text('整理対象'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.remove_circle_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+    expect(find.text('このアルバムにはまだ記録がありません。'), findsOneWidget);
+
+    await tester.tap(find.text('すべての記録'));
+    await tester.pumpAndSettle();
+    // 直前の状態（分類済み）が維持され、いまは分類済みゼロ → 専用空状態
+    expect(find.text('分類済みの記録はありません'), findsOneWidget);
+    expect(find.text('記録をアルバムに追加すると、ここに表示されます'), findsOneWidget);
+    await tester.tap(find.text('未分類'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LLCard), findsNWidgets(2)); // 全員未分類に戻った
+  });
 }

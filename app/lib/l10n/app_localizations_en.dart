@@ -553,4 +553,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get albumEmpty => 'No records in this album yet.';
+
+  @override
+  String get unfiled => 'Unfiled';
+
+  @override
+  String get filed => 'Filed';
+
+  @override
+  String get noUnfiledRecords => 'No unfiled records';
+
+  @override
+  String get allRecordsFiled => 'All records have been organized into albums';
+
+  @override
+  String get noFiledRecords => 'No filed records';
+
+  @override
+  String get recordsAddedToAlbumsAppearHere =>
+      'Records added to albums will appear here';
 }
