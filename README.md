@@ -26,6 +26,7 @@ llmap-app/
 - AI判定は端末から Claude / Gemini API を直接呼ぶ（APIキーはアプリ設定で端末内保存）。
 - CSV標準字段（`mapv2.0/PROJECT_STANDARD.md` §6/§7）を踏襲し、CSV import/export を維持。
 - データ構造は将来の**多人共享**（クラウド同期）を予約。
+- Build matrix（どの OS でどの成果物をビルドするか）: [docs/build-matrix.md](docs/build-matrix.md)
 
 ## ロードマップ
 
