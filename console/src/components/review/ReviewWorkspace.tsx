@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
 import type { RecordDetail, SchemaInfo } from '../../api/types';
@@ -37,6 +38,7 @@ export default function ReviewWorkspace({
   /** 保存/審核動作の成功後に呼ぶ（advance=true なら次の記録へ進む）。 */
   onActioned: (recordId: number, advance: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<RecordDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,13 +94,13 @@ export default function ReviewWorkspace({
     return (
       <div className="card review-workspace">
         <div className="error-box">
-          <strong>Could not load record.</strong>
+          <strong>{t('record.loadError')}</strong>
           <div className="hint">{error}</div>
         </div>
       </div>
     );
   }
-  if (!detail) return <div className="card review-workspace muted">Loading record…</div>;
+  if (!detail) return <div className="card review-workspace muted">{t('record.loading')}</div>;
 
   const openPhoto = (path: string | null) => {
     const url = photoUrl(path);
@@ -113,7 +115,7 @@ export default function ReviewWorkspace({
       onClick={() =>
         patch(actionPayload(a, detail?.data['_status'] ?? ''), a.key, a.leavesQueue)}
     >
-      {busy === a.key ? 'Working…' : a.label}
+      {busy === a.key ? t('review.working') : t(a.labelKey)}
     </button>
   );
 
@@ -133,26 +135,30 @@ export default function ReviewWorkspace({
       <div className="review-columns">
         {/* ── 写真 ── */}
         <div className="review-photos">
-          <figure onClick={() => openPhoto(detail.photoUrl)} title="Open full size">
+          <figure onClick={() => openPhoto(detail.photoUrl)} title={t('record.openFull')}>
             <PhotoThumb src={photoUrl(detail.photoUrl)} size={220} alt="crop" />
-            <figcaption className="muted">crop — click to open full size</figcaption>
+            <figcaption className="muted">
+              {t('record.crop')} — {t('record.openFull')}
+            </figcaption>
           </figure>
-          <figure onClick={() => openPhoto(detail.sourcePhotoUrl)} title="Open full size">
+          <figure onClick={() => openPhoto(detail.sourcePhotoUrl)} title={t('record.openFull')}>
             <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={220} alt="source" />
-            <figcaption className="muted">source — click to open full size</figcaption>
+            <figcaption className="muted">
+              {t('record.source')} — {t('record.openFull')}
+            </figcaption>
           </figure>
         </div>
 
         {/* ── 字段編集 ── */}
         <div className="review-fields">
           <h3 className="detail-section">
-            Research fields{' '}
-            {dirty && <span className="dirty-flag">● unsaved changes</span>}
+            {t('record.researchFields')}{' '}
+            {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
           </h3>
           <div className="edit-grid">
             {EDITABLE_FIELDS.map((f) => (
               <label key={f} className="edit-row">
-                <span className="k">{f}</span>
+                <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
                 <FieldEditor
                   field={f}
                   value={current(f)}
@@ -166,20 +172,20 @@ export default function ReviewWorkspace({
 
         {/* ── 元情報＋アクション ── */}
         <div className="review-meta">
-          <h3 className="detail-section">Metadata (read-only)</h3>
+          <h3 className="detail-section">{t('record.metadata')}</h3>
           <div className="identity-grid">
             {META_FIELDS.map((f) => (
               <div key={f} className="identity-row">
-                <span className="k">{f}</span>
+                <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
                 <span className="v mono">{detail.data[f] || '—'}</span>
               </div>
             ))}
           </div>
 
-          <h3 className="detail-section">Actions</h3>
+          <h3 className="detail-section">{t('review.actionsTitle')}</h3>
           {actionError && (
             <div className="error-box" style={{ marginBottom: 8 }}>
-              <strong>Action failed.</strong>
+              <strong>{t('review.actionFailed')}</strong>
               <div className="hint">{actionError}</div>
             </div>
           )}
@@ -189,7 +195,7 @@ export default function ReviewWorkspace({
               disabled={!dirty || busy != null}
               onClick={() => patch({}, 'save', false)}
             >
-              {busy === 'save' ? 'Saving…' : 'Save changes'}
+              {busy === 'save' ? t('record.saving') : t('review.saveChanges')}
             </button>
             {REVIEW_ACTIONS.map(actionBtn)}
             <button
@@ -197,7 +203,7 @@ export default function ReviewWorkspace({
               disabled={busy != null}
               onClick={() => navigate(`/database?record=${detail.id}`)}
             >
-              Open in Database
+              {t('common.openInDatabase')}
             </button>
           </div>
         </div>

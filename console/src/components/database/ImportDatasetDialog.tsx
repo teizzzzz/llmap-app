@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiError, importDatasetPackage } from '../../api/client';
 import type { ImportDatasetResult } from '../../api/types';
 
@@ -14,6 +15,7 @@ export default function ImportDatasetDialog({
   onClose: () => void;
   onImported: () => void; // 成功後に records / datasets を親が再取得する
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export default function ImportDatasetDialog({
     setResult(null);
     if (f && !f.name.toLowerCase().endsWith('.zip')) {
       setFile(null);
-      setFileError(`"${f.name}" is not a .zip file. Please select a llmap_dataset_*.zip.`);
+      setFileError(t('import.notZip', { name: f.name }));
       return;
     }
     setFileError(null);
@@ -35,7 +37,7 @@ export default function ImportDatasetDialog({
 
   const upload = async () => {
     if (!file) {
-      setFileError('Please select a Dataset Package (.zip) first.');
+      setFileError(t('import.selectFirst'));
       return;
     }
     setUploading(true);
@@ -55,17 +57,15 @@ export default function ImportDatasetDialog({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Import Dataset Package</h2>
+          <h2>{t('import.title')}</h2>
           <button className="btn" onClick={onClose}>✕</button>
         </div>
 
         {!result && (
           <>
             <p className="muted">
-              Upload a package exported by LLMap Mobile
-              (<code>llmap_dataset_YYYYMMDD_HHMMSS.zip</code>). Records go into the
-              local database; photos are copied into backend storage. Duplicate
-              SignIDs are skipped, never overwritten.
+              {t('import.introUpload', { pattern: 'llmap_dataset_YYYYMMDD_HHMMSS.zip' })}{' '}
+              {t('import.introDetail')}
             </p>
             <input
               ref={inputRef}
@@ -76,14 +76,14 @@ export default function ImportDatasetDialog({
             />
             <div className="file-row">
               <button className="btn" onClick={() => inputRef.current?.click()}>
-                Choose file…
+                {t('import.chooseFile')}
               </button>
               {file ? (
                 <span className="mono">
                   {file.name} <span className="muted">({fmtSize(file.size)})</span>
                 </span>
               ) : (
-                <span className="muted">No file selected.</span>
+                <span className="muted">{t('import.noFile')}</span>
               )}
             </div>
             {fileError && (
@@ -91,7 +91,7 @@ export default function ImportDatasetDialog({
             )}
             {error && (
               <div className="error-box" style={{ marginTop: 10 }}>
-                <strong>Import failed.</strong>
+                <strong>{t('import.failed')}</strong>
                 <div className="hint">{error}</div>
               </div>
             )}
@@ -101,10 +101,10 @@ export default function ImportDatasetDialog({
                 disabled={!file || uploading}
                 onClick={upload}
               >
-                {uploading ? 'Uploading…' : 'Upload'}
+                {uploading ? t('import.uploading') : t('import.upload')}
               </button>
               <button className="btn" onClick={onClose} disabled={uploading}>
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </>
@@ -112,25 +112,25 @@ export default function ImportDatasetDialog({
 
         {result && (
           <>
-            <div className="import-ok">✓ Dataset imported successfully</div>
+            <div className="import-ok">{t('import.success')}</div>
             <div className="report-grid">
-              <div className="report-row"><span>Dataset ID</span><b>{result.datasetId}</b></div>
-              <div className="report-row"><span>Records in package</span><b>{result.recordCount}</b></div>
-              <div className="report-row"><span>Imported</span><b>{result.importedRecordCount}</b></div>
-              <div className="report-row"><span>Skipped</span><b>{result.skippedRecordCount}</b></div>
-              <div className="report-row"><span>Photos</span><b>{result.photoCount}</b></div>
-              <div className="report-row"><span>Source photos</span><b>{result.sourcePhotoCount}</b></div>
-              <div className="report-row"><span>Missing photos</span><b>{result.missingPhotoCount}</b></div>
-              <div className="report-row"><span>Missing source photos</span><b>{result.missingSourcePhotoCount}</b></div>
+              <div className="report-row"><span>{t('import.datasetId')}</span><b>{result.datasetId}</b></div>
+              <div className="report-row"><span>{t('import.inPackage')}</span><b>{result.recordCount}</b></div>
+              <div className="report-row"><span>{t('import.imported')}</span><b>{result.importedRecordCount}</b></div>
+              <div className="report-row"><span>{t('import.skipped')}</span><b>{result.skippedRecordCount}</b></div>
+              <div className="report-row"><span>{t('import.photos')}</span><b>{result.photoCount}</b></div>
+              <div className="report-row"><span>{t('import.sourcePhotos')}</span><b>{result.sourcePhotoCount}</b></div>
+              <div className="report-row"><span>{t('import.missingPhotos')}</span><b>{result.missingPhotoCount}</b></div>
+              <div className="report-row"><span>{t('import.missingSourcePhotos')}</span><b>{result.missingSourcePhotoCount}</b></div>
             </div>
 
             {result.duplicateSignIds.length > 0 && (
               <div className="warn-box">
-                <strong>{result.duplicateSignIds.length} duplicate SignID(s) skipped</strong>
+                <strong>{t('import.duplicates', { n: result.duplicateSignIds.length })}</strong>
                 <ul className="mono">
                   {result.duplicateSignIds.slice(0, 20).map((s) => <li key={s}>{s}</li>)}
                   {result.duplicateSignIds.length > 20 && (
-                    <li>…and {result.duplicateSignIds.length - 20} more</li>
+                    <li>{t('import.andMore', { n: result.duplicateSignIds.length - 20 })}</li>
                   )}
                 </ul>
               </div>
@@ -138,20 +138,20 @@ export default function ImportDatasetDialog({
 
             {result.warnings.length > 0 && (
               <div className="warn-box">
-                <strong>{result.warnings.length} warning(s)</strong>
+                <strong>{t('import.warnings', { n: result.warnings.length })}</strong>
                 <ul>
                   {result.warnings.slice(0, 20).map((w, i) => <li key={i}>{w}</li>)}
                   {result.warnings.length > 20 && (
-                    <li>…and {result.warnings.length - 20} more</li>
+                    <li>{t('import.andMore', { n: result.warnings.length - 20 })}</li>
                   )}
                 </ul>
               </div>
             )}
 
             <div className="detail-actions">
-              <button className="btn primary" onClick={onClose}>View records</button>
+              <button className="btn primary" onClick={onClose}>{t('import.viewRecords')}</button>
               <button className="btn" onClick={() => { setResult(null); setFile(null); }}>
-                Import another
+                {t('import.importAnother')}
               </button>
             </div>
           </>

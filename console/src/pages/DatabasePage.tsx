@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { ApiError, getRecords } from '../api/client';
 import type { RecordsQuery, RecordsResponse } from '../api/types';
@@ -11,6 +12,7 @@ import useFilterOptions from '../hooks/useFilterOptions';
 const PAGE_SIZES = [25, 50, 100];
 
 export default function DatabasePage() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<RecordsQuery>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -67,11 +69,11 @@ export default function DatabasePage() {
     <>
       <div className="page-header page-header-row">
         <div>
-          <h1>Database</h1>
-          <p>Manage imported linguistic landscape records.</p>
+          <h1>{t('database.title')}</h1>
+          <p>{t('database.subtitle')}</p>
         </div>
         <button className="btn primary" onClick={() => setImporting(true)}>
-          ⇪ Import Dataset Package
+          ⇪ {t('database.import')}
         </button>
       </div>
 
@@ -106,20 +108,17 @@ export default function DatabasePage() {
         <div className="table-wrap">
           {error && (
             <div className="error-box">
-              <strong>Could not load records.</strong>
+              <strong>{t('database.loadError')}</strong>
               <div className="hint">{error}</div>
             </div>
           )}
-          {!error && loading && <div className="card muted">Loading records…</div>}
+          {!error && loading && <div className="card muted">{t('database.loading')}</div>}
           {!error && !loading && data && data.items.length === 0 && (
             <div className="placeholder">
               {hasFilters ? (
-                <p>No records match the current filters.</p>
+                <p>{t('database.noMatch')}</p>
               ) : (
-                <p>
-                  No records yet. Click “Import Dataset Package” above to upload a
-                  package exported from LLMap Mobile.
-                </p>
+                <p>{t('database.empty', { button: t('database.import') })}</p>
               )}
             </div>
           )}
@@ -134,21 +133,21 @@ export default function DatabasePage() {
               </div>
               <div className="pagination">
                 <button className="btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                  ← Prev
+                  {t('database.prev')}
                 </button>
                 <span className="muted">
-                  {from}–{to} of {data.total}
+                  {t('database.range', { from, to, total: data.total })}
                 </span>
                 <button
                   className="btn"
                   disabled={page >= lastPage}
                   onClick={() => setPage(page + 1)}
                 >
-                  Next →
+                  {t('database.next')}
                 </button>
                 <span className="spacer" />
                 <label className="filter-field">
-                  <span>Page size</span>
+                  <span>{t('database.pageSize')}</span>
                   <select
                     value={pageSize}
                     onChange={(e) => {

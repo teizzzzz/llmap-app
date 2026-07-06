@@ -1,22 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiError, getAiStatus, getRecords } from '../api/client';
 import type { AiStatus, RecordsQuery } from '../api/types';
 import useFilterOptions from '../hooks/useFilterOptions';
 
-// AI タスク種別。すべて scaffold（実 API 呼び出しは backend 設定まで無効）。
-const TASKS = [
-  { key: 'lang', title: 'Language identification', desc: 'Detect the languages appearing on each sign photo.' },
-  { key: 'ocr', title: 'OCR / text extraction', desc: 'Extract visible text from crop photos.' },
-  { key: 'fields', title: 'Field suggestion', desc: 'Draft research fields (script, carrier, agent…) from the photo.' },
-  { key: 'translate', title: 'Translation', desc: 'Translate extracted text for cross-language analysis.' },
-  { key: 'dup', title: 'Duplicate detection', desc: 'Find likely duplicate captures of the same sign.' },
-  { key: 'privacy', title: 'Privacy risk detection', desc: 'Flag faces, plates, or personal data before sharing.' },
-];
+// AI タスク種別（key は内部値。表示は ai.tasks.<key> の i18n キーで引く）。
+// すべて scaffold（実 API 呼び出しは backend 設定まで無効）。
+const TASKS = ['lang', 'ocr', 'fields', 'translate', 'dup', 'privacy'];
 
+// 内部値（API に渡る）。表示ラベルのみ翻訳する。
 const ENTRY_MODES = ['quick', 'standard', 'research'];
 const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'needs_review', 'reviewed', 'verified', 'rejected'];
 
 export default function AiProcessingPage() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<RecordsQuery>({ dataStatus: 'raw' });
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,129 +39,143 @@ export default function AiProcessingPage() {
   const sel = (
     label: string,
     value: string,
-    options: string[],
+    options: { value: string; label: string }[],
     onChange: (v: string) => void,
   ) => (
     <label className="filter-field" key={label}>
       <span>{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">All</option>
+        <option value="">{t('common.all')}</option>
         {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
     </label>
   );
+  const raw = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
+  const translated = (xs: string[]) =>
+    xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
+  const yesNo = [
+    { value: 'true', label: t('common.yes') },
+    { value: 'false', label: t('common.no') },
+  ];
 
-  const disabledReason = ai?.message ?? 'AI backend is not configured.';
+  // backend からのメッセージ（英文の可能性あり）はそのまま出し、
+  // 未取得時のみ翻訳済みの既定文を使う。
+  const disabledReason = ai?.message ?? t('ai.notConfigured');
 
   return (
     <>
       <div className="page-header">
-        <h1>AI Processing</h1>
+        <h1>{t('ai.title')}</h1>
         <p>
-          Batch AI assistance for large collections.{' '}
-          <span className="muted">
-            AI suggestions are drafts — they never overwrite human-reviewed fields
-            and must be reviewed before becoming research data.
-          </span>
+          {t('ai.subtitle')}{' '}
+          <span className="muted">{t('ai.note')}</span>
         </p>
       </div>
 
       {/* 安全説明（必須表示） */}
       <div className="warn-box" style={{ marginBottom: 14 }}>
-        <strong>Safety rules</strong>
+        <strong>{t('ai.safetyTitle')}</strong>
         <ul>
-          <li>No AI task will run until an AI backend is configured.</li>
-          <li>No API key should be committed to the repository (keys will be read from backend environment variables).</li>
-          <li>AI suggestions should be stored separately from human-confirmed fields
-            (planned: <code>_ai.主要言語</code>, <code>_ai.文字体系</code>,{' '}
-            <code>_ai.confidence</code>, <code>_ai.provider</code>, <code>_ai.updatedAt</code>).</li>
-          <li>AI results enter the Review queue as <code>ai_drafted</code>; humans confirm them there.</li>
+          <li>{t('ai.safety1')}</li>
+          <li>{t('ai.safety2')}</li>
+          <li>
+            {t('ai.safety3')}{' '}
+            ({t('ai.safety3Planned')}: <code>_ai.主要言語</code>,{' '}
+            <code>_ai.文字体系</code>, <code>_ai.confidence</code>,{' '}
+            <code>_ai.provider</code>, <code>_ai.updatedAt</code>)
+          </li>
+          <li>{t('ai.safety4')}</li>
         </ul>
       </div>
 
       {/* 1. Batch selection */}
-      <h3 className="detail-section">1 · Batch selection</h3>
+      <h3 className="detail-section">{t('ai.batchSelection')}</h3>
       <div className="card filters-bar">
-        {sel('Status', filters.dataStatus ?? '', DATA_STATUSES,
+        {sel(t('filters.status'), filters.dataStatus ?? '', translated(DATA_STATUSES),
           (v) => patch({ dataStatus: v || undefined }))}
-        {sel('Mode', filters.entryMode ?? '', ENTRY_MODES,
+        {sel(t('filters.mode'), filters.entryMode ?? '', translated(ENTRY_MODES),
           (v) => patch({ entryMode: v || undefined }))}
-        {sel('Language', filters.mainLanguage ?? '', schema?.enums['主要言語'] ?? [],
+        {sel(t('filters.language'), filters.mainLanguage ?? '',
+          raw(schema?.enums['主要言語'] ?? []),
           (v) => patch({ mainLanguage: v || undefined }))}
-        {sel('Area', filters.areaCode ?? '', areas,
+        {sel(t('filters.area'), filters.areaCode ?? '', raw(areas),
           (v) => patch({ areaCode: v || undefined }))}
         <label className="filter-field">
-          <span>Dataset</span>
+          <span>{t('filters.dataset')}</span>
           <select
             value={filters.datasetId != null ? String(filters.datasetId) : ''}
             onChange={(e) =>
               patch({ datasetId: e.target.value ? Number(e.target.value) : undefined })}
           >
-            <option value="">All</option>
+            <option value="">{t('common.all')}</option>
             {datasets.map((d) => (
               <option key={d.id} value={d.id}>{`#${d.id} ${d.name}`}</option>
             ))}
           </select>
         </label>
-        {sel('Photo', filters.hasPhoto === undefined ? '' : String(filters.hasPhoto),
-          ['true', 'false'],
+        {sel(t('filters.photo'), filters.hasPhoto === undefined ? '' : String(filters.hasPhoto),
+          yesNo,
           (v) => patch({ hasPhoto: v === '' ? undefined : v === 'true' }))}
-        {sel('GPS', filters.hasGps === undefined ? '' : String(filters.hasGps),
-          ['true', 'false'],
+        {sel(t('filters.gps'), filters.hasGps === undefined ? '' : String(filters.hasGps),
+          yesNo,
           (v) => patch({ hasGps: v === '' ? undefined : v === 'true' }))}
         <span className="spacer" />
         <span className="muted total">
-          {total != null ? `${total} records match` : ''}
+          {total != null ? t('ai.match', { n: total }) : ''}
         </span>
-        <button className="btn" onClick={() => setFilters({})}>Clear filters</button>
-        <button className="btn" onClick={fetchTotal}>Refresh</button>
+        <button className="btn" onClick={() => setFilters({})}>{t('common.clearFilters')}</button>
+        <button className="btn" onClick={fetchTotal}>{t('common.refresh')}</button>
       </div>
 
       {error && (
         <div className="error-box" style={{ marginBottom: 14 }}>
-          <strong>Could not load matching records.</strong>
+          <strong>{t('ai.loadError')}</strong>
           <div className="hint">{error}</div>
         </div>
       )}
 
       {/* 2. Task types */}
-      <h3 className="detail-section">2 · Task type</h3>
+      <h3 className="detail-section">{t('ai.taskType')}</h3>
       <div className="format-grid">
-        {TASKS.map((t) => (
-          <div key={t.key} className="card format-card disabled">
+        {TASKS.map((k) => (
+          <div key={k} className="card format-card disabled">
             <div className="format-head">
-              <strong>{t.title}</strong>
+              <strong>{t(`ai.tasks.${k}.title`)}</strong>
               <span className="badge" style={{ color: '#6f6a61', borderColor: '#6f6a6155', background: '#6f6a6114' }}>
-                Coming soon
+                {t('common.comingSoon')}
               </span>
             </div>
-            <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>{t.desc}</p>
+            <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
+              {t(`ai.tasks.${k}.desc`)}
+            </p>
             <p className="muted" style={{ margin: '6px 0 0', fontSize: 11.5 }}>
-              Requires AI backend configuration.
+              {t('ai.requiresBackend')}
             </p>
           </div>
         ))}
       </div>
 
       {/* 3. Dry run / Run（backend 未設定のため常に無効） */}
-      <h3 className="detail-section" style={{ marginTop: 20 }}>3 · Preview / run</h3>
+      <h3 className="detail-section" style={{ marginTop: 20 }}>{t('ai.previewRun')}</h3>
       <div className="card export-summary">
         <div>
           <div className="label muted">
-            Selected batch: {total ?? '—'} records · task: none
+            {t('ai.selectedBatch', { n: total ?? '—' })}
           </div>
           <div className="muted" style={{ marginTop: 4, fontSize: 12.5 }}>
             {ai
-              ? `${disabledReason} (providers: ${ai.providers.length ? ai.providers.join(', ') : 'none'})`
-              : 'Checking AI backend status…'}
+              ? `${disabledReason} (${t('ai.providers')}: ${
+                  ai.providers.length ? ai.providers.join(', ') : t('common.none')
+                })`
+              : t('ai.checking')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" disabled title={disabledReason}>Dry run</button>
+          <button className="btn" disabled title={disabledReason}>{t('ai.dryRun')}</button>
           <button className="btn primary" disabled title={disabledReason}>
-            Run batch
+            {t('ai.runBatch')}
           </button>
         </div>
       </div>

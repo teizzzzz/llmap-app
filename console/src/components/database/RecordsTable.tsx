@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { photoUrl } from '../../api/client';
 import type { RecordItem } from '../../api/types';
 import PhotoThumb from './PhotoThumb';
@@ -5,7 +6,8 @@ import StatusBadge from './StatusBadge';
 
 const dash = (v: string) => (v && v !== '—' ? v : '—');
 
-/** 記録一覧テーブル。行クリックで詳情、選択行はハイライト。 */
+/** 記録一覧テーブル。行クリックで詳情、選択行はハイライト。
+    列見出しは表示のみ翻訳（データの字段キー・値はそのまま）。 */
 export default function RecordsTable({
   items,
   selectedId,
@@ -15,19 +17,20 @@ export default function RecordsTable({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <table className="records-table">
       <thead>
         <tr>
           <th />
           <th>DisplayID</th>
-          <th>主要言語</th>
-          <th>補助言語</th>
-          <th>地区</th>
-          <th>採集日時</th>
-          <th>Mode</th>
-          <th>Status</th>
-          <th>採集者</th>
+          <th>{t('fields.主要言語')}</th>
+          <th>{t('fields.補助言語')}</th>
+          <th>{t('table.area')}</th>
+          <th>{t('fields.採集日時')}</th>
+          <th>{t('table.mode')}</th>
+          <th>{t('table.status')}</th>
+          <th>{t('table.collector')}</th>
           <th>GPS</th>
         </tr>
       </thead>

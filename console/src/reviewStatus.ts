@@ -13,23 +13,24 @@
 /** 「待審核」とみなす DataStatus（既定队列）。 */
 export const PENDING_STATUSES = ['raw', 'submitted', 'ai_drafted', 'needs_review'];
 
-/** 队列の快速タブ。 */
-export const QUEUE_TABS: { key: string; label: string; statuses: string[] }[] = [
-  { key: 'pending', label: 'All pending', statuses: PENDING_STATUSES },
-  { key: 'raw', label: 'Raw', statuses: ['raw'] },
-  { key: 'submitted', label: 'Submitted', statuses: ['submitted'] },
-  { key: 'ai_drafted', label: 'AI drafted', statuses: ['ai_drafted'] },
-  { key: 'needs_review', label: 'Needs review', statuses: ['needs_review'] },
-  { key: 'reviewed', label: 'Reviewed', statuses: ['reviewed'] },
-  { key: 'verified', label: 'Verified', statuses: ['verified'] },
-  { key: 'rejected', label: 'Rejected', statuses: ['rejected'] },
+/** 队列の快速タブ。labelKey は i18n キー（key / statuses は内部値のまま）。 */
+export const QUEUE_TABS: { key: string; labelKey: string; statuses: string[] }[] = [
+  { key: 'pending', labelKey: 'review.tabs.pending', statuses: PENDING_STATUSES },
+  { key: 'raw', labelKey: 'review.tabs.raw', statuses: ['raw'] },
+  { key: 'submitted', labelKey: 'review.tabs.submitted', statuses: ['submitted'] },
+  { key: 'ai_drafted', labelKey: 'review.tabs.ai_drafted', statuses: ['ai_drafted'] },
+  { key: 'needs_review', labelKey: 'review.tabs.needs_review', statuses: ['needs_review'] },
+  { key: 'reviewed', labelKey: 'review.tabs.reviewed', statuses: ['reviewed'] },
+  { key: 'verified', labelKey: 'review.tabs.verified', statuses: ['verified'] },
+  { key: 'rejected', labelKey: 'review.tabs.rejected', statuses: ['rejected'] },
 ];
 
 export type ReviewActionKey = 'reviewed' | 'verified' | 'needs_review' | 'rejected';
 
 export interface ReviewActionDef {
   key: ReviewActionKey;
-  label: string;
+  /** ボタン表示の i18n キー（payload の状態値は翻訳しない）。 */
+  labelKey: string;
   /** PATCH に載せる状態字段。 */
   payload: Record<string, string>;
   /** 実行後に既定队列（pending）から消えるか。 */
@@ -40,28 +41,28 @@ export interface ReviewActionDef {
 export const REVIEW_ACTIONS: ReviewActionDef[] = [
   {
     key: 'reviewed',
-    label: 'Mark as reviewed',
+    labelKey: 'review.actions.reviewed',
     payload: { _status: 'human-reviewed', DataStatus: 'reviewed' },
     leavesQueue: true,
     kind: 'positive',
   },
   {
     key: 'verified',
-    label: 'Mark as verified',
+    labelKey: 'review.actions.verified',
     payload: { _status: 'final', DataStatus: 'verified' },
     leavesQueue: true,
     kind: 'positive',
   },
   {
     key: 'needs_review',
-    label: 'Needs review',
+    labelKey: 'review.actions.needs_review',
     payload: { DataStatus: 'needs_review' }, // _status は原則保持（モバイル互換）
     leavesQueue: false,
     kind: 'neutral',
   },
   {
     key: 'rejected',
-    label: 'Reject',
+    labelKey: 'review.actions.rejected',
     payload: { DataStatus: 'rejected' }, // _status は原則保持（モバイル互換）
     leavesQueue: true,
     kind: 'negative',

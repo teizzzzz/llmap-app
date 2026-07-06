@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { SchemaInfo } from '../../api/types';
 
 const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'reviewed', 'verified', 'rejected'];
@@ -52,19 +53,21 @@ export default function FieldEditor({
   schema: SchemaInfo | null;
   onChange: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   if (field === '備考') {
     return (
       <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} />
     );
   }
   if (field === '_status' || field === 'DataStatus') {
+    // option の value は内部値のまま（PATCH に載る）。表示ラベルだけ翻訳する。
     const options =
       field === '_status' ? (schema?.status_values ?? []) : DATA_STATUSES;
     return (
       <select value={value} onChange={(e) => onChange(e.target.value)}>
         {!options.includes(value) && <option value={value}>{value || '—'}</option>}
         {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o} value={o}>{t(`status.${o}`, { defaultValue: o })}</option>
         ))}
       </select>
     );

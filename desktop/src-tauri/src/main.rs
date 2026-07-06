@@ -148,6 +148,12 @@ fn health_ok(port: u16) -> bool {
 /// 起動オーバーレイ＋API 注入スクリプト。ページ読込前に実行される。
 /// backend が ready になるまで「Starting…」を表示し、ready になった瞬間に
 /// 一度だけ reload（初回描画時の offline 表示を消すため）。失敗時は原因を列挙。
+///
+/// TODO(i18n): Desktop native loading/error overlay i18n is deferred.
+/// この overlay は Console(React) が読み込まれる**前**に出る素の注入スクリプト
+/// なので、Console 側の i18next（Step 11: ja/zh/en）には乗れない。当面は英語の
+/// まま維持し、対応する場合は localStorage の 'llmap.console.language' を読んで
+/// ここで文言を出し分ける。
 fn boot_script(port: u16, boot_error: Option<&str>) -> String {
     let err_js = match boot_error {
         Some(e) => format!("window.__LLMAP_BOOT_ERROR__ = {};", serde_json::to_string(e).unwrap()),

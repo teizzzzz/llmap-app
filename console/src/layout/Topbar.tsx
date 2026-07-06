@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { API_BASE_URL, getHealth } from '../api/client';
 
-const TITLES: Record<string, string> = {
-  '/': 'Dashboard',
-  '/database': 'Database',
-  '/map': 'Map',
-  '/review': 'Review',
-  '/ai': 'AI Processing',
-  '/export': 'Export',
-  '/settings': 'Settings',
+const TITLE_KEYS: Record<string, string> = {
+  '/': 'nav.dashboard',
+  '/database': 'nav.database',
+  '/map': 'nav.map',
+  '/review': 'nav.review',
+  '/ai': 'nav.ai',
+  '/export': 'nav.export',
+  '/settings': 'nav.settings',
 };
 
 /** 顶部栏: 現在ページ名＋backend 接続状態チップ。 */
 export default function Topbar() {
+  const { t } = useTranslation();
   const { pathname } = useLocation();
   const [status, setStatus] = useState<'checking' | 'ok' | 'down'>('checking');
   const [version, setVersion] = useState('');
@@ -39,14 +41,15 @@ export default function Topbar() {
     status === 'ok' ? 'backend-chip ok' : status === 'down' ? 'backend-chip down' : 'backend-chip';
   const chipText =
     status === 'ok'
-      ? `backend ${version} · ${API_BASE_URL}`
+      ? t('topbar.online', { version, url: API_BASE_URL })
       : status === 'down'
-        ? `backend offline · ${API_BASE_URL}`
-        : 'checking backend…';
+        ? t('topbar.offline', { url: API_BASE_URL })
+        : t('topbar.checking');
 
+  const titleKey = TITLE_KEYS[pathname];
   return (
     <header className="topbar">
-      <span className="page-title">{TITLES[pathname] ?? 'LLMap'}</span>
+      <span className="page-title">{titleKey ? t(titleKey) : 'LLMap'}</span>
       <span className="spacer" />
       <span className={chipClass}>
         <span className="dot" />

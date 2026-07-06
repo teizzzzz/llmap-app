@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
 import type { RecordDetail, SchemaInfo } from '../../api/types';
 import FieldEditor from './FieldEditor';
@@ -6,6 +7,7 @@ import PhotoThumb from './PhotoThumb';
 import StatusBadge from './StatusBadge';
 
 // 只読で表示する識別情報（系統字段。backend 側でも編集がロックされている）。
+// キーは**データの字段名そのもの**であり翻訳しない — 表示ラベルのみ i18n。
 const IDENTITY_FIELDS = [
   'SignID', 'CaptureID', 'DisplayID', '写真ファイル名', '元写真ファイル名',
   '採集者ID', '地区コード', '採集日時', '緯度', '経度',
@@ -28,6 +30,7 @@ export default function RecordDetailPanel({
   schema: SchemaInfo | null;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [detail, setDetail] = useState<RecordDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -75,18 +78,21 @@ export default function RecordDetailPanel({
     }
   };
 
+  // 字段の表示ラベル: 翻訳があれば使い、なければ字段キーをそのまま出す。
+  const fieldLabel = (f: string) => t(`fields.${f}`, { defaultValue: f });
+
   if (error) {
     return (
       <div className="detail-panel card">
         <div className="error-box">
-          <strong>Could not load record.</strong>
+          <strong>{t('record.loadError')}</strong>
           <div className="hint">{error}</div>
         </div>
       </div>
     );
   }
   if (!detail) {
-    return <div className="detail-panel card muted">Loading record…</div>;
+    return <div className="detail-panel card muted">{t('record.loading')}</div>;
   }
 
   return (
@@ -106,31 +112,32 @@ export default function RecordDetailPanel({
       <div className="photo-pair">
         <figure>
           <PhotoThumb src={photoUrl(detail.photoUrl)} size={170} alt="crop" />
-          <figcaption className="muted">crop</figcaption>
+          <figcaption className="muted">{t('record.crop')}</figcaption>
         </figure>
         <figure>
           <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={170} alt="source" />
-          <figcaption className="muted">source</figcaption>
+          <figcaption className="muted">{t('record.source')}</figcaption>
         </figure>
       </div>
 
-      <h3 className="detail-section">Identity (read-only)</h3>
+      <h3 className="detail-section">{t('record.identity')}</h3>
       <div className="identity-grid">
         {IDENTITY_FIELDS.map((f) => (
           <div key={f} className="identity-row">
-            <span className="k">{f}</span>
+            <span className="k">{fieldLabel(f)}</span>
             <span className="v mono">{detail.data[f] || '—'}</span>
           </div>
         ))}
       </div>
 
       <h3 className="detail-section">
-        Research fields {dirty && <span className="dirty-flag">● unsaved changes</span>}
+        {t('record.researchFields')}{' '}
+        {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
       </h3>
       <div className="edit-grid">
         {EDITABLE_FIELDS.map((f) => (
           <label key={f} className="edit-row">
-            <span className="k">{f}</span>
+            <span className="k">{fieldLabel(f)}</span>
             <FieldEditor
               field={f}
               value={current(f)}
@@ -143,21 +150,21 @@ export default function RecordDetailPanel({
 
       {saveError && (
         <div className="error-box" style={{ marginTop: 10 }}>
-          <strong>Save failed.</strong>
+          <strong>{t('record.saveFailed')}</strong>
           <div className="hint">{saveError}</div>
         </div>
       )}
 
       <div className="detail-actions">
         <button className="btn primary" disabled={!dirty || saving} onClick={save}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('record.saving') : t('record.save')}
         </button>
         <button className="btn" disabled={!dirty || saving} onClick={() => setDraft({})}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <span className="spacer" />
         <span className="muted" style={{ fontSize: 11.5 }}>
-          updated {detail.updatedAt.slice(0, 19).replace('T', ' ')}
+          {t('record.updated', { time: detail.updatedAt.slice(0, 19).replace('T', ' ') })}
         </span>
       </div>
     </div>

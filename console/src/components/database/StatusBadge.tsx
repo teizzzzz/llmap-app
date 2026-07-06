@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 const COLORS: Record<string, string> = {
   // EntryMode
   quick: '#b8860b',
@@ -18,8 +20,10 @@ const COLORS: Record<string, string> = {
   final: '#0f766e',
 };
 
-/** EntryMode / DataStatus / _status の小さな badge。未知値は unknown 表示。 */
+/** EntryMode / DataStatus / _status の小さな badge。
+    表示ラベルのみ翻訳し、内部値・色分けキーはそのまま。未知値は原文表示。 */
 export default function StatusBadge({ value }: { value: string }) {
+  const { t } = useTranslation();
   const v = value || 'unknown';
   const c = COLORS[v] ?? '#6f6a61';
   return (
@@ -27,7 +31,7 @@ export default function StatusBadge({ value }: { value: string }) {
       className="badge"
       style={{ color: c, borderColor: `${c}55`, background: `${c}14` }}
     >
-      {v}
+      {t(`status.${v}`, { defaultValue: v })}
     </span>
   );
 }

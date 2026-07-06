@@ -1,21 +1,24 @@
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 
+// labelKey は i18n キー。ルートパスは内部値なので翻訳しない。
 const NAV = [
-  { to: '/', label: 'Dashboard', icon: '▦', end: true },
-  { to: '/database', label: 'Database', icon: '☰' },
-  { to: '/map', label: 'Map', icon: '◎' },
-  { to: '/review', label: 'Review', icon: '✓' },
-  { to: '/ai', label: 'AI Processing', icon: '✦' },
-  { to: '/export', label: 'Export', icon: '⇩' },
-  { to: '/settings', label: 'Settings', icon: '⚙' },
+  { to: '/', labelKey: 'nav.dashboard', icon: '▦', end: true },
+  { to: '/database', labelKey: 'nav.database', icon: '☰' },
+  { to: '/map', labelKey: 'nav.map', icon: '◎' },
+  { to: '/review', labelKey: 'nav.review', icon: '✓' },
+  { to: '/ai', labelKey: 'nav.ai', icon: '✦' },
+  { to: '/export', labelKey: 'nav.export', icon: '⇩' },
+  { to: '/settings', labelKey: 'nav.settings', icon: '⚙' },
 ];
 
 export default function Sidebar() {
+  const { t } = useTranslation();
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="title">LLMap</div>
-        <div className="subtitle">Research Console</div>
+        <div className="subtitle">{t('app.subtitle')}</div>
       </div>
       <nav>
         {NAV.map((item) => (
@@ -26,7 +29,7 @@ export default function Sidebar() {
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             <span className="icon">{item.icon}</span>
-            {item.label}
+            {t(item.labelKey)}
           </NavLink>
         ))}
       </nav>

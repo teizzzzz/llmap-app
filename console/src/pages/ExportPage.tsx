@@ -1,46 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiError, exportRecordsCsv, getRecords } from '../api/client';
 import type { RecordsQuery } from '../api/types';
 import RecordsFilters from '../components/database/RecordsFilters';
 import useFilterOptions from '../hooks/useFilterOptions';
 
-/** 快速筛选プリセット。 */
-const QUICK_FILTERS: { label: string; patch: RecordsQuery }[] = [
-  { label: 'All records', patch: {} },
-  { label: 'Reviewed only', patch: { dataStatus: 'reviewed' } },
-  { label: 'Verified only', patch: { dataStatus: 'verified' } },
-  { label: 'Records with GPS', patch: { hasGps: true } },
-  { label: 'Records with photos', patch: { hasPhoto: true } },
+/** 快速筛选プリセット。patch の状態値は内部値のまま（表示のみ翻訳）。 */
+const QUICK_FILTERS: { labelKey: string; patch: RecordsQuery }[] = [
+  { labelKey: 'export.quickAll', patch: {} },
+  { labelKey: 'export.quickReviewed', patch: { dataStatus: 'reviewed' } },
+  { labelKey: 'export.quickVerified', patch: { dataStatus: 'verified' } },
+  { labelKey: 'export.quickGps', patch: { hasGps: true } },
+  { labelKey: 'export.quickPhotos', patch: { hasPhoto: true } },
 ];
 
 /** 导出フォーマットカード（第一版は CSV のみ有効）。 */
 const FORMATS = [
-  {
-    key: 'csv',
-    title: 'CSV',
-    desc: 'All 36 schema columns, UTF-8 with BOM (Excel compatible). Photos are not included.',
-    enabled: true,
-  },
-  {
-    key: 'dataset',
-    title: 'Dataset Package',
-    desc: 'Full re-export as llmap_dataset zip with photos, manifest and schema.',
-    enabled: false,
-  },
-  {
-    key: 'geojson',
-    title: 'GeoJSON',
-    desc: 'Records with GPS as a FeatureCollection for GIS tools.',
-    enabled: false,
-  },
-  {
-    key: 'photos',
-    title: 'Photos ZIP',
-    desc: 'Crop and source photos of the selected records.',
-    enabled: false,
-  },
+  { key: 'csv', titleKey: 'export.formatCsvTitle', descKey: 'export.formatCsvDesc', enabled: true },
+  { key: 'dataset', titleKey: 'export.formatDatasetTitle', descKey: 'export.formatDatasetDesc', enabled: false },
+  { key: 'geojson', titleKey: 'export.formatGeojsonTitle', descKey: 'export.formatGeojsonDesc', enabled: false },
+  { key: 'photos', titleKey: 'export.formatPhotosTitle', descKey: 'export.formatPhotosDesc', enabled: false },
 ];
 
+// 导出ファイル名（データ側の規約なので言語によらず固定）。
 const stamp = () => {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
@@ -49,6 +31,7 @@ const stamp = () => {
 };
 
 export default function ExportPage() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<RecordsQuery>({});
   const [total, setTotal] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
@@ -100,32 +83,26 @@ export default function ExportPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Export</h1>
-        <p>Export filtered database records for analysis and archiving.</p>
+        <h1>{t('export.title')}</h1>
+        <p>{t('export.subtitle')}</p>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <p style={{ margin: 0 }} className="muted">
-          CSV export uses the current database records and selected filters.
-          System fields such as CaptureID, SignID, EntryMode, DataStatus,
-          SchemaVersion, and AppVersion are included. Photos are <b>not</b> included
-          in CSV export — use Dataset Package export in a future version when
-          images are required.
-        </p>
+        <p style={{ margin: 0 }} className="muted">{t('export.csvNote')}</p>
       </div>
 
       {/* 快速筛选 */}
       <div className="review-tabs">
         {QUICK_FILTERS.map((qf) => (
           <button
-            key={qf.label}
+            key={qf.labelKey}
             className="chip"
             onClick={() => {
               setDone(null);
               setFilters(qf.patch);
             }}
           >
-            {qf.label}
+            {t(qf.labelKey)}
           </button>
         ))}
       </div>
@@ -149,7 +126,7 @@ export default function ExportPage() {
 
       {countError && (
         <div className="error-box" style={{ marginBottom: 14 }}>
-          <strong>Could not load record count.</strong>
+          <strong>{t('export.countError')}</strong>
           <div className="hint">{countError}</div>
         </div>
       )}
@@ -157,7 +134,7 @@ export default function ExportPage() {
       {/* 导出摘要 */}
       <div className="card export-summary">
         <div>
-          <div className="label muted">Records matching current filters</div>
+          <div className="label muted">{t('export.matching')}</div>
           <div className="value">{total != null ? total : '—'}</div>
         </div>
         <button
@@ -165,40 +142,41 @@ export default function ExportPage() {
           disabled={exporting || total === 0 || total == null}
           onClick={doExport}
         >
-          {exporting ? 'Exporting…' : 'Export CSV'}
+          {exporting ? t('export.exporting') : t('export.exportCsv')}
         </button>
       </div>
 
       {done && (
         <div className="ok-box">
-          ✓ CSV exported as <span className="mono">{done}</span> ({total} records).
+          {t('export.exportedAs')} <span className="mono">{done}</span>{' '}
+          {t('export.exportedCount', { n: total })}
         </div>
       )}
       {exportError && (
         <div className="error-box" style={{ marginTop: 10 }}>
-          <strong>Export failed.</strong>
+          <strong>{t('export.failed')}</strong>
           <div className="hint">{exportError}</div>
         </div>
       )}
 
       {/* フォーマット一覧（CSV 以外は予約・無効） */}
-      <h3 className="detail-section" style={{ marginTop: 22 }}>Formats</h3>
+      <h3 className="detail-section" style={{ marginTop: 22 }}>{t('export.formats')}</h3>
       <div className="format-grid">
         {FORMATS.map((f) => (
           <div key={f.key} className={`card format-card${f.enabled ? '' : ' disabled'}`}>
             <div className="format-head">
-              <strong>{f.title}</strong>
+              <strong>{t(f.titleKey)}</strong>
               {f.enabled ? (
                 <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
-                  available
+                  {t('export.available')}
                 </span>
               ) : (
                 <span className="badge" style={{ color: '#6f6a61', borderColor: '#6f6a6155', background: '#6f6a6114' }}>
-                  Coming soon
+                  {t('common.comingSoon')}
                 </span>
               )}
             </div>
-            <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>{f.desc}</p>
+            <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>{t(f.descKey)}</p>
           </div>
         ))}
       </div>

@@ -1,31 +1,45 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL, ApiError, getRecords, getStatsSummary } from '../api/client';
 import type { StatsSummary } from '../api/types';
 import { PENDING_STATUSES } from '../reviewStatus';
 
-/** 分布の横棒リスト（純CSS・図表ライブラリ不使用）。 */
-function BarList({ title, counts }: { title: string; counts: Record<string, number> }) {
+/** 分布の横棒リスト（純CSS・図表ライブラリ不使用）。
+    labelOf は表示ラベル変換（状態値の翻訳用）。データキー自体は変えない。 */
+function BarList({
+  title,
+  counts,
+  labelOf,
+}: {
+  title: string;
+  counts: Record<string, number>;
+  labelOf?: (key: string) => string;
+}) {
+  const { t } = useTranslation();
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const max = entries.length ? entries[0][1] : 0;
   return (
     <div className="card count-card">
       <h3>{title}</h3>
       {entries.length === 0 ? (
-        <div className="muted">No data yet.</div>
+        <div className="muted">{t('dashboard.noData')}</div>
       ) : (
-        entries.map(([k, v]) => (
-          <div key={k} className="bar-row">
-            <span className="bar-label" title={k}>{k}</span>
-            <span className="bar-track">
-              <span
-                className="bar-fill"
-                style={{ width: `${max ? Math.max(4, (v / max) * 100) : 0}%` }}
-              />
-            </span>
-            <span className="bar-n">{v}</span>
-          </div>
-        ))
+        entries.map(([k, v]) => {
+          const label = labelOf ? labelOf(k) : k;
+          return (
+            <div key={k} className="bar-row">
+              <span className="bar-label" title={label}>{label}</span>
+              <span className="bar-track">
+                <span
+                  className="bar-fill"
+                  style={{ width: `${max ? Math.max(4, (v / max) * 100) : 0}%` }}
+                />
+              </span>
+              <span className="bar-n">{v}</span>
+            </div>
+          );
+        })
       )}
     </div>
   );
@@ -46,6 +60,7 @@ function Tile({ label, value, to }: { label: string; value: number | string; to?
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<StatsSummary | null>(null);
   const [withGps, setWithGps] = useState<number | null>(null);
   const [withPhoto, setWithPhoto] = useState<number | null>(null);
@@ -70,25 +85,29 @@ export default function DashboardPage() {
   const sum = (keys: string[]) => keys.reduce((a, k) => a + (ds[k] ?? 0), 0);
   const waiting = sum(PENDING_STATUSES);
   const na = (v: number | null) => (v == null ? '—' : v);
+  // 状態値・モード値の分布は表示ラベルのみ翻訳（キーは内部値のまま）。
+  const statusLabel = (k: string) => t(`status.${k}`, { defaultValue: k });
 
   return (
     <>
       <div className="page-header">
-        <h1>Dashboard</h1>
-        <p>Overview of the local linguistic landscape database.</p>
+        <h1>{t('dashboard.title')}</h1>
+        <p>{t('dashboard.subtitle')}</p>
       </div>
 
-      {loading && <div className="muted">Loading stats…</div>}
+      {loading && <div className="muted">{t('dashboard.loading')}</div>}
 
       {error && (
         <div className="error-box">
-          <strong>Could not load stats.</strong>
+          <strong>{t('dashboard.statsError')}</strong>
           <div className="hint">
             {error}
             <br />
-            Start the backend with: <code>cd backend && uvicorn app.main:app --port 8000</code>
-            {' '}(current URL: <code>{API_BASE_URL}</code>, configurable via{' '}
-            <code>VITE_API_BASE_URL</code>)
+            {t('dashboard.startBackendHint')}{' '}
+            <code>cd backend && uvicorn app.main:app --port 8000</code>
+            <br />
+            {t('dashboard.currentUrl')}: <code>{API_BASE_URL}</code>{' '}
+            ({t('dashboard.configurableVia')}: <code>VITE_API_BASE_URL</code>)
           </div>
         </div>
       )}
@@ -97,72 +116,74 @@ export default function DashboardPage() {
         <>
           {/* 1. Overview */}
           <div className="stat-grid">
-            <Tile label="Total records" value={stats.recordCount} to="/database" />
-            <Tile label="Datasets" value={stats.datasetCount} />
-            <Tile label="Records with GPS" value={na(withGps)} to="/map" />
-            <Tile label="Waiting for review" value={waiting} to="/review" />
-            <Tile label="Reviewed" value={ds['reviewed'] ?? 0} />
-            <Tile label="Verified (research-ready)" value={ds['verified'] ?? 0} />
-            <Tile label="Photos" value={stats.photoCount} />
-            <Tile label="Source photos" value={stats.sourcePhotoCount} />
+            <Tile label={t('dashboard.totalRecords')} value={stats.recordCount} to="/database" />
+            <Tile label={t('dashboard.datasets')} value={stats.datasetCount} />
+            <Tile label={t('dashboard.withGps')} value={na(withGps)} to="/map" />
+            <Tile label={t('dashboard.waitingReview')} value={waiting} to="/review" />
+            <Tile label={t('dashboard.reviewed')} value={ds['reviewed'] ?? 0} />
+            <Tile label={t('dashboard.verified')} value={ds['verified'] ?? 0} />
+            <Tile label={t('dashboard.photos')} value={stats.photoCount} />
+            <Tile label={t('dashboard.sourcePhotos')} value={stats.sourcePhotoCount} />
           </div>
 
           {/* 2-5. 分布 */}
           <div className="count-grid">
-            <BarList title="By data status" counts={stats.dataStatusCounts} />
-            <BarList title="By entry mode" counts={stats.entryModeCounts} />
-            <BarList title="By main language" counts={stats.mainLanguageCounts} />
-            <BarList title="By area" counts={stats.areaCounts} />
-            <BarList title="By collector" counts={stats.collectorCounts} />
+            <BarList title={t('dashboard.byDataStatus')} counts={stats.dataStatusCounts}
+              labelOf={statusLabel} />
+            <BarList title={t('dashboard.byEntryMode')} counts={stats.entryModeCounts}
+              labelOf={statusLabel} />
+            <BarList title={t('dashboard.byMainLanguage')} counts={stats.mainLanguageCounts} />
+            <BarList title={t('dashboard.byArea')} counts={stats.areaCounts} />
+            <BarList title={t('dashboard.byCollector')} counts={stats.collectorCounts} />
 
             {/* 6. データ品質 */}
             <div className="card count-card">
-              <h3>Data quality</h3>
+              <h3>{t('dashboard.dataQuality')}</h3>
               <div className="count-row">
-                <span>Missing photos</span>
+                <span>{t('dashboard.missingPhotos')}</span>
                 <span className="n">{stats.missingPhotoCount}</span>
               </div>
               <div className="count-row">
-                <span>Missing source photos</span>
+                <span>{t('dashboard.missingSourcePhotos')}</span>
                 <span className="n">{stats.missingSourcePhotoCount}</span>
               </div>
               <div className="count-row">
-                <span>Records without GPS</span>
+                <span>{t('dashboard.withoutGps')}</span>
                 <span className="n">
                   {withGps == null ? '—' : stats.recordCount - withGps}
                 </span>
               </div>
               <div className="count-row">
-                <span>Records without photo</span>
+                <span>{t('dashboard.withoutPhoto')}</span>
                 <span className="n">
                   {withPhoto == null ? '—' : stats.recordCount - withPhoto}
                 </span>
               </div>
               <div className="count-row">
-                <span>Records without source photo</span>
+                <span>{t('dashboard.withoutSourcePhoto')}</span>
                 <span className="n">
                   {withSource == null ? '—' : stats.recordCount - withSource}
                 </span>
               </div>
               <div className="count-row">
-                <span>Unknown EntryMode</span>
+                <span>{t('dashboard.unknownEntryMode')}</span>
                 <span className="n">{stats.entryModeCounts['unknown'] ?? 0}</span>
               </div>
               <div className="count-row">
-                <span>Unknown DataStatus</span>
+                <span>{t('dashboard.unknownDataStatus')}</span>
                 <span className="n">{ds['unknown'] ?? 0}</span>
               </div>
             </div>
           </div>
 
           {/* 7. 快捷入口 */}
-          <h3 className="detail-section" style={{ marginTop: 20 }}>Shortcuts</h3>
+          <h3 className="detail-section" style={{ marginTop: 20 }}>{t('dashboard.shortcuts')}</h3>
           <div className="shortcut-row">
-            <Link className="btn" to="/database">Open Database</Link>
-            <Link className="btn" to="/review">Open Review Queue</Link>
-            <Link className="btn" to="/map">Open Map</Link>
-            <Link className="btn" to="/export">Export Data</Link>
-            <Link className="btn primary" to="/database">Import Dataset</Link>
+            <Link className="btn" to="/database">{t('dashboard.openDatabase')}</Link>
+            <Link className="btn" to="/review">{t('dashboard.openReview')}</Link>
+            <Link className="btn" to="/map">{t('dashboard.openMap')}</Link>
+            <Link className="btn" to="/export">{t('dashboard.exportData')}</Link>
+            <Link className="btn primary" to="/database">{t('dashboard.importDataset')}</Link>
           </div>
         </>
       )}
