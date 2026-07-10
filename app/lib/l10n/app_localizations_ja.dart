@@ -561,4 +561,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get recordsAddedToAlbumsAppearHere => '記録をアルバムに追加すると、ここに表示されます';
+
+  @override
+  String get permissionDeniedTitle => '権限が必要です';
+
+  @override
+  String get cameraDeniedBody =>
+      'カメラへのアクセスがオフです。撮影するには 設定 → LLMap → カメラ を有効にしてください。';
+
+  @override
+  String get photoDeniedBody =>
+      '写真へのアクセスがオフです。取り込むには 設定 → LLMap → 写真 を有効にしてください。';
+
+  @override
+  String get openSettings => '設定を開く';
 }

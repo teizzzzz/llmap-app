@@ -1113,6 +1113,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Records added to albums will appear here'**
   String get recordsAddedToAlbumsAppearHere;
+
+  /// No description provided for @permissionDeniedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission needed'**
+  String get permissionDeniedTitle;
+
+  /// No description provided for @cameraDeniedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is off. Enable it in Settings → LLMap → Camera to take photos.'**
+  String get cameraDeniedBody;
+
+  /// No description provided for @photoDeniedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo library access is off. Enable it in Settings → LLMap → Photos to import images.'**
+  String get photoDeniedBody;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSettings;
 }
 
 class _AppLocalizationsDelegate

@@ -558,4 +558,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get recordsAddedToAlbumsAppearHere => '将记录加入相册后会显示在这里';
+
+  @override
+  String get permissionDeniedTitle => '需要权限';
+
+  @override
+  String get cameraDeniedBody => '相机权限已关闭。请在 设置 → LLMap → 相机 中开启后再拍照。';
+
+  @override
+  String get photoDeniedBody => '相册权限已关闭。请在 设置 → LLMap → 照片 中开启后再导入。';
+
+  @override
+  String get openSettings => '打开设置';
 }

@@ -10,15 +10,12 @@
   "done": "完成",
   "processing": "处理中…",
   "untitled": "(未填写名称)",
-
   "appTagline": "语言景观采集",
   "bootOfflineTitle": "暂时无法读取配置",
   "bootOfflineBody": "已使用本地默认设置，可正常采集。",
-
   "newCollection": "新增采集",
   "takePhoto": "拍照",
   "chooseFromGallery": "从相册选择",
-
   "recordsTitle": "采集记录",
   "recordsCount": "共 {count} 条记录",
   "archiveTooltip": "采集档案",
@@ -47,7 +44,6 @@
   "exportData": "导出数据",
   "aboutBody": "语言景观采集工具 · {version}\n本地优先：照片与记录都保存在本机，可随时导出 CSV 和照片压缩包。云端同步为未来计划。",
   "comingSoon": "功能开发中，敬请期待。",
-
   "cropTitle": "框选标志 ({count})",
   "undoLastBox": "撤销最后一个框",
   "clearAll": "清空",
@@ -62,7 +58,6 @@
   "gpsManual": "手动选择",
   "gpsAdjusted": "已手动调整位置",
   "gpsReadjust": "重新调整",
-
   "fieldsTitle": "填写字段 · {suffix} ({index}/{total})",
   "reRecognize": "重新识别",
   "recognizing": "识别中…",
@@ -71,11 +66,9 @@
   "stashNext": "暂存，稍后填写",
   "saveDone": "保存本次采集 · 完成",
   "saveNext": "保存并继续",
-
   "editTitle": "编辑记录",
   "deleteRecordConfirmIrreversible": "确定删除 {id} 吗？此操作不可撤销。",
   "saveChanges": "保存修改",
-
   "aiAuto": "AI 自动识别",
   "aiAutoSub": "开启后，进入每个框选标志时自动识别字段。",
   "provider": "服务商",
@@ -92,12 +85,10 @@
   "collectorIdNote": "对应采集者，会写入 SignID 的「采集者」位，多人协作时防止编号撞车。默认已自动生成（NanoID 8 位，去除易混字符 0/O/1/l/I），可自定义。",
   "collectorIdLabel": "采集者 ID",
   "collectorIdRegenerate": "重新生成",
-
   "galleryTitle": "采集档案",
   "langFilter": "语言",
   "sourceFilter": "设置",
   "noMatch": "没有符合条件的记录",
-
   "selectLocTitle": "确认拍摄位置",
   "selectLocBody1": "系统已自动获取当前位置。",
   "selectLocBody2": "如果位置不准确，拖动地图以调整照片的拍摄地点。",
@@ -106,7 +97,6 @@
   "gpsUnavailable": "无法获取当前位置",
   "useThisLocation": "使用此位置",
   "restoreAuto": "恢复自动定位",
-
   "mapPreview": "地图预览",
   "fitAll": "全体显示",
   "noCoords": "无坐标 {count} 条未显示",
@@ -118,7 +108,6 @@
   "multilingual": "多语关系",
   "noteLabel": "备注：{note}",
   "signMeta": "GPS：{lat}, {lng} · 采集：{time}",
-
   "captureMode": "采集模式",
   "captureModeNote": "决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。",
   "modeQuick": "快速模式",
@@ -179,5 +168,9 @@
   "noUnfiledRecords": "没有未归纳的记录",
   "allRecordsFiled": "所有记录都已经整理到相册中",
   "noFiledRecords": "没有已归纳的记录",
-  "recordsAddedToAlbumsAppearHere": "将记录加入相册后会显示在这里"
+  "recordsAddedToAlbumsAppearHere": "将记录加入相册后会显示在这里",
+  "permissionDeniedTitle": "需要权限",
+  "cameraDeniedBody": "相机权限已关闭。请在 设置 → LLMap → 相机 中开启后再拍照。",
+  "photoDeniedBody": "相册权限已关闭。请在 设置 → LLMap → 照片 中开启后再导入。",
+  "openSettings": "打开设置"
 }

@@ -572,4 +572,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get recordsAddedToAlbumsAppearHere =>
       'Records added to albums will appear here';
+
+  @override
+  String get permissionDeniedTitle => 'Permission needed';
+
+  @override
+  String get cameraDeniedBody =>
+      'Camera access is off. Enable it in Settings → LLMap → Camera to take photos.';
+
+  @override
+  String get photoDeniedBody =>
+      'Photo library access is off. Enable it in Settings → LLMap → Photos to import images.';
+
+  @override
+  String get openSettings => 'Open Settings';
 }
