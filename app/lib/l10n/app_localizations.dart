@@ -1141,7 +1141,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportConfirmTitle.
   ///
   /// In en, this message translates to:
-  /// **'Export {count} records?'**
+  /// **'{count, plural, =1{Export 1 record?} other{Export {count} records?}}'**
   String exportConfirmTitle(int count);
 
   /// No description provided for @exportConfirmBody.

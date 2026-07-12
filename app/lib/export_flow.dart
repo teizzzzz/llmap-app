@@ -9,10 +9,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'albums.dart';
 import 'capture.dart' show isMobile;
 import 'l10n/app_localizations.dart';
 import 'models.dart';
+import 'record_ops.dart';
 import 'store.dart';
+import 'theme/tokens.dart';
 import 'widgets/ll/ll.dart';
 
 /// [signs] を Dataset Package として書き出す。空リストは何もしない
@@ -26,23 +29,33 @@ Future<void> runDatasetExport(
   final t = AppLocalizations.of(context);
   final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
   final sw = Stopwatch()..start();
+  // 進捗ダイアログの操作は NavigatorState 経由で行う:
+  // 呼び出し元（Gallery 等）が導出中に unmount されても、ダイアログ自体は
+  // root navigator 上に生きているため、context ではなく nav で確実に閉じる。
+  final nav = Navigator.of(context, rootNavigator: true);
   // 進捗ダイアログは1回だけ閉じる（success と catch の二重 pop で
   // 本体ページまで pop してしまい黒画面になるのを防ぐ）。
   var dialogOpen = true;
   void closeDialog() {
-    if (dialogOpen && context.mounted) {
+    if (dialogOpen && nav.mounted) {
       dialogOpen = false;
-      Navigator.of(context, rootNavigator: true).pop();
+      nav.pop();
     }
   }
 
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => LLProgressDialog(
-      title: t.exporting,
-      unit: t.unitPhotos,
-      progress: progress,
+    // Android の戻るボタン/ジェスチャでも閉じさせない（barrierDismissible は
+    // 障壁タップしか防がない）。途中で dialog だけ pop されると、完了時の
+    // closeDialog() が下の画面を誤って pop してしまうため。
+    builder: (_) => PopScope(
+      canPop: false,
+      child: LLProgressDialog(
+        title: t.exporting,
+        unit: t.unitPhotos,
+        progress: progress,
+      ),
     ),
   );
   try {
@@ -56,8 +69,9 @@ Future<void> runDatasetExport(
     if (remain > 0) {
       await Future.delayed(Duration(milliseconds: remain));
     }
+    // ダイアログは呼び出し元の生死に関わらず必ず閉じてから、共有/保存へ。
+    closeDialog();
     if (!context.mounted) return;
-    closeDialog(); // 進捗ダイアログを閉じる
     if (isMobile) {
       // iPad では sharePositionOrigin 必須（無いと presentation で例外）。
       final box = context.findRenderObject() as RenderBox?;
@@ -114,4 +128,52 @@ Future<bool> confirmDatasetExport(BuildContext context, int count) async {
     onSecondary: () => Navigator.pop(context, false),
   );
   return ok == true;
+}
+
+/// 確認 → 実行の一連（Home / Gallery 共通。導出は非破壊）。
+Future<void> confirmAndRunDatasetExport(
+  BuildContext context, {
+  required List<Sign> signs,
+  required AppSchema schema,
+}) async {
+  if (!await confirmDatasetExport(context, signs.length)) return;
+  if (!context.mounted) return;
+  await runDatasetExport(context, signs: signs, schema: schema);
+}
+
+/// 相册を1つ選んで導出する二段目シート（件数つき）。Home / Gallery 共通。
+/// 件数ラベルと実際の導出対象は**同じ** exportCandidates の結果を使う
+/// （表示と中身が食い違わないように、相册ごとに1回だけ計算する）。
+void showAlbumExportPicker(
+  BuildContext context, {
+  required List<Album> albums,
+  required List<Sign> allSigns,
+  required AppSchema schema,
+}) {
+  final t = AppLocalizations.of(context);
+  showLLBottomSheet(context, title: t.exportPickAlbum, children: [
+    for (final a in albums)
+      () {
+        final candidates = exportCandidates(
+          scope: ExportScope.album,
+          allSigns: allSigns,
+          currentAlbum: a,
+        );
+        return LLSheetTile(
+          icon: Icons.photo_album_outlined,
+          label: '${a.name} (${candidates.length})',
+          onTap: () {
+            Navigator.pop(context);
+            confirmAndRunDatasetExport(context,
+                signs: candidates, schema: schema);
+          },
+        );
+      }(),
+    LLSheetTile(
+        icon: Icons.close,
+        label: t.cancel,
+        color: AppColors.textSecondary,
+        showChevron: false,
+        onTap: () => Navigator.pop(context)),
+  ]);
 }

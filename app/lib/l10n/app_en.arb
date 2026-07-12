@@ -338,7 +338,7 @@
   "exportScopeCurrentView": "Current view",
   "exportScopeSelected": "Selected records",
   "exportScopeAlbum": "Current album",
-  "exportConfirmTitle": "Export {count} records?",
+  "exportConfirmTitle": "{count, plural, =1{Export 1 record?} other{Export {count} records?}}",
   "@exportConfirmTitle": {"placeholders": {"count": {"type": "int"}}},
   "exportConfirmBody": "This will create a Dataset Package containing only the selected records and required photos.",
   "noRecordsToExport": "No records to export.",

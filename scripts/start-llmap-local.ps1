@@ -1,4 +1,4 @@
-# LLMap developer launcher (Windows / PowerShell)
+﻿# LLMap developer launcher (Windows / PowerShell)
 # ─────────────────────────────────────────────────────────────────────────
 # これは最終製品ではない。Python + Node の入った開発環境で backend と
 # Research Console を一発起動するための developer launcher である。

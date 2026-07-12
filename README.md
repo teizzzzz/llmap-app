@@ -98,7 +98,7 @@ flutter build apk --release
 #   -> build\app\outputs\flutter-apk\app-release.apk
 
 # 成果物を dist/ に v1.x 名で回収（dist は git 管理外）
-Copy-Item build\app\outputs\flutter-apk\app-release.apk ..\dist\LLMap-v1.9.1-release.apk -Force
+Copy-Item build\app\outputs\flutter-apk\app-release.apk ..\dist\LLMap-v1.10.2-release.apk -Force
 ```
 
 ⚠️ ビルド時の注意:
@@ -108,7 +108,7 @@ Copy-Item build\app\outputs\flutter-apk\app-release.apk ..\dist\LLMap-v1.9.1-rel
 - パスに**非ASCII文字が含まれると release(AOT) が失敗する**。その場合は ASCII パスへコピーしてビルド:
   `robocopy app C:\llmap_build\app /E /XD build .dart_tool .gradle /XF *.apk`
 
-最新ビルド: `dist/LLMap-v1.9.0-release.apk`（arm/arm64/x64 同梱の universal APK）。
+最新ビルド: `dist/LLMap-v1.10.0-release.apk`（arm/arm64/x64 同梱の universal APK）。
 
 ## Android 実機で使う（v1.1〜：PC不要）
 

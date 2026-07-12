@@ -342,26 +342,28 @@ class _GalleryScreenState extends State<GalleryScreen> {
         SnackBar(content: Text(t.removedFromAlbum(removed))));
   }
 
-  // ── 導出（Step 14: 範囲つき。実行は export_flow の共通経路） ──
-
-  Future<void> _confirmAndExport(List<Sign> signs) async {
-    if (!await confirmDatasetExport(context, signs.length)) return;
-    if (!mounted) return;
-    await runDatasetExport(context, signs: signs, schema: widget.schema);
-    // 導出は非破壊なので選択状態は保持する（続けて相册追加・削除に使える）。
-  }
+  // ── 導出（Step 14: 範囲つき。確認〜実行〜相册ピッカーは export_flow 共通） ──
+  // 導出は非破壊なので選択状態は保持する（続けて相册追加・削除に使える）。
 
   /// 選択モードの「選択中を書き出す」。0 件時はボタン側で無効化済み。
-  Future<void> _exportSelected() => _confirmAndExport(exportCandidates(
-        scope: ExportScope.selected,
-        allSigns: widget.signs,
-        selected: _selected,
-      ));
+  Future<void> _exportSelected() => confirmAndRunDatasetExport(
+        context,
+        signs: exportCandidates(
+          scope: ExportScope.selected,
+          allSigns: widget.signs,
+          selected: _selected,
+        ),
+        schema: widget.schema,
+      );
 
-  /// 通常モードの導出範囲シート（現在の表示 / 現在のアルバム / すべて）。
+  /// 通常モードの導出範囲シート（現在の表示 / 現在のアルバム / すべて / 相册指定）。
   void _openExportSheet() {
     final t = AppLocalizations.of(context);
-    final visible = _visible;
+    final schema = widget.schema;
+    // 現在の表示 = 相册視図・归納状態・筛选・排序を反映した表示リストそのもの
+    final visible = exportCandidates(
+        scope: ExportScope.currentView, allSigns: widget.signs, visible: _visible);
+    final all = exportCandidates(scope: ExportScope.all, allSigns: widget.signs);
     final album = _currentAlbum;
     final albumSigns = album == null
         ? const <Sign>[]
@@ -371,13 +373,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
             currentAlbum: album,
           );
     showLLBottomSheet(context, title: t.exportDataset, children: [
-      // 現在の表示 = 相册視図・归納状態・筛选・排序を反映した表示リストそのもの
       LLSheetTile(
           icon: Icons.visibility_outlined,
           label: '${t.exportScopeCurrentView} (${visible.length})',
           onTap: () {
             Navigator.pop(context);
-            _confirmAndExport(visible);
+            confirmAndRunDatasetExport(context, signs: visible, schema: schema);
           }),
       if (album != null)
         LLSheetTile(
@@ -385,14 +386,15 @@ class _GalleryScreenState extends State<GalleryScreen> {
             label: '${t.exportScopeAlbum}: ${album.name} (${albumSigns.length})',
             onTap: () {
               Navigator.pop(context);
-              _confirmAndExport(albumSigns);
+              confirmAndRunDatasetExport(context,
+                  signs: albumSigns, schema: schema);
             }),
       LLSheetTile(
           icon: Icons.folder_zip_outlined,
-          label: '${t.allRecords} (${widget.signs.length})',
+          label: '${t.allRecords} (${all.length})',
           onTap: () {
             Navigator.pop(context);
-            _confirmAndExport(List<Sign>.of(widget.signs));
+            confirmAndRunDatasetExport(context, signs: all, schema: schema);
           }),
       // 任意の相册を選んで導出（範囲 5）。相册が無ければ出さない。
       if (_albums.isNotEmpty)
@@ -401,33 +403,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
             label: t.exportPickAlbum,
             onTap: () {
               Navigator.pop(context);
-              _openAlbumExportPicker();
-            }),
-      LLSheetTile(
-          icon: Icons.close,
-          label: t.cancel,
-          color: AppColors.textSecondary,
-          showChevron: false,
-          onTap: () => Navigator.pop(context)),
-    ]);
-  }
-
-  /// 相册を1つ選んで導出する二段目シート（件数つき）。
-  void _openAlbumExportPicker() {
-    final t = AppLocalizations.of(context);
-    showLLBottomSheet(context, title: t.exportPickAlbum, children: [
-      for (final a in _albums)
-        LLSheetTile(
-            icon: Icons.photo_album_outlined,
-            label:
-                '${a.name} (${widget.signs.where((s) => a.contains(s.id)).length})',
-            onTap: () {
-              Navigator.pop(context);
-              _confirmAndExport(exportCandidates(
-                scope: ExportScope.album,
-                allSigns: widget.signs,
-                currentAlbum: a,
-              ));
+              showAlbumExportPicker(context,
+                  albums: _albums, allSigns: widget.signs, schema: schema);
             }),
       LLSheetTile(
           icon: Icons.close,

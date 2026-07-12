@@ -216,77 +216,67 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Dataset Package の導出（Step 14: 範囲選択つき）。
   /// 入口は従来どおりメニューの「データをエクスポート」だが、押した直後に
-  /// 範囲（全部 / 未分類 / 分類済み）を選ぶ。実行は export_flow の共通経路。
+  /// 範囲（全部 / 未分類 / 分類済み / 相册指定）を選ぶ。実行は export_flow。
   /// 表示中の Gallery 筛选・選択・相册の導出は Gallery 側の入口が担う。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
-    // 归納状態の件数計算のため相册を読む（失敗しても全部導出は可能なまま）。
-    List<Album> albums = const [];
+    // 归納状態の件数計算のため相册を読む。**読めなかった時は归納状態の
+    // 選択肢を出さない** — albums=[] のまま出すと「未分類=全件」という
+    // 誤った件数を見せ、意図しない全件導出につながるため（誠実に降級）。
+    List<Album>? albums;
     try {
       albums = await LocalStore.instance.loadAlbums();
-    } catch (_) {}
+    } catch (_) {
+      albums = null;
+    }
     if (!mounted) return;
     final t = AppLocalizations.of(context);
-    final unfiled = exportCandidates(
-        scope: ExportScope.unfiled, allSigns: _signs, albums: albums);
-    final filed = exportCandidates(
-        scope: ExportScope.filed, allSigns: _signs, albums: albums);
+    final all = exportCandidates(scope: ExportScope.all, allSigns: _signs);
+    final unfiled = albums == null
+        ? const <Sign>[]
+        : exportCandidates(
+            scope: ExportScope.unfiled, allSigns: _signs, albums: albums);
+    final filed = albums == null
+        ? const <Sign>[]
+        : exportCandidates(
+            scope: ExportScope.filed, allSigns: _signs, albums: albums);
+    final schema = widget.schema;
     showLLBottomSheet(context, title: t.exportDataset, children: [
       LLSheetTile(
           icon: Icons.folder_zip_outlined,
-          label: '${t.allRecords} (${_signs.length})',
+          label: '${t.allRecords} (${all.length})',
           onTap: () {
             Navigator.pop(context);
-            _confirmAndExport(List<Sign>.of(_signs));
+            confirmAndRunDatasetExport(context, signs: all, schema: schema);
           }),
-      LLSheetTile(
-          icon: Icons.inbox_outlined,
-          label: '${t.unfiled} (${unfiled.length})',
-          onTap: () {
-            Navigator.pop(context);
-            _confirmAndExport(unfiled);
-          }),
-      LLSheetTile(
-          icon: Icons.photo_album_outlined,
-          label: '${t.filed} (${filed.length})',
-          onTap: () {
-            Navigator.pop(context);
-            _confirmAndExport(filed);
-          }),
-      // 任意の相册を選んで導出（範囲 5）。相册が無ければ出さない。
-      if (albums.isNotEmpty)
+      if (albums != null) ...[
         LLSheetTile(
-            icon: Icons.collections_bookmark_outlined,
-            label: t.exportPickAlbum,
+            icon: Icons.inbox_outlined,
+            label: '${t.unfiled} (${unfiled.length})',
             onTap: () {
               Navigator.pop(context);
-              _openAlbumExportPicker(albums);
+              confirmAndRunDatasetExport(context,
+                  signs: unfiled, schema: schema);
             }),
-      LLSheetTile(
-          icon: Icons.close,
-          label: t.cancel,
-          color: AppColors.textSecondary,
-          showChevron: false,
-          onTap: () => Navigator.pop(context)),
-    ]);
-  }
-
-  /// 相册を1つ選んで導出する二段目シート（件数つき）。
-  void _openAlbumExportPicker(List<Album> albums) {
-    final t = AppLocalizations.of(context);
-    showLLBottomSheet(context, title: t.exportPickAlbum, children: [
-      for (final a in albums)
         LLSheetTile(
             icon: Icons.photo_album_outlined,
-            label: '${a.name} (${_signs.where((s) => a.contains(s.id)).length})',
+            label: '${t.filed} (${filed.length})',
             onTap: () {
               Navigator.pop(context);
-              _confirmAndExport(exportCandidates(
-                scope: ExportScope.album,
-                allSigns: _signs,
-                currentAlbum: a,
-              ));
+              confirmAndRunDatasetExport(context,
+                  signs: filed, schema: schema);
             }),
+        // 任意の相册を選んで導出（範囲 5）。相册が無ければ出さない。
+        if (albums.isNotEmpty)
+          LLSheetTile(
+              icon: Icons.collections_bookmark_outlined,
+              label: t.exportPickAlbum,
+              onTap: () {
+                Navigator.pop(context);
+                showAlbumExportPicker(context,
+                    albums: albums!, allSigns: _signs, schema: schema);
+              }),
+      ],
       LLSheetTile(
           icon: Icons.close,
           label: t.cancel,
@@ -294,12 +284,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           showChevron: false,
           onTap: () => Navigator.pop(context)),
     ]);
-  }
-
-  Future<void> _confirmAndExport(List<Sign> signs) async {
-    if (!await confirmDatasetExport(context, signs.length)) return;
-    if (!mounted) return;
-    await runDatasetExport(context, signs: signs, schema: widget.schema);
   }
 
   Future<void> _openSettings() async {

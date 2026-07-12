@@ -587,7 +587,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String exportConfirmTitle(int count) {
-    return 'Export $count records?';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Export $count records?',
+      one: 'Export 1 record?',
+    );
+    return '$_temp0';
   }
 
   @override
