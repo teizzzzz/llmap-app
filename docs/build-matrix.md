@@ -15,7 +15,8 @@
 | Android APK (fat, 发布/dist) | 同上 | 同上 | `./scripts/build-mobile-android-release.sh` | `app/build/app/outputs/flutter-apk/app-release.apk` | ✅ 已在 macOS 实测 | 57MB，侧载分发用 |
 | Android AAB (Google Play) | 同上 | 同上 | `./scripts/build-mobile-android-release.sh --aab` | `app/build/app/outputs/bundle/release/app-release.aab` | ✅ 已在 macOS 实测 | 55MB，仅上架用 |
 | iOS app（无签名验证） | **仅 macOS** | Flutter, Xcode | `./scripts/build-mobile-ios-fast.sh` | `app/build/ios/iphoneos/Runner.app` | ✅ 已实测 | SPM 插件，无 CocoaPods |
-| iOS IPA（发布） | **仅 macOS** | + Apple Developer Team/签名 | `./scripts/build-mobile-ios-release.sh` | `app/build/ios/ipa/*.ipa` | ⏳ 待配置签名 | 需 Xcode 里设 Team |
+| iOS IPA（App Store/TestFlight） | **仅 macOS** | + Apple Developer Team/签名 | `./scripts/build-mobile-ios-release.sh` | `app/build/ios/ipa/*.ipa` | ⏳ 未验证 | 上架用 |
+| iOS IPA（Ad Hoc，蒲公英分发） | **仅 macOS** | 付费 Developer 账号 + 注册设备 UDID | `./scripts/build-mobile-ios-adhoc.sh` | `dist/LLMap-v<ver>-adhoc.ipa` | ✅ 已实测 | profile 有效期约 1 年；仅注册设备可装 |
 | macOS Desktop .app / .dmg | **仅 macOS** | Rust, Node, Tauri CLI, Python/PyInstaller | 见 §五 macOS 流程 | `desktop/src-tauri/target/release/bundle/macos/LLMap.app`、`bundle/dmg/*.dmg` | ✅ 已实机验证 (Step 10E) | 未签名会被 Gatekeeper 拦 |
 | Windows Desktop .exe / NSIS installer | **仅 Windows** | Rust MSVC, Node, Tauri CLI, Python/PyInstaller, WebView2 | 见 §五 Windows 流程 | `desktop\src-tauri\target\release\bundle\nsis\`、`...\release\LLMap.exe` | 🔜 脚本就绪，待 Windows 实机 (Step 10F) | SmartScreen/Defender 注意 |
 | Linux Desktop AppImage | **仅 Linux**（建议旧发行版） | Rust, Node, Tauri, webkit2gtk/gtk, Python/PyInstaller | 见 §五 Linux 流程 | `desktop/src-tauri/target/release/bundle/appimage/`、`bundle/deb/` | ❌ 未开始 (10G) | glibc 兼容性取决于构建机 |

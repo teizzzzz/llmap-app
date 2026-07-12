@@ -42,14 +42,21 @@ class _BoxSelectorState extends State<BoxSelector> {
     if (mounted) setState(() => _img = img);
   }
 
+  /// i 番目の suffix: a..z, aa..zz（SignID の一部になるため必ず一意にする）。
+  static String _suffixAt(int i) {
+    if (i < 26) return String.fromCharCode(97 + i);
+    final j = i - 26;
+    return '${String.fromCharCode(97 + j ~/ 26)}${String.fromCharCode(97 + j % 26)}';
+  }
+
   String _nextSuffix() {
-    // a, b, c ... 既存に無い最小のものを採用
+    // 既存に無い最小のものを採用（26 個を超えても重複させない）。
     final used = widget.regions.map((r) => r.suffix).toSet();
-    for (var i = 0; i < 26; i++) {
-      final s = String.fromCharCode(97 + i);
+    for (var i = 0; i < 26 + 26 * 26; i++) {
+      final s = _suffixAt(i);
       if (!used.contains(s)) return s;
     }
-    return 'x';
+    return 'x${widget.regions.length + 1}'; // 理論上到達しない安全弁
   }
 
   void _commit(Size box) {

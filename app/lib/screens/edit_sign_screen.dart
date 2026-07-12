@@ -11,6 +11,10 @@ import '../widgets/sign_form.dart';
 
 /// 既存 sign の編集／削除。フォームはウィザードと共用。
 /// 戻り値: 'saved' 保存 / 'deleted' 削除 / null キャンセル。
+///
+/// 編集は **draft 副本**に対して行い、「保存」時だけ元の Sign に反映する。
+/// 戻る＝破棄が本当に成立する（以前は就地編集のため、キャンセルしても
+/// メモリ上の記録が書き換わり、次回の永続化で保存されてしまっていた）。
 class EditSignScreen extends StatefulWidget {
   final Sign sign;
   final AppSchema schema;
@@ -21,6 +25,35 @@ class EditSignScreen extends StatefulWidget {
 }
 
 class _EditSignScreenState extends State<EditSignScreen> {
+  late final Sign _draft =
+      Sign(Map<String, dynamic>.from(widget.sign.data));
+  bool _dirty = false;
+
+  void _save() {
+    widget.sign.data
+      ..clear()
+      ..addAll(_draft.data);
+    Navigator.pop(context, 'saved');
+  }
+
+  /// 未保存の変更があるときだけ破棄確認を出す。
+  Future<void> _onPopRequested(bool didPop) async {
+    if (didPop) return;
+    final t = AppLocalizations.of(context);
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.help_outline,
+      iconColor: AppColors.warning,
+      title: t.discardTitle,
+      message: t.discardEditBody,
+      primaryLabel: t.discard,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok == true && mounted) Navigator.pop(context);
+  }
+
   Future<void> _confirmDelete() async {
     final t = AppLocalizations.of(context);
     final ok = await showLLDialog<bool>(
@@ -164,39 +197,43 @@ class _EditSignScreenState extends State<EditSignScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.editTitle),
-        actions: [
-          IconButton(
-            onPressed: _confirmDelete,
-            icon: const Icon(Icons.delete_outline),
-            color: AppColors.danger,
-            tooltip: t.delete,
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          _preview(),
-          const SizedBox(height: AppSpacing.md),
-          _identityCard(),
-          const SizedBox(height: AppSpacing.md),
-          SignForm(
-            sign: widget.sign,
-            schema: widget.schema,
-            onChanged: () => setState(() {}),
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) => _onPopRequested(didPop),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t.editTitle),
+          actions: [
+            IconButton(
+              onPressed: _confirmDelete,
+              icon: const Icon(Icons.delete_outline),
+              color: AppColors.danger,
+              tooltip: t.delete,
+            ),
+          ],
+        ),
+        body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
-          child: LLPrimaryButton(
-            label: t.saveChanges,
-            icon: Icons.check,
-            onPressed: () => Navigator.pop(context, 'saved'),
+          children: [
+            _preview(),
+            const SizedBox(height: AppSpacing.md),
+            _identityCard(),
+            const SizedBox(height: AppSpacing.md),
+            SignForm(
+              sign: _draft, // 保存まで元の記録に触れない
+              schema: widget.schema,
+              onChanged: () => setState(() => _dirty = true),
+            ),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: LLPrimaryButton(
+              label: t.saveChanges,
+              icon: Icons.check,
+              onPressed: _save,
+            ),
           ),
         ),
       ),

@@ -225,6 +225,30 @@ def test_patch_system_fields_locked():
         assert r.status_code == 400, field
 
 
+def test_patch_rejects_unknown_status_values():
+    """未知の状態値は 400（審核队列・統計から静黙に漏れるのを防ぐ）。"""
+    rid = client.get("/records", params={"q": f"{CAPTURE}-b"}).json()["items"][0]["id"]
+    for payload in [{"_status": "bogus"}, {"_status": ""},
+                    {"DataStatus": "bogus"}, {"DataStatus": ""}]:
+        r = client.patch(f"/records/{rid}", json=payload)
+        assert r.status_code == 400, payload
+    # 既知値は従来どおり通る（needs_review は Console 専用の審核状態）。
+    r = client.patch(f"/records/{rid}", json={"DataStatus": "needs_review"})
+    assert r.status_code == 200, r.text
+    assert r.json()["DataStatus"] == "needs_review"
+
+
+def test_legacy_phase0_endpoints_removed():
+    """旧 /extract・/ai・/export・/export_bundle は Step 14 で削除済み。"""
+    assert client.post("/extract").status_code in (404, 405)
+    assert client.post("/ai").status_code in (404, 405)
+    assert client.post("/export", json=[]).status_code in (404, 405)
+    assert client.post("/export_bundle", json=[]).status_code in (404, 405)
+    # 残すべき入口は生きている
+    assert client.get("/ai/status").status_code == 200
+    assert client.get("/schema").status_code == 200
+
+
 def test_photo_endpoints():
     rid = client.get("/records", params={"q": f"{CAPTURE}-a"}).json()["items"][0]["id"]
     assert client.get(f"/records/{rid}/photo").status_code == 200

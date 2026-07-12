@@ -605,4 +605,81 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportPickAlbum => 'Choose an album…';
+
+  @override
+  String get permissionDeniedTitle => 'Permission needed';
+
+  @override
+  String get cameraDeniedBody =>
+      'Camera access is off. Enable it in Settings → LLMap → Camera to take photos.';
+
+  @override
+  String get photoDeniedBody =>
+      'Photo library access is off. Enable it in Settings → LLMap → Photos to import images.';
+
+  @override
+  String get openSettings => 'Open Settings';
+
+  @override
+  String get discardTitle => 'Unsaved changes';
+
+  @override
+  String get discardEditBody => 'Discard the changes and close?';
+
+  @override
+  String get discardCaptureBody =>
+      'Abandon this capture? Entered fields and cropped photos will not be saved.';
+
+  @override
+  String get discard => 'Discard';
+
+  @override
+  String processFailed(String error) {
+    return 'Processing failed: $error';
+  }
+
+  @override
+  String get customAddHint => '+ Add custom';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get fieldName => 'Name';
+
+  @override
+  String get fieldTextuality => 'Text presence';
+
+  @override
+  String get fieldDecorLang => 'Decorative language';
+
+  @override
+  String get fieldSpatial => 'Spatial layer';
+
+  @override
+  String get fieldTemporality => 'Temporality';
+
+  @override
+  String get fieldLegibility => 'Legibility';
+
+  @override
+  String get fieldOverwrite => 'Overwriting';
+
+  @override
+  String get fieldDiscourse => 'Discourse type';
+
+  @override
+  String get fieldQuality => 'Production quality';
+
+  @override
+  String get statusPending => 'Pending';
+
+  @override
+  String get statusAi => 'AI draft';
+
+  @override
+  String get statusHumanReviewed => 'Reviewed';
+
+  @override
+  String get statusFinal => 'Final';
 }

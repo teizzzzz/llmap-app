@@ -593,4 +593,80 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get exportPickAlbum => 'アルバムから選ぶ…';
+
+  @override
+  String get permissionDeniedTitle => '権限が必要です';
+
+  @override
+  String get cameraDeniedBody =>
+      'カメラへのアクセスがオフです。撮影するには 設定 → LLMap → カメラ を有効にしてください。';
+
+  @override
+  String get photoDeniedBody =>
+      '写真へのアクセスがオフです。取り込むには 設定 → LLMap → 写真 を有効にしてください。';
+
+  @override
+  String get openSettings => '設定を開く';
+
+  @override
+  String get discardTitle => '未保存の変更があります';
+
+  @override
+  String get discardEditBody => '変更を破棄して閉じますか？';
+
+  @override
+  String get discardCaptureBody => 'この採集を中止しますか？入力内容と切り出した写真は保存されません。';
+
+  @override
+  String get discard => '破棄する';
+
+  @override
+  String processFailed(String error) {
+    return '処理に失敗しました: $error';
+  }
+
+  @override
+  String get customAddHint => '＋ カスタム追加';
+
+  @override
+  String get add => '追加';
+
+  @override
+  String get fieldName => '名称';
+
+  @override
+  String get fieldTextuality => '文字性';
+
+  @override
+  String get fieldDecorLang => '装飾の言語';
+
+  @override
+  String get fieldSpatial => '空間階層';
+
+  @override
+  String get fieldTemporality => '時間性';
+
+  @override
+  String get fieldLegibility => '可読性';
+
+  @override
+  String get fieldOverwrite => '重ね書き';
+
+  @override
+  String get fieldDiscourse => 'ディスコース類型';
+
+  @override
+  String get fieldQuality => '製作品質';
+
+  @override
+  String get statusPending => '未処理';
+
+  @override
+  String get statusAi => 'AI下書き';
+
+  @override
+  String get statusHumanReviewed => '確認済み';
+
+  @override
+  String get statusFinal => '確定';
 }

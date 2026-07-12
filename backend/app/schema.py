@@ -50,6 +50,13 @@ DATA_STATUS_MAP = {
     "final": "verified",
 }
 
+# DataStatus の許容値。DATA_STATUS_MAP の派生値＋標準モード初期値 submitted＋
+# Console 専用の審核状態（needs_review / rejected）。PATCH 検証で使う。
+DATA_STATUS_VALUES = [
+    "raw", "submitted", "ai_drafted", "needs_review",
+    "reviewed", "verified", "rejected",
+]
+
 # システム/自動生成字段（アプリ AppSchema.systemFields と同一）。
 # Console の編集 API では _status / DataStatus を除きロックする。
 SYSTEM_FIELDS = [

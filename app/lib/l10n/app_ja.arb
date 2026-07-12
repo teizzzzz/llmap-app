@@ -10,15 +10,12 @@
   "done": "完了",
   "processing": "処理中…",
   "untitled": "(名称未入力)",
-
   "appTagline": "言語景観の採集",
   "bootOfflineTitle": "設定を読み込めません",
   "bootOfflineBody": "端末の既定設定で動作します。採集は可能です。",
-
   "newCollection": "新規採集",
   "takePhoto": "撮影",
   "chooseFromGallery": "ギャラリーから選択",
-
   "recordsTitle": "採集記録",
   "recordsCount": "{count} 件",
   "archiveTooltip": "採集アーカイブ",
@@ -47,7 +44,6 @@
   "exportData": "データを書き出す",
   "aboutBody": "言語景観の採集ツール · {version}\nローカル優先：写真と記録は端末内に保存。いつでも CSV と写真 ZIP を書き出せます。クラウド同期は今後対応。",
   "comingSoon": "開発中です。お楽しみに。",
-
   "cropTitle": "框选標識 ({count})",
   "undoLastBox": "最後の枠を取り消し",
   "clearAll": "全消去",
@@ -62,7 +58,6 @@
   "gpsManual": "手動で選択",
   "gpsAdjusted": "位置を手動調整しました",
   "gpsReadjust": "再調整",
-
   "fieldsTitle": "字段入力 · {suffix} ({index}/{total})",
   "reRecognize": "再識別",
   "recognizing": "識別中…",
@@ -71,11 +66,9 @@
   "stashNext": "暂存して次へ",
   "saveDone": "入力して保存・完了",
   "saveNext": "入力して保存・次へ",
-
   "editTitle": "編集",
   "deleteRecordConfirmIrreversible": "{id} を削除しますか？元に戻せません。",
   "saveChanges": "保存",
-
   "aiAuto": "AI自動識別",
   "aiAutoSub": "オンにすると、框选した各標識に入ると自動で字段を識別します。",
   "provider": "プロバイダ",
@@ -92,12 +85,10 @@
   "collectorIdNote": "採集者の識別子。SignID の「採集者」位に入り、多人協作時の採番衝突を防ぐ。既定で自動生成済み（NanoID 8桁・易混字 0/O/1/l/I を除外）。自由に変更可。",
   "collectorIdLabel": "採集者 ID",
   "collectorIdRegenerate": "再生成",
-
   "galleryTitle": "採集アーカイブ",
   "langFilter": "言語",
   "sourceFilter": "設置",
   "noMatch": "条件に合う記録がありません",
-
   "selectLocTitle": "撮影位置を確認",
   "selectLocBody1": "現在地を自動取得しました。",
   "selectLocBody2": "ずれている場合は地図をドラッグして撮影地点を調整。",
@@ -106,7 +97,6 @@
   "gpsUnavailable": "現在地を取得できません",
   "useThisLocation": "この位置を使う",
   "restoreAuto": "自動位置に戻す",
-
   "mapPreview": "地図プレビュー",
   "fitAll": "全体表示",
   "noCoords": "座標なし {count} 件は非表示",
@@ -118,7 +108,6 @@
   "multilingual": "多言語関係",
   "noteLabel": "備考: {note}",
   "signMeta": "GPS：{lat}, {lng} · 採集：{time}",
-
   "captureMode": "採集モード",
   "captureModeNote": "撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。",
   "modeQuick": "クイックモード",
@@ -189,5 +178,29 @@
   "noRecordsToExport": "書き出す記録がありません。",
   "exportAction": "書き出す",
   "exportSelected": "選択中を書き出す",
-  "exportPickAlbum": "アルバムから選ぶ…"
+  "exportPickAlbum": "アルバムから選ぶ…",
+  "permissionDeniedTitle": "権限が必要です",
+  "cameraDeniedBody": "カメラへのアクセスがオフです。撮影するには 設定 → LLMap → カメラ を有効にしてください。",
+  "photoDeniedBody": "写真へのアクセスがオフです。取り込むには 設定 → LLMap → 写真 を有効にしてください。",
+  "openSettings": "設定を開く",
+  "discardTitle": "未保存の変更があります",
+  "discardEditBody": "変更を破棄して閉じますか？",
+  "discardCaptureBody": "この採集を中止しますか？入力内容と切り出した写真は保存されません。",
+  "discard": "破棄する",
+  "processFailed": "処理に失敗しました: {error}",
+  "customAddHint": "＋ カスタム追加",
+  "add": "追加",
+  "fieldName": "名称",
+  "fieldTextuality": "文字性",
+  "fieldDecorLang": "装飾の言語",
+  "fieldSpatial": "空間階層",
+  "fieldTemporality": "時間性",
+  "fieldLegibility": "可読性",
+  "fieldOverwrite": "重ね書き",
+  "fieldDiscourse": "ディスコース類型",
+  "fieldQuality": "製作品質",
+  "statusPending": "未処理",
+  "statusAi": "AI下書き",
+  "statusHumanReviewed": "確認済み",
+  "statusFinal": "確定"
 }

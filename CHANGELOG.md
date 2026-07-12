@@ -12,6 +12,16 @@ Android の versionCode（`+N`）は番号表記に関わらず単調増加さ�
 > 3 つの節目（MVP / ローカル化+AI / Lingscape UI 刷新）に整理し直した。過去の見出しは
 > 新スキームで振り直している。
 
+## v1.10.2 (2026-07-07) — 並行開発の合流（選択性導出 × 安全強化）
+
+ローカル線（v1.10.0/1.10.1: 選択性導出）と远端線（v1.9.2/1.9.3:
+カメラ/写真権限拒否時の案内・iOS Ad Hoc 打包脚本・Step 14 データ安全強化・
+字段表示ラベルの本地化 field_labels.dart・Windows 一括ビルド脚本
+scripts/build-windows-app.ps1・backend モジュール整理）をマージ。
+l10n は両側の追加キーを全部保持し gen-l10n で再生成。versionCode は
+両側が +27 を使っていたため +28 に採番し直し。
+`flutter analyze` **0 issues** / `flutter test` 65 件 PASS。
+
 ## v1.10.1 (2026-07-07) — 導出範囲に「アルバムから選ぶ」を追加（Step 14 完善）
 
 導出シートに **任意の相册を選んで導出** する範囲を追加（`ExportScope.album`）。

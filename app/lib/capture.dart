@@ -3,13 +3,14 @@
 library;
 
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'l10n/app_localizations.dart';
+import 'theme/tokens.dart';
 import 'widgets/ll/ll.dart';
 
 class CaptureResult {
@@ -52,9 +53,35 @@ Future<CaptureResult?> capturePhoto(BuildContext context) async {
     source = choice;
   }
 
-  final x = await picker.pickImage(source: source, maxWidth: 4096);
-  if (x == null) return null;
-  return CaptureResult(await x.readAsBytes(), x.name);
+  try {
+    final x = await picker.pickImage(source: source, maxWidth: 4096);
+    if (x == null) return null;
+    return CaptureResult(await x.readAsBytes(), x.name);
+  } on PlatformException catch (e) {
+    // カメラ/写真の権限が拒否された場合、黙って失敗せず設定への導線を出す
+    // （iOS で一度「許可しない」を選ぶと、設定でしか再有効化できないため）。
+    final denied =
+        e.code.contains('access_denied') || e.code.contains('denied');
+    if (denied && context.mounted) {
+      final t = AppLocalizations.of(context);
+      final isCamera = source == ImageSource.camera;
+      await showLLDialog(
+        context,
+        icon: Icons.lock_outline,
+        iconColor: AppColors.danger,
+        title: t.permissionDeniedTitle,
+        message: isCamera ? t.cameraDeniedBody : t.photoDeniedBody,
+        primaryLabel: t.openSettings,
+        onPrimary: () {
+          Navigator.pop(context);
+          Geolocator.openAppSettings(); // アプリの設定ページを直接開く
+        },
+        secondaryLabel: t.cancel,
+        onSecondary: () => Navigator.pop(context),
+      );
+    }
+    return null;
+  }
 }
 
 /// 撮影時の現在地。権限拒否/未対応/タイムアウトは null（backend が EXIF を優先）。

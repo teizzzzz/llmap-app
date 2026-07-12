@@ -161,11 +161,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showKey = false;
 
   @override
+  void initState() {
+    super.initState();
+    // テキスト変更でも PopScope の canPop を更新する（破棄確認のため）。
+    for (final c in [_url, _key, _collector]) {
+      c.addListener(_onFieldChanged);
+    }
+  }
+
+  void _onFieldChanged() => setState(() {});
+
+  @override
   void dispose() {
     _url.dispose();
     _key.dispose();
     _collector.dispose();
     super.dispose();
+  }
+
+  /// 「保存設定」を押さずに離れようとしていないか（言語は即時適用なので対象外）。
+  bool get _dirty =>
+      _url.text.trim() != widget.baseUrl ||
+      _key.text.trim() != widget.ai.apiKey ||
+      _collector.text.trim() != widget.collectorId ||
+      _aiEnabled != widget.ai.enabled ||
+      _provider != widget.ai.provider ||
+      _mode != widget.captureMode;
+
+  Future<void> _onPopRequested(bool didPop) async {
+    if (didPop) return;
+    final t = AppLocalizations.of(context);
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.help_outline,
+      iconColor: AppColors.warning,
+      title: t.discardTitle,
+      message: t.discardEditBody,
+      primaryLabel: t.discard,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok == true && mounted) Navigator.pop(context);
   }
 
   void _save() {
@@ -185,7 +222,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return Scaffold(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) => _onPopRequested(didPop),
+      child: Scaffold(
       appBar: AppBar(title: Text(t.projectSettings)),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -357,6 +397,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           LLPrimaryButton(
               label: t.saveSettings, icon: Icons.check, onPressed: _save),
         ],
+      ),
       ),
     );
   }

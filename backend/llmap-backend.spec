@@ -31,10 +31,9 @@ hiddenimports = (
     collect_submodules("uvicorn")
     # python-multipart（/datasets/import の multipart 解析）
     + ["multipart", "python_multipart"]
-    # Pillow の画像プラグイン（JPEG 保存・EXIF）
-    + ["PIL.Image", "PIL.ImageOps", "PIL.JpegImagePlugin"]
     # pydantic v2 のネイティブコア
     + ["pydantic_core"]
+    # Pillow は旧 /extract・/ai の削除（Step 14）に伴い同梱不要になった
 )
 
 a = Analysis(

@@ -13,7 +13,8 @@ app/.flutter-plugins-dependencies
 app/.packages
 
 # Build outputs
-dist/*.apk
+# dist/ は配布物・データ備份置き場（APK/IPA/備份とも git に入れない）
+dist/
 
 # Data / secrets
 *.key

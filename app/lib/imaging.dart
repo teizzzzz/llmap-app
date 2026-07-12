@@ -39,7 +39,7 @@ String makeDisplayId(String area, DateTime capturedAt, int seq, String suffix) {
 /// 元写真（原始完整写真）のファイル名: CaptureID-source.jpg。
 String sourcePhotoName(String captureId) => '$captureId-source.jpg';
 
-/// 裁切写真のファイル名: CaptureID-<suffix>.jpg。
+/// 裁切写真のファイル名: `CaptureID-<suffix>.jpg`。
 String cropPhotoName(String captureId, String suffix) =>
     '$captureId-$suffix.jpg';
 
@@ -85,10 +85,14 @@ String nowCaptured() => formatCaptured(DateTime.now());
 // ── クロップ（storage.save_crop を踏襲：相対矩形→JPEG q90） ──
 
 /// 全景バイト列から相対矩形 (0..1) を切り出して JPEG bytes を返す。
-/// ユーザーが表示画像上で囲んだ座標なので、向き補正せず生バイトのまま切る。
+/// 框选座標は「画面に表示された向き」基準。Flutter の表示は EXIF Orientation を
+/// 適用するが、image パッケージの decode は生ピクセルのままなので、切り出し前に
+/// bakeOrientation で向きをピクセルへ焼き込み、表示と座標系を一致させる
+/// （EXIF 付き縦位置写真で框选が 90° ずれるのを防ぐ。Orientation=1 は実質無変換）。
 Uint8List cropJpeg(Uint8List src, double x, double y, double w, double h) {
-  final image = img.decodeImage(src);
-  if (image == null) return src; // デコード不能時は全景をそのまま返す
+  final decoded = img.decodeImage(src);
+  if (decoded == null) return src; // デコード不能時は全景をそのまま返す
+  final image = img.bakeOrientation(decoded);
   final W = image.width, H = image.height;
   final left = (x * W).floor().clamp(0, W);
   final top = (y * H).floor().clamp(0, H);

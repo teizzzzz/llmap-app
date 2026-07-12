@@ -356,8 +356,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _editSign(int i) async {
-    final sign = _signs[i];
+  Future<void> _editSign(Sign sign) async {
     final r = await Navigator.push<String>(
       context,
       MaterialPageRoute(
@@ -619,6 +618,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _recordsPanel(ScrollController scroll) {
     final t = AppLocalizations.of(context);
+    // 表示は新しい順（Gallery の既定排序と揃える）。_signs 自体は採集順のまま。
+    final ordered = _signs.reversed.toList();
+    // builder で遅延構築する（記録が数百件でも抽屉が固まらないように）。
+    // 行構成: [0]=ヘッダ / [1..n]=記録（空なら空状態1行）/ 末尾=余白。
+    final rowCount = 1 + (ordered.isEmpty ? 1 : ordered.length) + 1;
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surfaceIvory,
@@ -626,104 +630,113 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         boxShadow: AppShadows.floating,
       ),
       clipBehavior: Clip.antiAlias,
-      child: ListView(
+      child: ListView.builder(
         controller: scroll,
         padding: EdgeInsets.zero,
-        children: [
-          const SizedBox(height: 10),
-          Center(
-            child: Container(
-              width: 44,
-              height: 5,
-              decoration: BoxDecoration(
-                color: AppColors.borderSubtle,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+        itemCount: rowCount,
+        itemBuilder: (context, row) {
+          if (row == 0) return _panelHeader(t);
+          if (row == rowCount - 1) return const SizedBox(height: AppSpacing.xl);
+          if (ordered.isEmpty) return _emptyRecords();
+          final s = ordered[row - 1];
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
+            child: Dismissible(
+              key: ValueKey('${s.id}-${identityHashCode(s)}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: AppSpacing.xl),
+                child: const Icon(Icons.delete_outline, color: Colors.white),
               ),
+              confirmDismiss: (_) => showLLDialog<bool>(
+                context,
+                icon: Icons.delete_outline,
+                iconColor: AppColors.danger,
+                title: t.deleteRecordTitle,
+                message: t.deleteRecordConfirm(s.displayId),
+                primaryLabel: t.delete,
+                onPrimary: () => Navigator.pop(context, true),
+                secondaryLabel: t.cancel,
+                onSecondary: () => Navigator.pop(context, false),
+              ),
+              onDismissed: (_) => _deleteSigns([s]),
+              child: LLSignCard(
+                  sign: s,
+                  // 番号は採集順を保つ（最新 = 最大番号が先頭に来る）。
+                  index: _signs.length - row,
+                  onTap: () => _editSign(s)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 抽屉ヘッダ（ハンドル＋タイトル行）。
+  Widget _panelHeader(AppLocalizations t) {
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Center(
+          child: Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppColors.borderSubtle,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
-            child: Row(
-              children: [
-                Text(t.recordsTitle, style: AppText.sectionTitle()),
-                const SizedBox(width: AppSpacing.sm),
-                Text(t.recordsCount(_signs.length), style: AppText.caption()),
-                const Spacer(),
-                if (_signs.isNotEmpty)
-                  IconButton(
-                    onPressed: _openGallery,
-                    icon: const Icon(Icons.grid_view_outlined, size: 20),
-                    color: AppColors.accentTerracotta,
-                    tooltip: t.archiveTooltip,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                // 現在の採集モード（設定で切替。タップで設定へ）。
-                InkWell(
-                  onTap: _openSettings,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: LLTagChip(
-                    label: _mode.label(t),
-                    color: switch (_mode) {
-                      CaptureMode.quick => AppColors.accentMustard,
-                      CaptureMode.standard => AppColors.accentBlue,
-                      CaptureMode.research => AppColors.accentViolet,
-                    },
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                LLTagChip(
-                    label: '$_area #$_nextSeq', color: AppColors.accentBlue),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
+          child: Row(
+            children: [
+              Text(t.recordsTitle, style: AppText.sectionTitle()),
+              const SizedBox(width: AppSpacing.sm),
+              Text(t.recordsCount(_signs.length), style: AppText.caption()),
+              const Spacer(),
+              if (_signs.isNotEmpty)
                 IconButton(
-                  onPressed: _editArea,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textSecondary,
-                  tooltip: t.areaCodeTooltip,
+                  onPressed: _openGallery,
+                  icon: const Icon(Icons.grid_view_outlined, size: 20),
+                  color: AppColors.accentTerracotta,
+                  tooltip: t.archiveTooltip,
                   visualDensity: VisualDensity.compact,
                 ),
-              ],
-            ),
-          ),
-          if (_signs.isEmpty)
-            _emptyRecords()
-          else
-            ...List.generate(_signs.length, (i) {
-              final s = _signs[i];
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
-                child: Dismissible(
-                  key: ValueKey('${s.id}-$i'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.danger,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: AppSpacing.xl),
-                    child: const Icon(Icons.delete_outline, color: Colors.white),
-                  ),
-                  confirmDismiss: (_) => showLLDialog<bool>(
-                    context,
-                    icon: Icons.delete_outline,
-                    iconColor: AppColors.danger,
-                    title: t.deleteRecordTitle,
-                    message: t.deleteRecordConfirm(s.displayId),
-                    primaryLabel: t.delete,
-                    onPrimary: () => Navigator.pop(context, true),
-                    secondaryLabel: t.cancel,
-                    onSecondary: () => Navigator.pop(context, false),
-                  ),
-                  onDismissed: (_) => _deleteSigns([s]),
-                  child: LLSignCard(
-                      sign: s, index: i, onTap: () => _editSign(i)),
+              // 現在の採集モード（設定で切替。タップで設定へ）。
+              InkWell(
+                onTap: _openSettings,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: LLTagChip(
+                  label: _mode.label(t),
+                  color: switch (_mode) {
+                    CaptureMode.quick => AppColors.accentMustard,
+                    CaptureMode.standard => AppColors.accentBlue,
+                    CaptureMode.research => AppColors.accentViolet,
+                  },
                 ),
-              );
-            }),
-          const SizedBox(height: AppSpacing.xl),
-        ],
-      ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              LLTagChip(
+                  label: '$_area #$_nextSeq', color: AppColors.accentBlue),
+              IconButton(
+                onPressed: _editArea,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                color: AppColors.textSecondary,
+                tooltip: t.areaCodeTooltip,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
