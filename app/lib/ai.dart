@@ -107,6 +107,9 @@ Future<Map<String, dynamic>> judge({
       : _judgeClaude(b64, fields, apiKey);
 }
 
+/// AI 呼び出しの上限時間。超過時は例外 → snackbar 表示（UI を永久に固めない）。
+const _aiTimeout = Duration(seconds: 60);
+
 Future<Map<String, dynamic>> _judgeClaude(
     String b64, List<String> fields, String key) async {
   final r = await http.post(
@@ -137,7 +140,7 @@ Future<Map<String, dynamic>> _judgeClaude(
         },
       ],
     }),
-  );
+  ).timeout(_aiTimeout);
   if (r.statusCode != 200) {
     throw Exception('Claude API ${r.statusCode}: ${utf8.decode(r.bodyBytes)}');
   }
@@ -156,8 +159,12 @@ Future<Map<String, dynamic>> _judgeGemini(
     String b64, List<String> fields, String key) async {
   final r = await http.post(
     Uri.parse('https://generativelanguage.googleapis.com/v1beta/'
-        'models/gemini-2.5-flash:generateContent?key=$key'),
-    headers: {'content-type': 'application/json'},
+        'models/gemini-2.5-flash:generateContent'),
+    headers: {
+      'content-type': 'application/json',
+      // key は URL クエリでなくヘッダで送る（プロキシ/アクセスログに残さない）。
+      'x-goog-api-key': key,
+    },
     body: jsonEncode({
       'contents': [
         {
@@ -170,7 +177,7 @@ Future<Map<String, dynamic>> _judgeGemini(
         },
       ],
     }),
-  );
+  ).timeout(_aiTimeout);
   if (r.statusCode != 200) {
     throw Exception('Gemini API ${r.statusCode}: ${utf8.decode(r.bodyBytes)}');
   }

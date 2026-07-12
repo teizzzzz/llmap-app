@@ -27,6 +27,11 @@ export const API_BASE_URL: string =
   import.meta.env.VITE_API_BASE_URL ||
   'http://localhost:8000';
 
+/** 桌面版（Tauri shell）で動いているか。backend は shell が自動起動するため、
+    「uvicorn を手で起動して」系の開発者向け案内は桌面版では出さない。 */
+export const IS_DESKTOP: boolean =
+  typeof window !== 'undefined' && !!window.__LLMAP_API_BASE_URL__;
+
 /** backend 未起動などの通信失敗を UI で見分けるためのエラー型。 */
 export class ApiError extends Error {
   constructor(
@@ -49,9 +54,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
     });
   } catch {
-    throw new ApiError(
-      `Cannot reach backend at ${API_BASE_URL}. Is it running? (uvicorn app.main:app --port 8000)`,
-    );
+    throw new ApiError(`Cannot reach backend at ${API_BASE_URL}.`);
   }
   if (!res.ok) {
     let detail = res.statusText;
@@ -104,9 +107,7 @@ export const exportRecordsCsv = async (
   try {
     res = await fetch(`${API_BASE_URL}/export/csv${query({ ...params })}`);
   } catch {
-    throw new ApiError(
-      `Cannot reach backend at ${API_BASE_URL}. Is it running? (uvicorn app.main:app --port 8000)`,
-    );
+    throw new ApiError(`Cannot reach backend at ${API_BASE_URL}.`);
   }
   if (!res.ok) {
     throw new ApiError(`${res.status}: ${res.statusText}`, res.status);

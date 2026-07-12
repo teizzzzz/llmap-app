@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../field_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../store.dart';
@@ -118,7 +119,9 @@ class LLSignCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              statusBadge(sign.status),
+              statusBadge(sign.status,
+                  label: statusLabel(
+                      AppLocalizations.of(context), sign.status)),
             ],
           ),
         ),

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../albums.dart';
+import '../field_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../record_ops.dart';
@@ -759,7 +760,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 Positioned(
                   top: 6,
                   right: 6,
-                  child: statusBadge(s.status),
+                  child: statusBadge(s.status,
+                      label: statusLabel(AppLocalizations.of(context), s.status)),
                 ),
               ],
             ),

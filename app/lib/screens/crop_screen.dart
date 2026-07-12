@@ -9,6 +9,7 @@ import '../capture_mode.dart';
 import '../imaging.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
 import '../schema_defaults.dart';
 import '../settings.dart';
 import '../store.dart';
@@ -100,11 +101,19 @@ class _CropScreenState extends State<CropScreen> {
                 ),
         ),
       );
-      if (result != null && mounted) Navigator.pop(context, result);
+      if (result != null && mounted) {
+        Navigator.pop(context, result);
+      } else if (result == null) {
+        // 表単を放棄した: _extractLocal が保存した写真を削除する（孤児化防止）。
+        // CaptureID はミリ秒一意のため、既存記録のファイルと重なることはない。
+        await LocalStore.instance.deletePhotos({
+          for (final s in signs) ...photoRefsOf(s),
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('字段处理失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).processFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _busy = false);

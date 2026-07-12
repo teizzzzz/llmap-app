@@ -32,7 +32,9 @@ Color statusColor(String status) =>
     AppColors.textSecondary;
 
 /// 状態バッジ（チップ）。一覧・フォーム・地図詳情で共用。
-Widget statusBadge(String status) {
+/// [label] は表示文言（field_labels.statusLabel の本地化済みラベルを渡す。
+/// null なら内部値をそのまま表示）。色分けキーは常に内部値 [status] で引く。
+Widget statusBadge(String status, {String? label}) {
   final c = statusColor(status);
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -41,7 +43,7 @@ Widget statusBadge(String status) {
       border: Border.all(color: c.withValues(alpha: 0.55)),
       borderRadius: BorderRadius.circular(999),
     ),
-    child: Text(status,
+    child: Text(label ?? status,
         style: TextStyle(
             fontSize: 11, color: c, fontWeight: FontWeight.w700)),
   );

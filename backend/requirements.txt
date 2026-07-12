@@ -1,13 +1,11 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
-Pillow>=10.0
-piexif>=1.1.3
 pydantic>=2.6
-# AI providers (optional at runtime; only needed for /ai)
-anthropic>=0.40
-google-genai>=0.3
 sqlmodel>=0.0.16
 # tests
 pytest>=8.0
 httpx>=0.27
+# 旧 Phase 0 依存（Pillow / piexif / anthropic / google-genai）は
+# /extract・/ai・/export 系エンドポイントの削除（Step 14）に伴い外した。
+# 将来 Console のバッチ AI を実装する時に必要なものだけ戻す。

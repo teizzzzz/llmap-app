@@ -118,6 +118,11 @@ class LocalStore {
   }
 
   /// 採集記録＋セッション（地区/連番）を JSON で保存。変更ごとに呼ぶ。
+  ///
+  /// **原子的に書く**: まず .tmp へ書き切り、既存の project.json を .bak に
+  /// 退避してから置換する。書き込み途中でアプリが落ちても、
+  /// project.json / .tmp / .bak のどれかは必ず完全な状態で残る
+  /// （唯一のデータファイルを直接上書きして全記録を失わないための保護）。
   Future<void> saveProject(List<Sign> signs, String area, int nextSeq) async {
     await _ensure();
     final json = jsonEncode({
@@ -126,15 +131,40 @@ class LocalStore {
       'nextSeq': nextSeq,
       'signs': signs.map((s) => s.toJson()).toList(),
     });
-    await _projectFile().writeAsString(json, flush: true);
+    final file = _projectFile();
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(json, flush: true); // 完全に書けてから置換に進む
+    if (await file.exists()) {
+      try {
+        final bak = File('${file.path}.bak');
+        if (await bak.exists()) await bak.delete();
+        await file.copy(bak.path);
+        // Windows は既存ファイルへの rename が失敗するため先に消す。
+        // この一瞬に落ちても .tmp（完全）と .bak が残り、load が拾う。
+        await file.delete();
+      } catch (_) {
+        // バックアップ失敗でも保存自体は続行する
+      }
+    }
+    await tmp.rename(file.path);
   }
 
   /// 保存済みの採集記録を復元。無ければ null。
+  /// project.json が欠損/破損していても .tmp → .bak の順で復旧を試み、
+  /// 壊れたファイルは**消さずに**残す（手動レスキューの余地を残す）。
   Future<ProjectState?> loadProject() async {
     await _ensure();
-    final f = _projectFile();
-    if (!await f.exists()) return null;
+    final base = _projectFile().path;
+    for (final path in [base, '$base.tmp', '$base.bak']) {
+      final state = await _tryReadProject(File(path));
+      if (state != null) return state;
+    }
+    return null;
+  }
+
+  Future<ProjectState?> _tryReadProject(File f) async {
     try {
+      if (!await f.exists()) return null;
       final map = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
       final signs = (map['signs'] as List? ?? [])
           .map((s) => Sign.fromJson(Map<String, dynamic>.from(s)))
@@ -147,7 +177,7 @@ class LocalStore {
             : int.tryParse('${map['nextSeq']}') ?? 1,
       );
     } catch (_) {
-      return null; // 壊れた保存は無視して新規扱い
+      return null; // このファイルは壊れている → 次の候補を試す
     }
   }
 

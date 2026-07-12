@@ -18,7 +18,10 @@ from sqlmodel import Session, col, func, select
 
 from .database import get_session, photos_dir, source_photos_dir
 from .db_models import Dataset, SignRecord
-from .schema import CSV_HEADER, DATA_STATUS_MAP, SYSTEM_FIELDS
+from .schema import (
+    CSV_HEADER, DATA_STATUS_MAP, DATA_STATUS_VALUES, STATUS_VALUES,
+    SYSTEM_FIELDS,
+)
 
 router = APIRouter(tags=["records"])
 
@@ -196,6 +199,17 @@ def patch_record(
     if rejected:
         raise HTTPException(
             400, f"編集できない字段です（系統字段は既定でロック）: {rejected}")
+
+    # 状態値は既知の枚挙に限定する（未知値が入ると審核队列・統計から
+    # 静黙に漏れるため、API 層でも拒否する。UI 側の制約と二重防御）。
+    if "_status" in payload and payload["_status"] not in STATUS_VALUES:
+        raise HTTPException(
+            400, f"不正な _status です（許容値: {STATUS_VALUES}）: "
+                 f"{payload['_status']!r}")
+    if "DataStatus" in payload and payload["DataStatus"] not in DATA_STATUS_VALUES:
+        raise HTTPException(
+            400, f"不正な DataStatus です（許容値: {DATA_STATUS_VALUES}）: "
+                 f"{payload['DataStatus']!r}")
 
     data = json.loads(rec.data_json)
     for k, v in payload.items():

@@ -570,4 +570,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get openSettings => '打开设置';
+
+  @override
+  String get discardTitle => '有未保存的更改';
+
+  @override
+  String get discardEditBody => '要放弃更改并关闭吗？';
+
+  @override
+  String get discardCaptureBody => '要放弃本次采集吗？已输入的内容和裁剪的照片都不会保存。';
+
+  @override
+  String get discard => '放弃';
+
+  @override
+  String processFailed(String error) {
+    return '处理失败: $error';
+  }
+
+  @override
+  String get customAddHint => '+ 自定义添加';
+
+  @override
+  String get add => '添加';
+
+  @override
+  String get fieldName => '名称';
+
+  @override
+  String get fieldTextuality => '文字性';
+
+  @override
+  String get fieldDecorLang => '装饰性语言';
+
+  @override
+  String get fieldSpatial => '空间层级';
+
+  @override
+  String get fieldTemporality => '时间性';
+
+  @override
+  String get fieldLegibility => '可读性';
+
+  @override
+  String get fieldOverwrite => '覆盖书写';
+
+  @override
+  String get fieldDiscourse => '话语类型';
+
+  @override
+  String get fieldQuality => '制作质量';
+
+  @override
+  String get statusPending => '待处理';
+
+  @override
+  String get statusAi => 'AI草稿';
+
+  @override
+  String get statusHumanReviewed => '已确认';
+
+  @override
+  String get statusFinal => '最终确定';
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { API_BASE_URL, ApiError, getRecords, getStatsSummary } from '../api/client';
+import {
+  API_BASE_URL, ApiError, IS_DESKTOP, getRecords, getStatsSummary,
+} from '../api/client';
 import type { StatsSummary } from '../api/types';
 import { PENDING_STATUSES } from '../reviewStatus';
 
@@ -103,11 +105,19 @@ export default function DashboardPage() {
           <div className="hint">
             {error}
             <br />
-            {t('dashboard.startBackendHint')}{' '}
-            <code>cd backend && uvicorn app.main:app --port 8000</code>
-            <br />
-            {t('dashboard.currentUrl')}: <code>{API_BASE_URL}</code>{' '}
-            ({t('dashboard.configurableVia')}: <code>VITE_API_BASE_URL</code>)
+            {/* 桌面版は backend を shell が自動起動する — uvicorn の案内は
+                Web/開発モードのときだけ出す。 */}
+            {!IS_DESKTOP && (
+              <>
+                {t('dashboard.startBackendHint')}{' '}
+                <code>cd backend && uvicorn app.main:app --port 8000</code>
+                <br />
+              </>
+            )}
+            {t('dashboard.currentUrl')}: <code>{API_BASE_URL}</code>
+            {!IS_DESKTOP && (
+              <> ({t('dashboard.configurableVia')}: <code>VITE_API_BASE_URL</code>)</>
+            )}
           </div>
         </div>
       )}

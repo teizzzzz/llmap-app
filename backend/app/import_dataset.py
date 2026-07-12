@@ -113,15 +113,16 @@ async def import_dataset(
     imported = 0
     skipped = 0
     record_by_sign: dict[str, SignRecord] = {}
+    # 既存 SignID は1回のクエリでまとめて取得する
+    # （行ごとの SELECT は数千行のパッケージで顕著に遅い）。
+    existing_sign_ids = set(session.exec(select(SignRecord.sign_id)).all())
     for i, row in enumerate(rows):
         sign_id = (row.get("SignID") or "").strip()
         if not sign_id:
             skipped += 1
             warnings.append(f"data.csv {i + 2} 行目: SignID が空のため skip")
             continue
-        exists_in_db = session.exec(
-            select(SignRecord).where(SignRecord.sign_id == sign_id)).first()
-        if sign_id in record_by_sign or exists_in_db:
+        if sign_id in record_by_sign or sign_id in existing_sign_ids:
             skipped += 1
             duplicate_sign_ids.append(sign_id)
             continue

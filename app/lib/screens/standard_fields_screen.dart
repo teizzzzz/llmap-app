@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../field_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../schema_defaults.dart';
@@ -52,18 +53,6 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
     return null;
   }
 
-  /// UI ラベルは本地化文言、data キーは schema の正準キー（混用しない）。
-  String _labelFor(AppLocalizations t, String field) => switch (field) {
-        '主要言語' => t.mainLanguage,
-        '補助言語' => t.subLanguage,
-        '文字体系' => t.fieldScript,
-        '担体類型' => t.carrier,
-        '設置主体' => t.operator,
-        '多言語関係' => t.multilingual,
-        '備考' => t.fieldNote,
-        _ => field,
-      };
-
   /// 提交して次へ。標準モードの状態は _status=pending / DataStatus=submitted の
   /// まま（採番時に設定済み。校閲は Console / 研究モードの仕事）。
   void _save() {
@@ -78,87 +67,114 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
     }
   }
 
+  /// 途中放棄の確認。放棄すると CropScreen 側が今回保存した写真を清掃する。
+  Future<void> _confirmAbandon(bool didPop) async {
+    if (didPop) return;
+    final t = AppLocalizations.of(context);
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.help_outline,
+      iconColor: AppColors.warning,
+      title: t.discardTitle,
+      message: t.discardCaptureBody,
+      primaryLabel: t.discard,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok == true && mounted) Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final total = widget.signs.length;
     final sign = _current;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.fieldsTitle(sign.cropSuffix, _index + 1, total)),
-        bottom: total > 1
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(4),
-                child: LinearProgressIndicator(
-                  value: (_index + 1) / total,
-                  minHeight: 4,
-                  backgroundColor: AppColors.muted,
-                  color: AppColors.accentTerracotta,
-                ),
-              )
-            : null,
-      ),
-      body: ListView(
-        key: ValueKey(sign.id),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          LLCard(
-            padding: EdgeInsets.zero,
-            child: CropPreview(
-              imageBytes: widget.imageBytes,
-              region: _regionFor(sign),
+    return PopScope(
+      canPop: false, // 進入時点で写真は保存済み → 放棄は必ず確認を通す
+      onPopInvokedWithResult: (didPop, _) => _confirmAbandon(didPop),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t.fieldsTitle(sign.cropSuffix, _index + 1, total)),
+          bottom: total > 1
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(4),
+                  child: LinearProgressIndicator(
+                    value: (_index + 1) / total,
+                    minHeight: 4,
+                    backgroundColor: AppColors.muted,
+                    color: AppColors.accentTerracotta,
+                  ),
+                )
+              : null,
+        ),
+        body: ListView(
+          key: ValueKey(sign.id),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            LLCard(
+              padding: EdgeInsets.zero,
+              child: CropPreview(
+                imageBytes: widget.imageBytes,
+                region: _regionFor(sign),
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // ── 既定: 言語の多選＋任意の備考 ──
-          LLCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(t.stdLangPrompt, style: AppText.sectionTitle()),
-                const SizedBox(height: AppSpacing.sm),
-                _chipMulti(t, sign, '主要言語', _langOptions),
-                const SizedBox(height: AppSpacing.sm),
-                _chipMulti(t, sign, '補助言語', _langOptions),
-                const SizedBox(height: AppSpacing.sm),
-                _noteField(t, sign),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // ── 展開: 少数の官方字段（完全表単は研究モードのみ） ──
-          if (!_more)
-            LLSecondaryButton(
-              label: t.stdMoreInfo,
-              icon: Icons.expand_more,
-              onPressed: () => setState(() => _more = true),
-            )
-          else
+            const SizedBox(height: AppSpacing.md),
+            // ── 既定: 言語の多選＋任意の備考 ──
             LLCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 展開字段は kStandardMoreFields（正準キー）で駆動する。
-                  for (final f in kStandardMoreFields) ...[
-                    if (widget.schema.multiFields.contains(f))
-                      _chipMulti(t, sign, f, widget.schema.enums[f] ?? const [])
-                    else
-                      _dropdown(t, sign, f),
-                    const SizedBox(height: AppSpacing.xs),
-                  ],
+                  Text(t.stdLangPrompt, style: AppText.sectionTitle()),
+                  const SizedBox(height: AppSpacing.sm),
+                  _chipMulti(t, sign, '主要言語', _langOptions),
+                  const SizedBox(height: AppSpacing.sm),
+                  _chipMulti(t, sign, '補助言語', _langOptions),
+                  const SizedBox(height: AppSpacing.sm),
+                  _noteField(t, sign),
                 ],
               ),
             ),
-          const SizedBox(height: 80),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: LLPrimaryButton(
-            label: _isLast ? t.saveDone : t.saveNext,
-            icon: _isLast ? Icons.check : Icons.arrow_forward,
-            onPressed: _save,
+            const SizedBox(height: AppSpacing.md),
+            // ── 展開: 少数の官方字段（完全表単は研究モードのみ） ──
+            if (!_more)
+              LLSecondaryButton(
+                label: t.stdMoreInfo,
+                icon: Icons.expand_more,
+                onPressed: () => setState(() => _more = true),
+              )
+            else
+              LLCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 展開字段は kStandardMoreFields（正準キー）で駆動する。
+                    for (final f in kStandardMoreFields) ...[
+                      if (widget.schema.multiFields.contains(f))
+                        _chipMulti(
+                          t,
+                          sign,
+                          f,
+                          widget.schema.enums[f] ?? const [],
+                        )
+                      else
+                        _dropdown(t, sign, f),
+                      const SizedBox(height: AppSpacing.xs),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 80),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: LLPrimaryButton(
+              label: _isLast ? t.saveDone : t.saveNext,
+              icon: _isLast ? Icons.check : Icons.arrow_forward,
+              onPressed: _save,
+            ),
           ),
         ),
       ),
@@ -167,13 +183,19 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
 
   /// 複数選択チップ（値は既存慣習どおり「/」区切りで保存）。
   Widget _chipMulti(
-      AppLocalizations t, Sign sign, String field, List<String> options) {
+    AppLocalizations t,
+    Sign sign,
+    String field,
+    List<String> options,
+  ) {
     final selected = splitMulti(sign.get(field));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_labelFor(t, field),
-            style: AppText.caption().copyWith(color: AppColors.textSecondary)),
+        Text(
+          fieldLabel(t, field),
+          style: AppText.caption().copyWith(color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 4),
         Wrap(
           spacing: 6,
@@ -184,8 +206,9 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
                 label: Text(o),
                 selected: selected.contains(o),
                 visualDensity: VisualDensity.compact,
-                selectedColor:
-                    AppColors.accentTerracotta.withValues(alpha: 0.18),
+                selectedColor: AppColors.accentTerracotta.withValues(
+                  alpha: 0.18,
+                ),
                 checkmarkColor: AppColors.accentTerracotta,
                 onSelected: (_) {
                   setState(() {
@@ -216,7 +239,7 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
         initialValue: value.isEmpty ? null : value,
         isExpanded: true,
         decoration: InputDecoration(
-          labelText: _labelFor(t, field),
+          labelText: fieldLabel(t, field),
           isDense: true,
           border: const OutlineInputBorder(),
         ),
@@ -229,13 +252,13 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
   }
 
   Widget _noteField(AppLocalizations t, Sign sign) => TextFormField(
-        key: ValueKey('${sign.id}-備考-std'),
-        initialValue: sign.get('備考'),
-        decoration: InputDecoration(
-          labelText: _labelFor(t, '備考'),
-          isDense: true,
-          border: const OutlineInputBorder(),
-        ),
-        onChanged: (v) => sign.set('備考', v),
-      );
+    key: ValueKey('${sign.id}-備考-std'),
+    initialValue: sign.get('備考'),
+    decoration: InputDecoration(
+      labelText: fieldLabel(t, '備考'),
+      isDense: true,
+      border: const OutlineInputBorder(),
+    ),
+    onChanged: (v) => sign.set('備考', v),
+  );
 }

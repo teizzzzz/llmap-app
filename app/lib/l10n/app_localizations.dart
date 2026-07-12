@@ -1137,6 +1137,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Settings'**
   String get openSettings;
+
+  /// No description provided for @discardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get discardTitle;
+
+  /// No description provided for @discardEditBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard the changes and close?'**
+  String get discardEditBody;
+
+  /// No description provided for @discardCaptureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Abandon this capture? Entered fields and cropped photos will not be saved.'**
+  String get discardCaptureBody;
+
+  /// No description provided for @discard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discard;
+
+  /// No description provided for @processFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing failed: {error}'**
+  String processFailed(String error);
+
+  /// No description provided for @customAddHint.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add custom'**
+  String get customAddHint;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @fieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get fieldName;
+
+  /// No description provided for @fieldTextuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Text presence'**
+  String get fieldTextuality;
+
+  /// No description provided for @fieldDecorLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Decorative language'**
+  String get fieldDecorLang;
+
+  /// No description provided for @fieldSpatial.
+  ///
+  /// In en, this message translates to:
+  /// **'Spatial layer'**
+  String get fieldSpatial;
+
+  /// No description provided for @fieldTemporality.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporality'**
+  String get fieldTemporality;
+
+  /// No description provided for @fieldLegibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Legibility'**
+  String get fieldLegibility;
+
+  /// No description provided for @fieldOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwriting'**
+  String get fieldOverwrite;
+
+  /// No description provided for @fieldDiscourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Discourse type'**
+  String get fieldDiscourse;
+
+  /// No description provided for @fieldQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Production quality'**
+  String get fieldQuality;
+
+  /// No description provided for @statusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get statusPending;
+
+  /// No description provided for @statusAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI draft'**
+  String get statusAi;
+
+  /// No description provided for @statusHumanReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed'**
+  String get statusHumanReviewed;
+
+  /// No description provided for @statusFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final'**
+  String get statusFinal;
 }
 
 class _AppLocalizationsDelegate
