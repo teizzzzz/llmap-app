@@ -1,4 +1,4 @@
-# LLMap Desktop — Windows 一括ビルド（Windows 10/11 実機で実行する）。
+﻿# LLMap Desktop — Windows 一括ビルド（Windows 10/11 実機で実行する）。
 #   powershell -ExecutionPolicy Bypass -File scripts\build-windows-app.ps1
 #
 # 流れ: Console(React) → backend exe(PyInstaller) → sidecar 配置 → Tauri(NSIS)。

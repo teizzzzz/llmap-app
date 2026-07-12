@@ -1,4 +1,4 @@
-# Tauri sidecar 準備（Windows）。
+﻿# Tauri sidecar 準備（Windows）。
 # backend/dist/llmap-backend.exe を Tauri v2 の externalBin 命名規則
 # （llmap-backend-<target triple>.exe）で desktop/src-tauri/binaries/ に配置する。
 # 先に .\scripts\build-backend-binary.ps1 で exe をビルドしておくこと。

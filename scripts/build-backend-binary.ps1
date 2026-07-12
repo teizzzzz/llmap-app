@@ -1,4 +1,4 @@
-# LLMap backend binary ビルド（Windows）。
+﻿# LLMap backend binary ビルド（Windows）。
 # 生成物: backend\dist\llmap-backend.exe
 # 注意: PyInstaller はクロスビルド不可 — Windows 用 exe は Windows でビルドする。
 #       杀毒ソフトの误报があり得る（docs/backend-binary-build.md 参照）。
