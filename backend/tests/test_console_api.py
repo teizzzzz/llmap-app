@@ -34,8 +34,16 @@ def _row(**kw) -> dict:
     return row
 
 
+def _zi(name: str) -> zipfile.ZipInfo:
+    """固定日時の ZipInfo。writestr(str, …) は現在時刻を DOS 時刻（2秒精度）で
+    エントリに埋め込むため、同じ内容でも 2 秒境界をまたいで再構築すると
+    バイト列が変わり、整包 SHA-256 の重複検出テストが時々落ちる。"""
+    return zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+
+
 def make_package(rows, files, manifest_extra=None) -> bytes:
-    """rows: CSV 行 / files: {zip内パス: bytes}。manifest は files から生成する。"""
+    """rows: CSV 行 / files: {zip内パス: bytes}。manifest は files から生成する。
+    zip は固定日時で構築し、呼ぶたびにバイト同一（決定的）にする。"""
     buf = io.StringIO()
     w = csv.DictWriter(buf, fieldnames=CSV_HEADER)
     w.writeheader()
@@ -70,13 +78,13 @@ def make_package(rows, files, manifest_extra=None) -> bytes:
 
     zbuf = io.BytesIO()
     with zipfile.ZipFile(zbuf, "w") as zf:
-        zf.writestr("data.csv", "﻿" + buf.getvalue())
-        zf.writestr("metadata.json", json.dumps(metadata, ensure_ascii=False))
-        zf.writestr("schema.json", json.dumps(schema, ensure_ascii=False))
-        zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False))
-        zf.writestr("README.md", "# test package")
+        zf.writestr(_zi("data.csv"), "﻿" + buf.getvalue())
+        zf.writestr(_zi("metadata.json"), json.dumps(metadata, ensure_ascii=False))
+        zf.writestr(_zi("schema.json"), json.dumps(schema, ensure_ascii=False))
+        zf.writestr(_zi("manifest.json"), json.dumps(manifest, ensure_ascii=False))
+        zf.writestr(_zi("README.md"), "# test package")
         for path, data in files.items():
-            zf.writestr(path, data)
+            zf.writestr(_zi(path), data)
     return zbuf.getvalue()
 
 

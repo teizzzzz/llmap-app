@@ -13,6 +13,8 @@ $sw = [System.Diagnostics.Stopwatch]::StartNew()
 Write-Host "== [1/5] backend tests ==" -ForegroundColor Cyan
 Push-Location "$root\backend"
 python -m pytest tests -q
+# $ErrorActionPreference は原生 exe の退出コードを見ない — 明示ゲートにする
+if ($LASTEXITCODE -ne 0) { Pop-Location; Write-Error "backend tests failed — build aborted"; exit 1 }
 Pop-Location
 
 Write-Host "== [2/5] Console build ==" -ForegroundColor Cyan
