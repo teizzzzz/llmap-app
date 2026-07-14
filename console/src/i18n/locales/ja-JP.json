@@ -171,7 +171,15 @@
     "warnings": "警告 {{n}} 件",
     "andMore": "…ほか {{n}} 件",
     "viewRecords": "記録を見る",
-    "importAnother": "続けて取り込む"
+    "importAnother": "続けて取り込む",
+    "keepOriginal": "原始パッケージを archives/ に保管する（追加のディスク占用）",
+    "duplicateTitle": "導入済みのパッケージです",
+    "duplicateBody": "同一内容のパッケージが「{{name}}」として {{date}} に導入されています。再導入しても新しい記録は増えません。",
+    "duplicateFill": "欠落写真だけ補充する",
+    "filledOk": "✓ 欠落写真の補充が完了しました",
+    "restored": "復元した写真",
+    "stillMissing": "パッケージ内にも無い写真",
+    "reused": "共用（内容去重）"
   },
   "map": {
     "title": "地図",
@@ -301,5 +309,22 @@
     "current": "現在",
     "backendHelpPrefix": "Web/開発モードで変更するには",
     "backendHelpSuffix": "を設定して npm run dev を再起動してください。デスクトップ版では起動時に URL が自動注入されます。"
+  },
+  "storage": {
+    "title": "ストレージ",
+    "dataDir": "データ目录",
+    "diskFree": "ディスク残量",
+    "reclaimable": "回収可能（旧導入の遺留）",
+    "cleanup": "清掃する",
+    "cleanupConfirm": "{{size}} を削除します。正式な写真・データベース・archives には一切触れません。実行しますか？",
+    "cleanupDone": "✓ {{size}} を解放しました",
+    "cleanupBlocked": "正式写真庫に欠落が {{n}} 件あるため清掃を中止しました。導入ダイアログの「欠落写真だけ補充する」で復旧してから再実行してください。",
+    "nothingToClean": "回収できる遺留はありません。",
+    "catPhotos": "写真",
+    "catSourcePhotos": "元写真",
+    "catDatabase": "データベース",
+    "catImports": "旧導入遺留 (imports)",
+    "catArchives": "保管パッケージ (archives)",
+    "catExports": "導出 (exports)"
   }
 }

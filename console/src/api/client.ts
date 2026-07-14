@@ -11,6 +11,8 @@ import type {
   RecordsResponse,
   SchemaInfo,
   StatsSummary,
+  StorageCleanupResult,
+  StorageSummary,
 } from './types';
 
 // 桌面版（Tauri shell）は起動時に backend の動的端口を注入する。
@@ -115,15 +117,31 @@ export const exportRecordsCsv = async (
   return res.blob();
 };
 
-/** Dataset Package（llmap_dataset_*.zip）を導入する。 */
-export const importDatasetPackage = (file: File) => {
+/** Dataset Package（llmap_dataset_*.zip）を導入する。
+    mode: 'ask'=重複包なら duplicate を返す（既定） / 'fill_missing'=欠落写真のみ補充。
+    keepOriginal: true なら原始 zip を archives/ に保管（既定は保管しない）。 */
+export const importDatasetPackage = (
+  file: File,
+  opts: { mode?: 'ask' | 'fill_missing'; keepOriginal?: boolean } = {},
+) => {
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('mode', opts.mode ?? 'ask');
+  formData.append('keepOriginal', String(opts.keepOriginal ?? false));
   return request<ImportDatasetResult>('/datasets/import', {
     method: 'POST',
     body: formData,
   });
 };
+
+export const getStorageSummary = () =>
+  request<StorageSummary>('/storage/summary');
+
+export const storageCleanup = (dryRun: boolean) =>
+  request<StorageCleanupResult>('/storage/cleanup', {
+    method: 'POST',
+    body: JSON.stringify({ dryRun }),
+  });
 
 export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');

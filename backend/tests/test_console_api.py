@@ -150,14 +150,32 @@ def test_photos_saved_to_storage():
     assert (source_photos_dir() / f"{CAPTURE}-source.jpg").is_file()
 
 
-def test_reimport_reports_duplicates():
+def test_reimport_same_package_detected_by_hash():
+    """まったく同じ zip → 整包 SHA-256 で検出。何も導入しない（Step 15）。"""
     r = _import(default_package())
     assert r.status_code == 200
     rep = r.json()
+    assert rep["status"] == "duplicate"
+    assert rep["existingDatasetId"] == 1
+    assert rep["existingDatasetName"]
+    # dataset 行は増えない
+    assert len(client.get("/datasets").json()) == 1
+
+
+def test_reimport_reports_duplicates():
+    """内容の異なる包（指紋が変わる）に既存 SignID → 行レベルで skip。"""
+    rows = [
+        _row(SignID=f"{CAPTURE}-a", _status="pending", CaptureID=CAPTURE,
+             地区コード="OOK", 採集日時="2026-07-01 14:35:12",
+             主要言語="韓国語"),
+    ]
+    r = _import(make_package(rows, {}, []))
+    assert r.status_code == 200
+    rep = r.json()
+    assert rep["status"] == "imported"
     assert rep["importedRecordCount"] == 0
-    assert rep["skippedRecordCount"] == 3
-    assert sorted(rep["duplicateSignIds"]) == sorted(
-        [f"{CAPTURE}-a", f"{CAPTURE}-b", f"{LEGACY_CAPTURE}-a"])
+    assert rep["skippedRecordCount"] == 1
+    assert rep["duplicateSignIds"] == [f"{CAPTURE}-a"]
 
 
 def test_records_pagination():
@@ -298,7 +316,7 @@ def test_map_records_gps_only():
 def test_stats_summary():
     s = client.get("/stats/summary").json()
     assert s["recordCount"] == 3
-    assert s["datasetCount"] == 2  # 重複導入分も dataset 行は増える
+    assert s["datasetCount"] == 2  # 指紋の異なる包の導入で dataset 行が増えた
     assert s["photoCount"] == 2
     assert s["sourcePhotoCount"] == 1
     assert s["missingPhotoCount"] >= 1
@@ -348,3 +366,131 @@ def test_broken_package_rejected():
     r2 = _import(zbuf2.getvalue())
     assert r2.status_code == 400
     assert "data.csv" in r2.json()["detail"]
+
+
+# ── Step 15: 存储モデル（临时化・去重・清掃） ──
+
+
+def test_import_leaves_no_tmp_or_imports():
+    """新導入フローは tmp/ を掃除し、imports/ に何も残さない。"""
+    from app.database import data_dir, tmp_dir
+    assert list(tmp_dir().iterdir()) == []
+    assert not (data_dir() / "imports").exists() or \
+        list((data_dir() / "imports").iterdir()) == []
+
+
+def test_fill_missing_restores_deleted_photo():
+    """重複包の fill_missing: 正式庫から消えた写真を包から復元する。"""
+    from app.database import photos_dir
+    target = photos_dir() / f"{CAPTURE}-b.jpg"
+    assert target.exists()
+    target.unlink()  # 事故で消えた想定
+    r = client.post(
+        "/datasets/import",
+        files={"file": ("llmap_dataset_test.zip", default_package(),
+                        "application/zip")},
+        data={"mode": "fill_missing"},
+    )
+    assert r.status_code == 200, r.text
+    rep = r.json()
+    assert rep["status"] == "filled"
+    assert rep["restoredPhotoCount"] == 1
+    assert target.exists()
+    # 復元後は写真配信も生き返る
+    rid = client.get("/records", params={"q": f"{CAPTURE}-b"}).json()["items"][0]["id"]
+    assert client.get(f"/records/{rid}/photo").status_code == 200
+
+
+def test_same_name_different_content_gets_renamed():
+    """同名別内容の写真は既存を壊さず安全な別名で保存し、記録の参照も追随する。"""
+    other = b"\xff\xd8\xff\xe0" + b"different-bytes" * 12 + b"\xff\xd9"
+    cap = "OOK-9Zz1Aa2B-260702090000111"
+    rows = [
+        _row(SignID=f"{cap}-a", _status="pending", CaptureID=cap,
+             地区コード="OOK", 採集日時="2026-07-02 09:00:00",
+             主要言語="日本語",
+             写真ファイル名=f"{CAPTURE}-a.jpg"),  # 既存名と衝突・内容は別
+    ]
+    files = {f"photos/{CAPTURE}-a.jpg": other}
+    entries = [(f"photos/{CAPTURE}-a.jpg", f"{cap}-a", cap)]
+    r = _import(make_package(rows, files, entries))
+    assert r.status_code == 200, r.text
+    rep = r.json()
+    assert rep["status"] == "imported"
+    assert rep["importedRecordCount"] == 1
+    # 既存ファイルは無傷
+    from app.database import photos_dir
+    assert (photos_dir() / f"{CAPTURE}-a.jpg").read_bytes() == JPEG
+    # 新記録は改名後のファイルを参照し、配信できる
+    item = client.get("/records", params={"q": f"{cap}-a"}).json()["items"][0]
+    assert item["写真ファイル名"] == f"{CAPTURE}-a~2.jpg"
+    assert (photos_dir() / f"{CAPTURE}-a~2.jpg").read_bytes() == other
+    assert client.get(f"/records/{item['id']}/photo").status_code == 200
+
+
+def test_same_content_reused_not_duplicated():
+    """同名同内容の写真は再保存しない（内容去重）。"""
+    cap = "OOK-3Cc4Dd5E-260703100000222"
+    rows = [
+        _row(SignID=f"{cap}-a", _status="pending", CaptureID=cap,
+             地区コード="OOK", 採集日時="2026-07-03 10:00:00",
+             写真ファイル名=f"{CAPTURE}-a.jpg"),  # 既存名・同内容
+    ]
+    files = {f"photos/{CAPTURE}-a.jpg": JPEG}
+    entries = [(f"photos/{CAPTURE}-a.jpg", f"{cap}-a", cap)]
+    r = _import(make_package(rows, files, entries))
+    rep = r.json()
+    assert rep["status"] == "imported"
+    assert rep["reusedPhotoCount"] == 1
+    item = client.get("/records", params={"q": f"{cap}-a"}).json()["items"][0]
+    assert item["写真ファイル名"] == f"{CAPTURE}-a.jpg"  # 改名なしで共用
+
+
+def test_storage_summary_and_cleanup():
+    from app.database import data_dir
+    # 旧フローの遺留を模擬（imports/ に zip と展開目录）
+    imports = data_dir() / "imports"
+    imports.mkdir(exist_ok=True)
+    (imports / "old_package.zip").write_bytes(b"x" * 2048)
+    legacy_dir = imports / "old_package"
+    legacy_dir.mkdir(exist_ok=True)
+    (legacy_dir / "data.csv").write_text("SignID\n", encoding="utf-8")
+
+    s = client.get("/storage/summary").json()
+    assert s["dataDir"]
+    assert s["categories"]["photos"] > 0
+    assert s["reclaimableBytes"] > 2000
+    assert "old_package.zip" in s["reclaimableEntries"]
+
+    # dryRun（既定）は削除しない
+    r = client.post("/storage/cleanup", json={"dryRun": True}).json()
+    assert r["ok"] is True and r["deleted"] == 0
+    assert (imports / "old_package.zip").exists()
+
+    # 実削除
+    r = client.post("/storage/cleanup", json={"dryRun": False}).json()
+    assert r["ok"] is True and r["deleted"] >= 2
+    assert not (imports / "old_package.zip").exists()
+    assert not legacy_dir.exists()
+    # 正式資産は無傷
+    from app.database import photos_dir
+    assert (photos_dir() / f"{CAPTURE}-a.jpg").exists()
+
+
+def test_cleanup_refuses_when_official_photos_missing():
+    """正式庫に欠落があるうちは清掃を拒否する（imports が復旧源かもしれない）。"""
+    from app.database import data_dir, photos_dir
+    imports = data_dir() / "imports"
+    imports.mkdir(exist_ok=True)
+    (imports / "maybe_needed.zip").write_bytes(b"y" * 100)
+    target = photos_dir() / f"{CAPTURE}-a.jpg"
+    backup = target.read_bytes()
+    target.unlink()
+    try:
+        r = client.post("/storage/cleanup", json={"dryRun": False}).json()
+        assert r["ok"] is False
+        assert r["missingPhotoCount"] >= 1
+        assert (imports / "maybe_needed.zip").exists()  # 削除されない
+    finally:
+        target.write_bytes(backup)
+        (imports / "maybe_needed.zip").unlink()

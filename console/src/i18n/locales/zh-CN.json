@@ -171,7 +171,15 @@
     "warnings": "{{n}} 条警告",
     "andMore": "…另有 {{n}} 条",
     "viewRecords": "查看记录",
-    "importAnother": "继续导入"
+    "importAnother": "继续导入",
+    "keepOriginal": "保留原始包到 archives/（额外占用磁盘）",
+    "duplicateTitle": "该数据包已导入过",
+    "duplicateBody": "内容完全相同的数据包已于 {{date}} 作为“{{name}}”导入。重复导入不会新增任何记录。",
+    "duplicateFill": "仅补充缺失照片",
+    "filledOk": "✓ 缺失照片补充完成",
+    "restored": "已恢复照片",
+    "stillMissing": "包内同样缺失",
+    "reused": "复用（内容去重）"
   },
   "map": {
     "title": "地图",
@@ -301,5 +309,22 @@
     "current": "当前",
     "backendHelpPrefix": "在 Web/开发模式下修改时，请设置",
     "backendHelpSuffix": "并重启 npm run dev。桌面版会在启动时自动注入 URL。"
+  },
+  "storage": {
+    "title": "存储",
+    "dataDir": "数据目录",
+    "diskFree": "磁盘剩余空间",
+    "reclaimable": "可回收（旧导入遗留）",
+    "cleanup": "清理",
+    "cleanupConfirm": "将删除 {{size}} 的旧导入遗留文件。不会触碰正式照片、数据库和 archives。确定执行？",
+    "cleanupDone": "✓ 已释放 {{size}}",
+    "cleanupBlocked": "正式照片库存在 {{n}} 处缺失，已中止清理。请先通过导入对话框的“仅补充缺失照片”恢复后再执行。",
+    "nothingToClean": "没有可回收的遗留文件。",
+    "catPhotos": "照片",
+    "catSourcePhotos": "原始照片",
+    "catDatabase": "数据库",
+    "catImports": "旧导入遗留 (imports)",
+    "catArchives": "保留的原始包 (archives)",
+    "catExports": "导出 (exports)"
   }
 }
