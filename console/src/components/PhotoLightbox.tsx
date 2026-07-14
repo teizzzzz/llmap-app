@@ -31,6 +31,7 @@ export default function PhotoLightbox({
   const [rotation, setRotation] = useState(0);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
 
   const item = items[idx];
@@ -40,6 +41,22 @@ export default function PhotoLightbox({
     if (view === 'crop') return item.cropUrl ?? item.sourceUrl;
     return item.sourceUrl ?? item.cropUrl;
   }, [item, view]);
+
+  /** 自然寸法を取り込む。寸法が分かるまで画像は不可視にしておくことで、
+      「原寸の巨大表示 → onLoad 後に fit へスナップ」という開閉時の
+      ちらつき（一閃）を根本的に防ぐ（最初の可視フレームが既に fit）。 */
+  const syncNatural = useCallback(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) {
+      setNatural({ w: img.naturalWidth, h: img.naturalHeight });
+    }
+  }, []);
+  // キャッシュ済み画像は onLoad が発火しないことがあるため、
+  // URL 切替のたびに complete 状態を直接確認する。
+  useEffect(() => {
+    setNatural(null);
+    syncNatural();
+  }, [url, syncNatural]);
 
   const reset = useCallback(() => {
     setScale('fit');
@@ -148,16 +165,16 @@ export default function PhotoLightbox({
         onPointerUp={() => { drag.current = null; }}
       >
         <img
+          ref={imgRef}
           src={url}
           alt={item.title}
           draggable={false}
-          onLoad={(e) => {
-            const img = e.currentTarget;
-            setNatural({ w: img.naturalWidth, h: img.naturalHeight });
-          }}
+          onLoad={syncNatural}
           style={{
             transform:
               `translate(${offset.x}px, ${offset.y}px) scale(${s}) rotate(${rotation}deg)`,
+            // 寸法判明前は描画しない（fit 計算前の原寸フラッシュ防止）
+            visibility: natural ? 'visible' : 'hidden',
           }}
         />
       </div>
