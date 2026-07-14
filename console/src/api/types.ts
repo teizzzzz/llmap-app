@@ -183,3 +183,16 @@ export interface RecordsQuery {
   hasSourcePhoto?: boolean;
   datasetId?: number;
 }
+
+/** 導出ジョブ（Dataset Package / 写真 ZIP）の進捗（Step 16） */
+export interface ExportJobStatus {
+  id: string;
+  kind: 'package' | 'photos';
+  status: 'running' | 'done' | 'error' | 'cancelled';
+  done: number;
+  total: number;
+  fileName: string;
+  sizeBytes: number;
+  error: string;
+  report: Record<string, number>;
+}

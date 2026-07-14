@@ -494,3 +494,115 @@ def test_cleanup_refuses_when_official_photos_missing():
     finally:
         target.write_bytes(backup)
         (imports / "maybe_needed.zip").unlink()
+
+
+# ── Step 16: 導出（GeoJSON / Dataset Package / 写真 ZIP） ──
+
+
+def _wait_job(job_id: str, timeout: float = 15.0) -> dict:
+    import time
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        st = client.get(f"/export/jobs/{job_id}").json()
+        if st["status"] != "running":
+            return st
+        time.sleep(0.05)
+    raise AssertionError("export job timed out")
+
+
+def test_export_geojson():
+    r = client.get("/export/geojson")
+    assert r.status_code == 200
+    gj = r.json()
+    assert gj["type"] == "FeatureCollection"
+    assert gj["llmap"]["featureCount"] == len(gj["features"])
+    assert gj["llmap"]["skippedNoGps"] >= 1  # GPS 無しは無音で捨てない
+    f = [x for x in gj["features"]
+         if x["properties"]["SignID"] == f"{CAPTURE}-a"][0]
+    # RFC 7946: [経度, 緯度] の順
+    assert f["geometry"]["coordinates"] == [139.7011, 35.6021]
+    assert f["properties"]["主要言語"] == "英語"  # PATCH 済みの値
+    assert f["properties"]["photo"] == f"photos/{CAPTURE}-a.jpg"
+    # full props は CSV 全字段
+    full = client.get("/export/geojson", params={"props": "full"}).json()
+    fprops = [x for x in full["features"]
+              if x["properties"]["SignID"] == f"{CAPTURE}-a"][0]["properties"]
+    assert "備考" in fprops and "SchemaVersion" in fprops
+
+
+def test_export_package_roundtrip():
+    """Dataset Package 導出 → そのまま導入できる（往返互換）。"""
+    r = client.post("/export/package", json={})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    assert job["fileName"].startswith("llmap_dataset_")
+    assert job["report"]["recordCount"] >= 3
+    dl = client.get(f"/export/jobs/{job['id']}/download")
+    assert dl.status_code == 200
+
+    zf = zipfile.ZipFile(io.BytesIO(dl.content))
+    names = set(zf.namelist())
+    for required in ["data.csv", "metadata.json", "schema.json",
+                     "manifest.json", "MANIFEST.txt", "README.md"]:
+        assert required in names, required
+    manifest = json.loads(zf.read("manifest.json"))
+    assert all(e["sha256"] and e["sizeBytes"] > 0 for e in manifest["files"])
+    # 欠落（LEGACY crop）は missingFiles に明示される
+    assert any(LEGACY_CAPTURE in e["path"] for e in manifest["missingFiles"])
+
+    # 同じ DB に再導入 → 全行 SignID 重複で skip（data.csv が本物の証明）
+    r2 = client.post(
+        "/datasets/import",
+        files={"file": (job["fileName"], dl.content, "application/zip")},
+    )
+    rep = r2.json()
+    assert rep["status"] == "imported"
+    assert rep["importedRecordCount"] == 0
+    assert rep["skippedRecordCount"] == rep["recordCount"]
+
+
+def test_export_package_respects_filters():
+    r = client.post("/export/package", json={"entryMode": "quick"})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done"
+    dl = client.get(f"/export/jobs/{job['id']}/download")
+    zf = zipfile.ZipFile(io.BytesIO(dl.content))
+    rows = list(csv.DictReader(
+        io.StringIO(zf.read("data.csv").decode("utf-8-sig"))))
+    assert len(rows) == 1
+    assert rows[0]["EntryMode"] == "quick"
+
+
+def test_export_photos_zip_dedup_and_mapping():
+    """写真 ZIP: SignID 命名・photo_mapping.csv・内容ハッシュ去重。"""
+    r = client.post("/export/photos",
+                    json={"content": "both", "naming": "signid"})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    dl = client.get(f"/export/jobs/{job['id']}/download")
+    zf = zipfile.ZipFile(io.BytesIO(dl.content))
+    names = zf.namelist()
+    assert "photo_mapping.csv" in names
+    # テストの写真はすべて同一バイト列 → 内容去重で実体は 1 つだけ
+    photo_files = [n for n in names if n.endswith(".jpg")]
+    # 同一バイト列の写真（a/b/source の 3 つ）は 1 実体に去重され、
+    # 別内容の写真（rename テストで導入した 1 枚）は別実体のまま。
+    assert len(photo_files) == 2
+    assert job["report"]["dedupedFiles"] >= 2
+    rows = list(csv.DictReader(
+        io.StringIO(zf.read("photo_mapping.csv").decode("utf-8-sig"))))
+    by_id = {r["SignID"]: r for r in rows}
+    shared = by_id[f"{CAPTURE}-a"]["照片文件"]
+    assert shared in photo_files
+    assert by_id[f"{CAPTURE}-b"]["照片文件"] == shared  # 同内容 → 同一実体
+    assert by_id[f"{CAPTURE}-a"]["原图文件"] == shared  # source も同内容
+    assert "MISSING.txt" in names
+
+
+def test_export_job_not_found_and_cancel():
+    assert client.get("/export/jobs/nonexistent").status_code == 404
+    r = client.post("/export/photos", json={"content": "crop",
+                                            "naming": "original"})
+    job_id = r.json()["jobId"]
+    _wait_job(job_id)
+    assert client.post(f"/export/jobs/{job_id}/cancel").json()["ok"] is True

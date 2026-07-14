@@ -3,6 +3,7 @@
 import type {
   AiStatus,
   Dataset,
+  ExportJobStatus,
   ImportDatasetResult,
   MapQuery,
   MapRecord,
@@ -142,6 +143,50 @@ export const storageCleanup = (dryRun: boolean) =>
     method: 'POST',
     body: JSON.stringify({ dryRun }),
   });
+
+/** GeoJSON（FeatureCollection）を取得する。props: minimal | full。 */
+export const exportGeoJson = async (
+  params: RecordsQuery = {},
+  props: 'minimal' | 'full' = 'minimal',
+): Promise<Blob> => {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${API_BASE_URL}/export/geojson${query({ ...params, props })}`);
+  } catch {
+    throw new ApiError(`Cannot reach backend at ${API_BASE_URL}.`);
+  }
+  if (!res.ok) {
+    throw new ApiError(`${res.status}: ${res.statusText}`, res.status);
+  }
+  return res.blob();
+};
+
+export const startPackageExport = (filters: RecordsQuery = {}) =>
+  request<{ jobId: string }>('/export/package', {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
+
+export const startPhotosExport = (
+  filters: RecordsQuery = {},
+  content: 'crop' | 'source' | 'both' = 'both',
+  naming: 'signid' | 'displayid' | 'original' = 'original',
+) =>
+  request<{ jobId: string }>('/export/photos', {
+    method: 'POST',
+    body: JSON.stringify({ ...filters, content, naming }),
+  });
+
+export const getExportJob = (id: string) =>
+  request<ExportJobStatus>(`/export/jobs/${id}`);
+
+export const cancelExportJob = (id: string) =>
+  request<{ ok: boolean }>(`/export/jobs/${id}/cancel`, { method: 'POST' });
+
+/** 完了ジョブのダウンロード URL（<a href> 用）。 */
+export const exportJobDownloadUrl = (id: string) =>
+  `${API_BASE_URL}/export/jobs/${id}/download`;
 
 export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');
