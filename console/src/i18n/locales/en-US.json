@@ -124,7 +124,16 @@
     "prev": "← Prev",
     "next": "Next →",
     "range": "{{from}}–{{to}} of {{total}}",
-    "pageSize": "Page size"
+    "pageSize": "Page size",
+    "viewTable": "Table",
+    "viewAlbums": "Dataset albums",
+    "albumMeta": "{{n}} records · {{size}}",
+    "importedOn": "Imported {{date}}",
+    "backToAlbums": "← Back to albums",
+    "openInTable": "View in table",
+    "loadMore": "Load more",
+    "albumNoPhotos": "No photos in this dataset.",
+    "noAlbums": "No datasets yet. Imported packages appear here as albums."
   },
   "table": {
     "area": "Area",
@@ -171,7 +180,15 @@
     "warnings": "{{n}} warning(s)",
     "andMore": "…and {{n}} more",
     "viewRecords": "View records",
-    "importAnother": "Import another"
+    "importAnother": "Import another",
+    "keepOriginal": "Keep the original package in archives/ (uses extra disk space)",
+    "duplicateTitle": "This package was already imported",
+    "duplicateBody": "An identical package was imported on {{date}} as “{{name}}”. Importing again would add no new records.",
+    "duplicateFill": "Only restore missing photos",
+    "filledOk": "✓ Missing photos restored",
+    "restored": "Restored photos",
+    "stillMissing": "Still missing in package",
+    "reused": "Reused (deduplicated)"
   },
   "map": {
     "title": "Map",
@@ -181,7 +198,10 @@
     "loadError": "Could not load map records.",
     "noMatch": "No mapped records match the current filters.",
     "noGps": "No records with GPS yet. Import a Dataset Package that contains coordinates.",
-    "unknownLanguage": "unknown"
+    "unknownLanguage": "unknown",
+    "fullscreen": "Fullscreen",
+    "exitFull": "Exit fullscreen (Esc)",
+    "toggleFilters": "Show/hide filters"
   },
   "review": {
     "title": "Review",
@@ -218,7 +238,7 @@
   "export": {
     "title": "Export",
     "subtitle": "Export filtered database records for analysis and archiving.",
-    "csvNote": "CSV export uses the current database records and selected filters. System fields such as CaptureID, SignID, EntryMode, DataStatus, SchemaVersion, and AppVersion are included. Photos are not included in CSV export — use Dataset Package export in a future version when images are required.",
+    "csvNote": "CSV export uses the current database records and selected filters. System fields such as CaptureID, SignID, EntryMode, DataStatus, SchemaVersion, and AppVersion are included. Photos are not included in CSV export — use the Dataset Package or Photos ZIP export when images are required.",
     "quickAll": "All records",
     "quickReviewed": "Reviewed only",
     "quickVerified": "Verified only",
@@ -240,7 +260,25 @@
     "formatGeojsonTitle": "GeoJSON",
     "formatGeojsonDesc": "Records with GPS as a FeatureCollection for GIS tools.",
     "formatPhotosTitle": "Photos ZIP",
-    "formatPhotosDesc": "Crop and source photos of the selected records."
+    "formatPhotosDesc": "Crop and source photos of the selected records.",
+    "start": "Export",
+    "download": "Download",
+    "progress": "Processing {{done}}/{{total}}…",
+    "jobDone": "✓ {{name}} ({{size}})",
+    "jobCancelled": "Cancelled",
+    "propsLabel": "Properties",
+    "propsMinimal": "Minimal (key research fields)",
+    "propsFull": "All fields (full 36 columns)",
+    "contentLabel": "Content",
+    "contentBoth": "Crop + source",
+    "contentCrop": "Crop only",
+    "contentSource": "Source only",
+    "namingLabel": "File names",
+    "namingOriginal": "Original names",
+    "namingSignId": "SignID.jpg",
+    "namingDisplayId": "DisplayID.jpg",
+    "dedupNote": "Identical photos are included once (content dedup). Missing files are listed in MISSING.txt.",
+    "geojsonNote": "Coordinates are [lng, lat], WGS84. Records without GPS are excluded and the skipped count is recorded in the file."
   },
   "ai": {
     "title": "AI Processing",
@@ -301,5 +339,26 @@
     "current": "Current",
     "backendHelpPrefix": "To change it in web/dev mode, set",
     "backendHelpSuffix": "and restart npm run dev. The desktop app injects the URL automatically at startup."
+  },
+  "storage": {
+    "title": "Storage",
+    "dataDir": "Data directory",
+    "diskFree": "Disk free",
+    "reclaimable": "Reclaimable (legacy import leftovers)",
+    "cleanup": "Clean up",
+    "cleanupConfirm": "This will delete {{size}} of legacy import leftovers. Official photos, the database and archives are never touched. Proceed?",
+    "cleanupDone": "✓ Freed {{size}}",
+    "cleanupBlocked": "Cleanup aborted: {{n}} photos are missing from the official store. Restore them via “Only restore missing photos” first.",
+    "nothingToClean": "Nothing to clean up.",
+    "catPhotos": "Photos",
+    "catSourcePhotos": "Source photos",
+    "catDatabase": "Database",
+    "catImports": "Legacy imports",
+    "catArchives": "Archived packages",
+    "catExports": "Exports"
+  },
+  "lightbox": {
+    "fit": "Fit",
+    "rotate": "Rotate"
   }
 }

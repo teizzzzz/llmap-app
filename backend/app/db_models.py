@@ -16,6 +16,8 @@ from sqlmodel import Field, SQLModel
 class Dataset(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = ""
+    # 導入包全体の SHA-256（重複導入の検出）。旧行は ''（database._migrate v2）。
+    package_hash: str = Field(default="", index=True)
     imported_at: datetime = Field(default_factory=datetime.now)
     format_version: str = ""
     app_version: str = ""

@@ -2,7 +2,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, getMapRecords, getRecord, photoUrl } from '../api/client';
 import type { MapQuery, MapRecord, RecordDetail } from '../api/types';
@@ -18,6 +19,24 @@ const FALLBACK_COLOR = '#637083';
 /** 併記（"日本語/韓国語"）は先頭言語で色を引く（モバイル版と同じ規則）。 */
 const primaryLanguage = (v: string) =>
   v.split(/[/・、,]/).map((s) => s.trim()).filter(Boolean)[0] ?? '';
+
+/** 言語色の丸マーカー（divIcon）。クラスタリングは L.Marker のみ対象のため、
+    CircleMarker ではなく divIcon 化した Marker を使う。色ごとにキャッシュ。 */
+const dotIconCache = new Map<string, L.DivIcon>();
+const dotIcon = (color: string): L.DivIcon => {
+  let icon = dotIconCache.get(color);
+  if (!icon) {
+    icon = L.divIcon({
+      className: '',
+      html: `<span class="map-dot" style="background:${color}"></span>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      popupAnchor: [0, -8],
+    });
+    dotIconCache.set(color, icon);
+  }
+  return icon;
+};
 
 /** popup の中身。開いた時だけ mount されるので、その時点で詳情を遅延取得して
     補助言語・採集日時・地区コードを補う（/map/records は軽量のまま保つ）。 */
@@ -65,11 +84,23 @@ function FitBounds({ records }: { records: MapRecord[] }) {
   return null;
 }
 
+/** 全画面切替などでコンテナ寸法が変わったら Leaflet に再計測させる。 */
+function InvalidateOnChange({ dep }: { dep: unknown }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => map.invalidateSize(), 60);
+    return () => clearTimeout(timer);
+  }, [dep, map]);
+  return null;
+}
+
 export default function MapPage() {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<MapQuery>({});
   const [records, setRecords] = useState<MapRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const { schema, datasets, areas } = useFilterOptions();
 
   const fetchRecords = useCallback(() => {
@@ -82,6 +113,16 @@ export default function MapPage() {
       });
   }, [filters]);
   useEffect(fetchRecords, [fetchRecords]);
+
+  // Esc で全画面解除。
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
 
   // 経緯度が異常な行は地図に出さない（backend 側は数値保証のみ）。
   const valid = useMemo(
@@ -128,45 +169,49 @@ export default function MapPage() {
     xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
 
   return (
-    <div className="map-page">
-      <div className="page-header">
-        <h1>{t('map.title')}</h1>
-        <p>
-          {t('map.subtitle')}{' '}
-          <span className="muted">{t('map.gpsNote')}</span>
-        </p>
-      </div>
+    <div className={`map-page${fullscreen ? ' map-page--full' : ''}`}>
+      {!fullscreen && (
+        <div className="page-header">
+          <h1>{t('map.title')}</h1>
+          <p>
+            {t('map.subtitle')}{' '}
+            <span className="muted">{t('map.gpsNote')}</span>
+          </p>
+        </div>
+      )}
 
-      <div className="card filters-bar">
-        {sel(t('filters.language'), filters.mainLanguage ?? '',
-          raw(schema?.enums['主要言語'] ?? []),
-          (v) => patch({ mainLanguage: v || undefined }))}
-        {sel(t('filters.area'), filters.areaCode ?? '', raw(areas),
-          (v) => patch({ areaCode: v || undefined }))}
-        {sel(t('filters.mode'), filters.entryMode ?? '', translated(ENTRY_MODES),
-          (v) => patch({ entryMode: v || undefined }))}
-        {sel(t('filters.status'), filters.dataStatus ?? '', translated(DATA_STATUSES),
-          (v) => patch({ dataStatus: v || undefined }))}
-        <label className="filter-field">
-          <span>{t('filters.dataset')}</span>
-          <select
-            value={filters.datasetId != null ? String(filters.datasetId) : ''}
-            onChange={(e) =>
-              patch({ datasetId: e.target.value ? Number(e.target.value) : undefined })}
-          >
-            <option value="">{t('common.all')}</option>
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>{`#${d.id} ${d.name}`}</option>
-            ))}
-          </select>
-        </label>
-        <span className="spacer" />
-        <span className="muted total">
-          {records != null ? t('map.mapped', { n: valid.length }) : ''}
-        </span>
-        <button className="btn" onClick={() => setFilters({})}>{t('common.clearFilters')}</button>
-        <button className="btn" onClick={fetchRecords}>{t('common.refresh')}</button>
-      </div>
+      {showFilters && (
+        <div className="card filters-bar">
+          {sel(t('filters.language'), filters.mainLanguage ?? '',
+            raw(schema?.enums['主要言語'] ?? []),
+            (v) => patch({ mainLanguage: v || undefined }))}
+          {sel(t('filters.area'), filters.areaCode ?? '', raw(areas),
+            (v) => patch({ areaCode: v || undefined }))}
+          {sel(t('filters.mode'), filters.entryMode ?? '', translated(ENTRY_MODES),
+            (v) => patch({ entryMode: v || undefined }))}
+          {sel(t('filters.status'), filters.dataStatus ?? '', translated(DATA_STATUSES),
+            (v) => patch({ dataStatus: v || undefined }))}
+          <label className="filter-field">
+            <span>{t('filters.dataset')}</span>
+            <select
+              value={filters.datasetId != null ? String(filters.datasetId) : ''}
+              onChange={(e) =>
+                patch({ datasetId: e.target.value ? Number(e.target.value) : undefined })}
+            >
+              <option value="">{t('common.all')}</option>
+              {datasets.map((d) => (
+                <option key={d.id} value={d.id}>{`#${d.id} ${d.name}`}</option>
+              ))}
+            </select>
+          </label>
+          <span className="spacer" />
+          <span className="muted total">
+            {records != null ? t('map.mapped', { n: valid.length }) : ''}
+          </span>
+          <button className="btn" onClick={() => setFilters({})}>{t('common.clearFilters')}</button>
+          <button className="btn" onClick={fetchRecords}>{t('common.refresh')}</button>
+        </div>
+      )}
 
       {error && (
         <div className="error-box">
@@ -175,7 +220,7 @@ export default function MapPage() {
         </div>
       )}
 
-      {!error && records != null && valid.length === 0 && (
+      {!error && !fullscreen && records != null && valid.length === 0 && (
         <div className="placeholder">
           <p>
             {Object.values(filters).some((v) => v !== undefined)
@@ -197,24 +242,45 @@ export default function MapPage() {
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <FitBounds records={valid} />
-          {valid.map((r) => (
-            <CircleMarker
-              key={r.id}
-              center={[r.lat, r.lng]}
-              radius={9}
-              pathOptions={{
-                color: '#ffffff',
-                weight: 2,
-                fillColor: colorOf(r.mainLanguage),
-                fillOpacity: 0.9,
-              }}
-            >
-              <Popup minWidth={240}>
-                <MapPopupContent r={r} />
-              </Popup>
-            </CircleMarker>
-          ))}
+          <InvalidateOnChange dep={`${fullscreen}-${showFilters}`} />
+          {/* 密集エリアはクラスタ表示。クリックで展開、重なりは spiderfy。 */}
+          <MarkerClusterGroup
+            chunkedLoading
+            maxClusterRadius={48}
+            spiderfyOnMaxZoom
+            showCoverageOnHover={false}
+          >
+            {valid.map((r) => (
+              <Marker
+                key={r.id}
+                position={[r.lat, r.lng]}
+                icon={dotIcon(colorOf(r.mainLanguage))}
+              >
+                <Popup minWidth={240}>
+                  <MapPopupContent r={r} />
+                </Popup>
+              </Marker>
+            ))}
+          </MarkerClusterGroup>
         </MapContainer>
+
+        {/* 地図上の操作: 全画面・筛选の折りたたみ */}
+        <div className="map-actions">
+          <button
+            className="btn"
+            onClick={() => setShowFilters((v) => !v)}
+            title={t('map.toggleFilters')}
+          >
+            ☰
+          </button>
+          <button
+            className="btn"
+            onClick={() => setFullscreen((v) => !v)}
+            title={fullscreen ? t('map.exitFull') : t('map.fullscreen')}
+          >
+            {fullscreen ? '🗗' : '⛶'}
+          </button>
+        </div>
 
         {legend.length > 0 && (
           <div className="map-legend card">

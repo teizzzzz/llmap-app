@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError, exportRecordsCsv, getRecords } from '../api/client';
-import type { RecordsQuery } from '../api/types';
+import {
+  ApiError, cancelExportJob, exportGeoJson, exportJobDownloadUrl,
+  exportRecordsCsv, getExportJob, getRecords, startPackageExport,
+  startPhotosExport,
+} from '../api/client';
+import type { ExportJobStatus, RecordsQuery } from '../api/types';
 import RecordsFilters from '../components/database/RecordsFilters';
 import useFilterOptions from '../hooks/useFilterOptions';
 
@@ -14,14 +18,6 @@ const QUICK_FILTERS: { labelKey: string; patch: RecordsQuery }[] = [
   { labelKey: 'export.quickPhotos', patch: { hasPhoto: true } },
 ];
 
-/** 导出フォーマットカード（第一版は CSV のみ有効）。 */
-const FORMATS = [
-  { key: 'csv', titleKey: 'export.formatCsvTitle', descKey: 'export.formatCsvDesc', enabled: true },
-  { key: 'dataset', titleKey: 'export.formatDatasetTitle', descKey: 'export.formatDatasetDesc', enabled: false },
-  { key: 'geojson', titleKey: 'export.formatGeojsonTitle', descKey: 'export.formatGeojsonDesc', enabled: false },
-  { key: 'photos', titleKey: 'export.formatPhotosTitle', descKey: 'export.formatPhotosDesc', enabled: false },
-];
-
 // 导出ファイル名（データ側の規約なので言語によらず固定）。
 const stamp = () => {
   const d = new Date();
@@ -30,15 +26,83 @@ const stamp = () => {
     `_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 };
 
+const fmtSize = (n: number) =>
+  n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB`
+  : n >= 1024 ** 2 ? `${(n / 1024 ** 2).toFixed(1)} MB`
+  : `${Math.ceil(n / 1024)} KB`;
+
+/** Blob をブラウザ下载として保存する。 */
+const saveBlob = (blob: Blob, name: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
+/** バックエンドの導出ジョブ 1 本を管理する（進捗ポーリング・取消）。 */
+function useExportJob() {
+  const [job, setJob] = useState<ExportJobStatus | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (timer.current != null) {
+      clearInterval(timer.current);
+      timer.current = null;
+    }
+  }, []);
+  useEffect(() => stopPolling, [stopPolling]);
+
+  const start = async (kickoff: () => Promise<{ jobId: string }>) => {
+    setStarting(true);
+    setError(null);
+    setJob(null);
+    try {
+      const { jobId } = await kickoff();
+      timer.current = setInterval(async () => {
+        try {
+          const st = await getExportJob(jobId);
+          setJob(st);
+          if (st.status !== 'running') stopPolling();
+        } catch {
+          stopPolling();
+        }
+      }, 700);
+    } catch (e: unknown) {
+      setError(e instanceof ApiError ? e.message : String(e));
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const cancel = async () => {
+    if (job && job.status === 'running') await cancelExportJob(job.id);
+  };
+
+  return { job, starting, error, start, cancel };
+}
+
 export default function ExportPage() {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<RecordsQuery>({});
   const [total, setTotal] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [done, setDone] = useState<string | null>(null); // 保存したファイル名
+  const [done, setDone] = useState<string | null>(null); // CSV 保存ファイル名
   const [exportError, setExportError] = useState<string | null>(null);
+  const [geoProps, setGeoProps] = useState<'minimal' | 'full'>('minimal');
+  const [photosContent, setPhotosContent] =
+    useState<'crop' | 'source' | 'both'>('both');
+  const [photosNaming, setPhotosNaming] =
+    useState<'signid' | 'displayid' | 'original'>('original');
   const options = useFilterOptions();
+  const packageJob = useExportJob();
+  const photosJob = useExportJob();
 
   // 筛选後の件数（导出摘要）。pageSize=1 で total だけ取得する。
   const fetchTotal = useCallback(() => {
@@ -57,21 +121,14 @@ export default function ExportPage() {
     setFilters((f) => ({ ...f, ...patch }));
   }, []);
 
-  const doExport = async () => {
+  const doExportCsv = async () => {
     setExporting(true);
     setExportError(null);
     setDone(null);
     try {
       const blob = await exportRecordsCsv(filters);
       const name = `llmap_export_${stamp()}.csv`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      saveBlob(blob, name);
       setDone(name);
     } catch (e: unknown) {
       setExportError(e instanceof ApiError ? e.message : String(e));
@@ -79,6 +136,68 @@ export default function ExportPage() {
       setExporting(false);
     }
   };
+
+  const doExportGeoJson = async () => {
+    setExportError(null);
+    try {
+      const blob = await exportGeoJson(filters, geoProps);
+      saveBlob(blob, `llmap_export_${stamp()}.geojson`);
+    } catch (e: unknown) {
+      setExportError(e instanceof ApiError ? e.message : String(e));
+    }
+  };
+
+  /** ジョブの進捗・結果表示（Dataset Package / 写真 ZIP 共通）。 */
+  const jobStatus = (jc: ReturnType<typeof useExportJob>) => (
+    <>
+      {jc.error && (
+        <div className="error-box" style={{ marginTop: 8 }}>
+          <div className="hint">{jc.error}</div>
+        </div>
+      )}
+      {jc.job?.status === 'running' && (
+        <div className="muted" style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span>{t('export.progress', { done: jc.job.done, total: jc.job.total })}</span>
+          <button className="btn" onClick={jc.cancel}>{t('common.cancel')}</button>
+        </div>
+      )}
+      {jc.job?.status === 'done' && (
+        <div className="ok-box" style={{ marginTop: 8 }}>
+          {t('export.jobDone', {
+            name: jc.job.fileName, size: fmtSize(jc.job.sizeBytes),
+          })}{' '}
+          <a className="btn" href={exportJobDownloadUrl(jc.job.id)}>
+            {t('export.download')}
+          </a>
+        </div>
+      )}
+      {jc.job?.status === 'cancelled' && (
+        <div className="muted" style={{ marginTop: 8 }}>{t('export.jobCancelled')}</div>
+      )}
+      {jc.job?.status === 'error' && (
+        <div className="error-box" style={{ marginTop: 8 }}>
+          <strong>{t('export.failed')}</strong>
+          <div className="hint">{jc.job.error}</div>
+        </div>
+      )}
+    </>
+  );
+
+  const sel = (
+    label: string,
+    value: string,
+    opts: { value: string; label: string }[],
+    onChange: (v: string) => void,
+  ) => (
+    <label className="filter-field">
+      <span>{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {opts.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  );
 
   return (
     <>
@@ -131,7 +250,7 @@ export default function ExportPage() {
         </div>
       )}
 
-      {/* 导出摘要 */}
+      {/* 导出摘要（CSV 直下载） */}
       <div className="card export-summary">
         <div>
           <div className="label muted">{t('export.matching')}</div>
@@ -140,7 +259,7 @@ export default function ExportPage() {
         <button
           className="btn primary"
           disabled={exporting || total === 0 || total == null}
-          onClick={doExport}
+          onClick={doExportCsv}
         >
           {exporting ? t('export.exporting') : t('export.exportCsv')}
         </button>
@@ -159,26 +278,98 @@ export default function ExportPage() {
         </div>
       )}
 
-      {/* フォーマット一覧（CSV 以外は予約・無効） */}
+      {/* フォーマット別の導出カード */}
       <h3 className="detail-section" style={{ marginTop: 22 }}>{t('export.formats')}</h3>
       <div className="format-grid">
-        {FORMATS.map((f) => (
-          <div key={f.key} className={`card format-card${f.enabled ? '' : ' disabled'}`}>
-            <div className="format-head">
-              <strong>{t(f.titleKey)}</strong>
-              {f.enabled ? (
-                <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
-                  {t('export.available')}
-                </span>
-              ) : (
-                <span className="badge" style={{ color: '#6f6a61', borderColor: '#6f6a6155', background: '#6f6a6114' }}>
-                  {t('common.comingSoon')}
-                </span>
-              )}
-            </div>
-            <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>{t(f.descKey)}</p>
+        {/* Dataset Package（ジョブ式・進捗つき） */}
+        <div className="card format-card">
+          <div className="format-head">
+            <strong>{t('export.formatDatasetTitle')}</strong>
+            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
+              {t('export.available')}
+            </span>
           </div>
-        ))}
+          <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
+            {t('export.formatDatasetDesc')}
+          </p>
+          <button
+            className="btn primary"
+            disabled={packageJob.starting || packageJob.job?.status === 'running' || !total}
+            onClick={() => packageJob.start(() => startPackageExport(filters))}
+          >
+            {t('export.start')}
+          </button>
+          {jobStatus(packageJob)}
+        </div>
+
+        {/* GeoJSON（同期下载） */}
+        <div className="card format-card">
+          <div className="format-head">
+            <strong>{t('export.formatGeojsonTitle')}</strong>
+            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
+              {t('export.available')}
+            </span>
+          </div>
+          <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
+            {t('export.formatGeojsonDesc')} {t('export.geojsonNote')}
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            {sel(t('export.propsLabel'), geoProps, [
+              { value: 'minimal', label: t('export.propsMinimal') },
+              { value: 'full', label: t('export.propsFull') },
+            ], (v) => setGeoProps(v as 'minimal' | 'full'))}
+            <button className="btn primary" disabled={!total} onClick={doExportGeoJson}>
+              {t('export.start')}
+            </button>
+          </div>
+        </div>
+
+        {/* 写真 ZIP（ジョブ式・進捗つき） */}
+        <div className="card format-card">
+          <div className="format-head">
+            <strong>{t('export.formatPhotosTitle')}</strong>
+            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
+              {t('export.available')}
+            </span>
+          </div>
+          <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
+            {t('export.formatPhotosDesc')} {t('export.dedupNote')}
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            {sel(t('export.contentLabel'), photosContent, [
+              { value: 'both', label: t('export.contentBoth') },
+              { value: 'crop', label: t('export.contentCrop') },
+              { value: 'source', label: t('export.contentSource') },
+            ], (v) => setPhotosContent(v as typeof photosContent))}
+            {sel(t('export.namingLabel'), photosNaming, [
+              { value: 'original', label: t('export.namingOriginal') },
+              { value: 'signid', label: t('export.namingSignId') },
+              { value: 'displayid', label: t('export.namingDisplayId') },
+            ], (v) => setPhotosNaming(v as typeof photosNaming))}
+            <button
+              className="btn primary"
+              disabled={photosJob.starting || photosJob.job?.status === 'running' || !total}
+              onClick={() => photosJob.start(
+                () => startPhotosExport(filters, photosContent, photosNaming))}
+            >
+              {t('export.start')}
+            </button>
+          </div>
+          {jobStatus(photosJob)}
+        </div>
+
+        {/* CSV（情報カード。実行は上の摘要から） */}
+        <div className="card format-card">
+          <div className="format-head">
+            <strong>{t('export.formatCsvTitle')}</strong>
+            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
+              {t('export.available')}
+            </span>
+          </div>
+          <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
+            {t('export.formatCsvDesc')}
+          </p>
+        </div>
       </div>
     </>
   );

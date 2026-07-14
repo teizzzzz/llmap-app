@@ -68,6 +68,10 @@ export interface Dataset {
   normalized_legacy_record_count: number;
   missing_photo_count: number;
   missing_source_photo_count: number;
+  /** 相册カード用の実測値（Step 17。backend が集計して返す） */
+  liveRecordCount?: number;
+  photoBytes?: number;
+  coverPhoto?: string | null;
 }
 
 /** GET /map/records の1件（GPS を持つ記録のみ・軽量） */
@@ -101,16 +105,58 @@ export interface AiStatus {
 
 /** POST /datasets/import の導入レポート */
 export interface ImportDatasetResult {
-  datasetId: number;
-  recordCount: number;
-  importedRecordCount: number;
-  skippedRecordCount: number;
-  photoCount: number;
-  sourcePhotoCount: number;
+  /** imported=新規導入 / duplicate=同一包を検出（未導入） / filled=欠落写真の補充 */
+  status: 'imported' | 'duplicate' | 'filled';
+  datasetId?: number;
+  recordCount?: number;
+  importedRecordCount?: number;
+  skippedRecordCount?: number;
+  photoCount?: number;
+  sourcePhotoCount?: number;
+  reusedPhotoCount?: number;
+  missingPhotoCount?: number;
+  missingSourcePhotoCount?: number;
+  duplicateSignIds?: string[];
+  warnings?: string[];
+  archivedTo?: string | null;
+  // status=duplicate のとき
+  existingDatasetId?: number;
+  existingDatasetName?: string;
+  existingImportedAt?: string;
+  // status=filled のとき
+  restoredPhotoCount?: number;
+  stillMissingCount?: number;
+}
+
+/** GET /storage/summary — データ目录の使用状況（Step 15） */
+export interface StorageSummary {
+  dataDir: string;
+  categories: {
+    photos: number;
+    sourcePhotos: number;
+    database: number;
+    imports: number;
+    archives: number;
+    exports: number;
+    tmp: number;
+  };
+  diskTotal: number;
+  diskFree: number;
+  reclaimableBytes: number;
+  reclaimableEntries: string[];
+}
+
+/** POST /storage/cleanup の結果 */
+export interface StorageCleanupResult {
+  ok: boolean;
+  dryRun: boolean;
+  deleted: number;
+  reclaimableBytes: number;
+  freedBytes?: number;
+  entries?: string[];
+  missingPhotos?: string[];
   missingPhotoCount: number;
-  missingSourcePhotoCount: number;
-  duplicateSignIds: string[];
-  warnings: string[];
+  message?: string;
 }
 
 /** GET /schema — フォーム選択肢（enums）・複数選択字段・状態値 */
@@ -140,4 +186,17 @@ export interface RecordsQuery {
   hasPhoto?: boolean;
   hasSourcePhoto?: boolean;
   datasetId?: number;
+}
+
+/** 導出ジョブ（Dataset Package / 写真 ZIP）の進捗（Step 16） */
+export interface ExportJobStatus {
+  id: string;
+  kind: 'package' | 'photos';
+  status: 'running' | 'done' | 'error' | 'cancelled';
+  done: number;
+  total: number;
+  fileName: string;
+  sizeBytes: number;
+  error: string;
+  report: Record<string, number>;
 }

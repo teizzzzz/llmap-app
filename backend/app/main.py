@@ -17,7 +17,10 @@ from .database import init_db
 from .schema import (
     AI_FIELDS, CSV_HEADER, ENUMS, LANGUAGE_COLORS, MULTI_FIELDS, STATUS_VALUES,
 )
-from . import export_api, import_dataset, records_api, stats_api
+from . import (
+    export_api, export_jobs, import_dataset, records_api, stats_api,
+    storage_api,
+)
 
 
 @asynccontextmanager
@@ -26,12 +29,14 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="LLMap backend", version="0.3.2", lifespan=lifespan)
+app = FastAPI(title="LLMap backend", version="0.4.0", lifespan=lifespan)
 
 app.include_router(import_dataset.router)
 app.include_router(records_api.router)
 app.include_router(stats_api.router)
 app.include_router(export_api.router)
+app.include_router(export_jobs.router)
+app.include_router(storage_api.router)
 
 # 単人ローカル開発のため全許可。多人化時に絞る。
 app.add_middleware(
@@ -44,7 +49,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "llmap-backend", "version": "0.3.2"}
+    return {"ok": True, "service": "llmap-backend", "version": "0.4.0"}
 
 
 @app.get("/ai/status")

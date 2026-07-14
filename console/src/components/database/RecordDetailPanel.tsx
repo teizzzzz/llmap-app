@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
 import type { RecordDetail, SchemaInfo } from '../../api/types';
+import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from './FieldEditor';
 import PhotoThumb from './PhotoThumb';
 import StatusBadge from './StatusBadge';
@@ -36,6 +37,7 @@ export default function RecordDetailPanel({
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<'crop' | 'source' | null>(null);
 
   const load = (id: number) => {
     setDetail(null);
@@ -108,17 +110,38 @@ export default function RecordDetailPanel({
         </div>
       </div>
 
-      {/* 写真（裁切図＋元写真）。欠落は placeholder。 */}
+      {/* 写真（裁切図＋元写真）。クリックで統一ビューアを開く。 */}
       <div className="photo-pair">
-        <figure>
+        <figure
+          style={{ cursor: detail.photoUrl ? 'zoom-in' : 'default' }}
+          title={t('record.openFull')}
+          onClick={() => detail.photoUrl && setLightbox('crop')}
+        >
           <PhotoThumb src={photoUrl(detail.photoUrl)} size={170} alt="crop" />
           <figcaption className="muted">{t('record.crop')}</figcaption>
         </figure>
-        <figure>
+        <figure
+          style={{ cursor: detail.sourcePhotoUrl ? 'zoom-in' : 'default' }}
+          title={t('record.openFull')}
+          onClick={() => detail.sourcePhotoUrl && setLightbox('source')}
+        >
           <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={170} alt="source" />
           <figcaption className="muted">{t('record.source')}</figcaption>
         </figure>
       </div>
+
+      {lightbox && (
+        <PhotoLightbox
+          items={[{
+            title: detail.DisplayID || detail.SignID,
+            cropUrl: photoUrl(detail.photoUrl),
+            sourceUrl: photoUrl(detail.sourcePhotoUrl),
+          }]}
+          index={0}
+          initialView={lightbox}
+          onClose={() => setLightbox(null)}
+        />
+      )}
 
       <h3 className="detail-section">{t('record.identity')}</h3>
       <div className="identity-grid">

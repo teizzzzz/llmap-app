@@ -124,7 +124,16 @@
     "prev": "← 上一页",
     "next": "下一页 →",
     "range": "第 {{from}}–{{to}} 条 · 共 {{total}} 条",
-    "pageSize": "每页条数"
+    "pageSize": "每页条数",
+    "viewTable": "表格",
+    "viewAlbums": "数据集相册",
+    "albumMeta": "{{n}} 条 · {{size}}",
+    "importedOn": "{{date}} 导入",
+    "backToAlbums": "← 返回相册",
+    "openInTable": "在表格中查看",
+    "loadMore": "加载更多",
+    "albumNoPhotos": "该数据集没有照片。",
+    "noAlbums": "还没有数据集。导入后会以相册形式显示。"
   },
   "table": {
     "area": "地区",
@@ -171,7 +180,15 @@
     "warnings": "{{n}} 条警告",
     "andMore": "…另有 {{n}} 条",
     "viewRecords": "查看记录",
-    "importAnother": "继续导入"
+    "importAnother": "继续导入",
+    "keepOriginal": "保留原始包到 archives/（额外占用磁盘）",
+    "duplicateTitle": "该数据包已导入过",
+    "duplicateBody": "内容完全相同的数据包已于 {{date}} 作为“{{name}}”导入。重复导入不会新增任何记录。",
+    "duplicateFill": "仅补充缺失照片",
+    "filledOk": "✓ 缺失照片补充完成",
+    "restored": "已恢复照片",
+    "stillMissing": "包内同样缺失",
+    "reused": "复用（内容去重）"
   },
   "map": {
     "title": "地图",
@@ -181,7 +198,10 @@
     "loadError": "无法加载地图记录。",
     "noMatch": "没有符合当前筛选条件的地图记录。",
     "noGps": "还没有带 GPS 的记录。请导入包含坐标的 Dataset Package。",
-    "unknownLanguage": "未知"
+    "unknownLanguage": "未知",
+    "fullscreen": "全屏",
+    "exitFull": "退出全屏（Esc）",
+    "toggleFilters": "显示/隐藏筛选栏"
   },
   "review": {
     "title": "审核",
@@ -218,7 +238,7 @@
   "export": {
     "title": "导出",
     "subtitle": "导出筛选后的数据库记录，用于分析与存档。",
-    "csvNote": "CSV 导出使用当前数据库记录和所选筛选条件。包含 CaptureID、SignID、EntryMode、DataStatus、SchemaVersion、AppVersion 等系统字段。CSV 不包含照片——需要图片时请使用未来版本的 Dataset Package 导出。",
+    "csvNote": "CSV 导出使用当前数据库记录和所选筛选条件。包含 CaptureID、SignID、EntryMode、DataStatus、SchemaVersion、AppVersion 等系统字段。CSV 不包含照片——需要图片时请使用 Dataset Package 或照片 ZIP 导出。",
     "quickAll": "全部记录",
     "quickReviewed": "仅已审核",
     "quickVerified": "仅已确认",
@@ -240,7 +260,25 @@
     "formatGeojsonTitle": "GeoJSON",
     "formatGeojsonDesc": "将带 GPS 的记录导出为 GIS 工具可用的 FeatureCollection。",
     "formatPhotosTitle": "照片 ZIP",
-    "formatPhotosDesc": "所选记录的裁剪图与原始照片。"
+    "formatPhotosDesc": "所选记录的裁剪图与原始照片。",
+    "start": "开始导出",
+    "download": "下载",
+    "progress": "处理中 {{done}}/{{total}}…",
+    "jobDone": "✓ {{name}}（{{size}}）",
+    "jobCancelled": "已取消",
+    "propsLabel": "属性",
+    "propsMinimal": "精简（研究核对用主要字段）",
+    "propsFull": "全部字段（CSV 全 36 列）",
+    "contentLabel": "内容",
+    "contentBoth": "裁剪图＋原图",
+    "contentCrop": "仅裁剪图",
+    "contentSource": "仅原图",
+    "namingLabel": "文件命名",
+    "namingOriginal": "保留原文件名",
+    "namingSignId": "SignID.jpg",
+    "namingDisplayId": "DisplayID.jpg",
+    "dedupNote": "内容相同的照片只放入一次（内容去重）。缺失照片会记录在 MISSING.txt。",
+    "geojsonNote": "坐标顺序为 [经度, 纬度]（WGS84）。无 GPS 的记录不进入 Feature，跳过数量记录在文件中。"
   },
   "ai": {
     "title": "AI处理",
@@ -301,5 +339,26 @@
     "current": "当前",
     "backendHelpPrefix": "在 Web/开发模式下修改时，请设置",
     "backendHelpSuffix": "并重启 npm run dev。桌面版会在启动时自动注入 URL。"
+  },
+  "storage": {
+    "title": "存储",
+    "dataDir": "数据目录",
+    "diskFree": "磁盘剩余空间",
+    "reclaimable": "可回收（旧导入遗留）",
+    "cleanup": "清理",
+    "cleanupConfirm": "将删除 {{size}} 的旧导入遗留文件。不会触碰正式照片、数据库和 archives。确定执行？",
+    "cleanupDone": "✓ 已释放 {{size}}",
+    "cleanupBlocked": "正式照片库存在 {{n}} 处缺失，已中止清理。请先通过导入对话框的“仅补充缺失照片”恢复后再执行。",
+    "nothingToClean": "没有可回收的遗留文件。",
+    "catPhotos": "照片",
+    "catSourcePhotos": "原始照片",
+    "catDatabase": "数据库",
+    "catImports": "旧导入遗留 (imports)",
+    "catArchives": "保留的原始包 (archives)",
+    "catExports": "导出 (exports)"
+  },
+  "lightbox": {
+    "fit": "适应窗口",
+    "rotate": "旋转"
   }
 }

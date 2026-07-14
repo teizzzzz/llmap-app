@@ -57,15 +57,41 @@ fn find_free_port() -> u16 {
     8000
 }
 
-/// 用户数据目录（desktop-offline-design.md §5 の標準目录）:
-///   macOS   ~/Library/Application Support/LLMap
-///   Windows %APPDATA%\LLMap
-///   Linux   ~/.local/share/LLMap
-/// identifier ベースの app_data_dir ではなく OS の data dir + "LLMap" を使う。
-/// developer launcher（10B）と同一パスなので、launcher で作ったデータを
-/// そのまま桌面 App でも開ける。取得不能時は .llmap-desktop-data/ に fallback
-/// （TODO: 正式版では fallback を廃止しエラー画面にする）。
+/// 用户数据目录。決定順（Step 17 で①を追加）:
+///   ① 設定ファイル <OS config dir>/LLMap/config.json の {"dataDir": "..."}
+///      — 写真データを D: や外付けへ置きたいユーザー向け。編集後は再起動で反映。
+///      Console の Settings > ストレージ に現在の実効パスが表示される。
+///      （UI からの変更＋既存データ移行ウィザードは別 Step。）
+///   ② 既定: OS data dir + "LLMap"
+///      macOS   ~/Library/Application Support/LLMap
+///      Windows %APPDATA%\LLMap
+///      Linux   ~/.local/share/LLMap
+///      identifier ベースの app_data_dir ではなく OS data dir + "LLMap"
+///      （developer launcher 10B と同一パス）。
+///   ③ 取得不能時は .llmap-desktop-data/ に fallback
+///      （TODO: 正式版では fallback を廃止しエラー画面にする）。
 fn resolve_data_dir(app: &tauri::AppHandle) -> PathBuf {
+    if let Ok(cfg_base) = app.path().config_dir() {
+        let cfg = cfg_base.join("LLMap").join("config.json");
+        if let Ok(text) = fs::read_to_string(&cfg) {
+            match serde_json::from_str::<serde_json::Value>(&text) {
+                Ok(v) => {
+                    if let Some(dir) =
+                        v.get("dataDir").and_then(|d| d.as_str())
+                    {
+                        let dir = dir.trim();
+                        if !dir.is_empty() {
+                            println!(
+                                "[llmap-desktop] data dir from config: {dir}");
+                            return PathBuf::from(dir);
+                        }
+                    }
+                }
+                Err(e) => eprintln!(
+                    "[llmap-desktop] config.json parse error (ignored): {e}"),
+            }
+        }
+    }
     match app.path().data_dir() {
         Ok(dir) => dir.join("LLMap"),
         Err(_) => PathBuf::from(".llmap-desktop-data"),

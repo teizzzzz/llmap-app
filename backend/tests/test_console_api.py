@@ -150,14 +150,32 @@ def test_photos_saved_to_storage():
     assert (source_photos_dir() / f"{CAPTURE}-source.jpg").is_file()
 
 
-def test_reimport_reports_duplicates():
+def test_reimport_same_package_detected_by_hash():
+    """まったく同じ zip → 整包 SHA-256 で検出。何も導入しない（Step 15）。"""
     r = _import(default_package())
     assert r.status_code == 200
     rep = r.json()
+    assert rep["status"] == "duplicate"
+    assert rep["existingDatasetId"] == 1
+    assert rep["existingDatasetName"]
+    # dataset 行は増えない
+    assert len(client.get("/datasets").json()) == 1
+
+
+def test_reimport_reports_duplicates():
+    """内容の異なる包（指紋が変わる）に既存 SignID → 行レベルで skip。"""
+    rows = [
+        _row(SignID=f"{CAPTURE}-a", _status="pending", CaptureID=CAPTURE,
+             地区コード="OOK", 採集日時="2026-07-01 14:35:12",
+             主要言語="韓国語"),
+    ]
+    r = _import(make_package(rows, {}, []))
+    assert r.status_code == 200
+    rep = r.json()
+    assert rep["status"] == "imported"
     assert rep["importedRecordCount"] == 0
-    assert rep["skippedRecordCount"] == 3
-    assert sorted(rep["duplicateSignIds"]) == sorted(
-        [f"{CAPTURE}-a", f"{CAPTURE}-b", f"{LEGACY_CAPTURE}-a"])
+    assert rep["skippedRecordCount"] == 1
+    assert rep["duplicateSignIds"] == [f"{CAPTURE}-a"]
 
 
 def test_records_pagination():
@@ -298,7 +316,7 @@ def test_map_records_gps_only():
 def test_stats_summary():
     s = client.get("/stats/summary").json()
     assert s["recordCount"] == 3
-    assert s["datasetCount"] == 2  # 重複導入分も dataset 行は増える
+    assert s["datasetCount"] == 2  # 指紋の異なる包の導入で dataset 行が増えた
     assert s["photoCount"] == 2
     assert s["sourcePhotoCount"] == 1
     assert s["missingPhotoCount"] >= 1
@@ -348,3 +366,243 @@ def test_broken_package_rejected():
     r2 = _import(zbuf2.getvalue())
     assert r2.status_code == 400
     assert "data.csv" in r2.json()["detail"]
+
+
+# ── Step 15: 存储モデル（临时化・去重・清掃） ──
+
+
+def test_import_leaves_no_tmp_or_imports():
+    """新導入フローは tmp/ を掃除し、imports/ に何も残さない。"""
+    from app.database import data_dir, tmp_dir
+    assert list(tmp_dir().iterdir()) == []
+    assert not (data_dir() / "imports").exists() or \
+        list((data_dir() / "imports").iterdir()) == []
+
+
+def test_fill_missing_restores_deleted_photo():
+    """重複包の fill_missing: 正式庫から消えた写真を包から復元する。"""
+    from app.database import photos_dir
+    target = photos_dir() / f"{CAPTURE}-b.jpg"
+    assert target.exists()
+    target.unlink()  # 事故で消えた想定
+    r = client.post(
+        "/datasets/import",
+        files={"file": ("llmap_dataset_test.zip", default_package(),
+                        "application/zip")},
+        data={"mode": "fill_missing"},
+    )
+    assert r.status_code == 200, r.text
+    rep = r.json()
+    assert rep["status"] == "filled"
+    assert rep["restoredPhotoCount"] == 1
+    assert target.exists()
+    # 復元後は写真配信も生き返る
+    rid = client.get("/records", params={"q": f"{CAPTURE}-b"}).json()["items"][0]["id"]
+    assert client.get(f"/records/{rid}/photo").status_code == 200
+
+
+def test_same_name_different_content_gets_renamed():
+    """同名別内容の写真は既存を壊さず安全な別名で保存し、記録の参照も追随する。"""
+    other = b"\xff\xd8\xff\xe0" + b"different-bytes" * 12 + b"\xff\xd9"
+    cap = "OOK-9Zz1Aa2B-260702090000111"
+    rows = [
+        _row(SignID=f"{cap}-a", _status="pending", CaptureID=cap,
+             地区コード="OOK", 採集日時="2026-07-02 09:00:00",
+             主要言語="日本語",
+             写真ファイル名=f"{CAPTURE}-a.jpg"),  # 既存名と衝突・内容は別
+    ]
+    files = {f"photos/{CAPTURE}-a.jpg": other}
+    entries = [(f"photos/{CAPTURE}-a.jpg", f"{cap}-a", cap)]
+    r = _import(make_package(rows, files, entries))
+    assert r.status_code == 200, r.text
+    rep = r.json()
+    assert rep["status"] == "imported"
+    assert rep["importedRecordCount"] == 1
+    # 既存ファイルは無傷
+    from app.database import photos_dir
+    assert (photos_dir() / f"{CAPTURE}-a.jpg").read_bytes() == JPEG
+    # 新記録は改名後のファイルを参照し、配信できる
+    item = client.get("/records", params={"q": f"{cap}-a"}).json()["items"][0]
+    assert item["写真ファイル名"] == f"{CAPTURE}-a~2.jpg"
+    assert (photos_dir() / f"{CAPTURE}-a~2.jpg").read_bytes() == other
+    assert client.get(f"/records/{item['id']}/photo").status_code == 200
+
+
+def test_same_content_reused_not_duplicated():
+    """同名同内容の写真は再保存しない（内容去重）。"""
+    cap = "OOK-3Cc4Dd5E-260703100000222"
+    rows = [
+        _row(SignID=f"{cap}-a", _status="pending", CaptureID=cap,
+             地区コード="OOK", 採集日時="2026-07-03 10:00:00",
+             写真ファイル名=f"{CAPTURE}-a.jpg"),  # 既存名・同内容
+    ]
+    files = {f"photos/{CAPTURE}-a.jpg": JPEG}
+    entries = [(f"photos/{CAPTURE}-a.jpg", f"{cap}-a", cap)]
+    r = _import(make_package(rows, files, entries))
+    rep = r.json()
+    assert rep["status"] == "imported"
+    assert rep["reusedPhotoCount"] == 1
+    item = client.get("/records", params={"q": f"{cap}-a"}).json()["items"][0]
+    assert item["写真ファイル名"] == f"{CAPTURE}-a.jpg"  # 改名なしで共用
+
+
+def test_storage_summary_and_cleanup():
+    from app.database import data_dir
+    # 旧フローの遺留を模擬（imports/ に zip と展開目录）
+    imports = data_dir() / "imports"
+    imports.mkdir(exist_ok=True)
+    (imports / "old_package.zip").write_bytes(b"x" * 2048)
+    legacy_dir = imports / "old_package"
+    legacy_dir.mkdir(exist_ok=True)
+    (legacy_dir / "data.csv").write_text("SignID\n", encoding="utf-8")
+
+    s = client.get("/storage/summary").json()
+    assert s["dataDir"]
+    assert s["categories"]["photos"] > 0
+    assert s["reclaimableBytes"] > 2000
+    assert "old_package.zip" in s["reclaimableEntries"]
+
+    # dryRun（既定）は削除しない
+    r = client.post("/storage/cleanup", json={"dryRun": True}).json()
+    assert r["ok"] is True and r["deleted"] == 0
+    assert (imports / "old_package.zip").exists()
+
+    # 実削除
+    r = client.post("/storage/cleanup", json={"dryRun": False}).json()
+    assert r["ok"] is True and r["deleted"] >= 2
+    assert not (imports / "old_package.zip").exists()
+    assert not legacy_dir.exists()
+    # 正式資産は無傷
+    from app.database import photos_dir
+    assert (photos_dir() / f"{CAPTURE}-a.jpg").exists()
+
+
+def test_cleanup_refuses_when_official_photos_missing():
+    """正式庫に欠落があるうちは清掃を拒否する（imports が復旧源かもしれない）。"""
+    from app.database import data_dir, photos_dir
+    imports = data_dir() / "imports"
+    imports.mkdir(exist_ok=True)
+    (imports / "maybe_needed.zip").write_bytes(b"y" * 100)
+    target = photos_dir() / f"{CAPTURE}-a.jpg"
+    backup = target.read_bytes()
+    target.unlink()
+    try:
+        r = client.post("/storage/cleanup", json={"dryRun": False}).json()
+        assert r["ok"] is False
+        assert r["missingPhotoCount"] >= 1
+        assert (imports / "maybe_needed.zip").exists()  # 削除されない
+    finally:
+        target.write_bytes(backup)
+        (imports / "maybe_needed.zip").unlink()
+
+
+# ── Step 16: 導出（GeoJSON / Dataset Package / 写真 ZIP） ──
+
+
+def _wait_job(job_id: str, timeout: float = 15.0) -> dict:
+    import time
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        st = client.get(f"/export/jobs/{job_id}").json()
+        if st["status"] != "running":
+            return st
+        time.sleep(0.05)
+    raise AssertionError("export job timed out")
+
+
+def test_export_geojson():
+    r = client.get("/export/geojson")
+    assert r.status_code == 200
+    gj = r.json()
+    assert gj["type"] == "FeatureCollection"
+    assert gj["llmap"]["featureCount"] == len(gj["features"])
+    assert gj["llmap"]["skippedNoGps"] >= 1  # GPS 無しは無音で捨てない
+    f = [x for x in gj["features"]
+         if x["properties"]["SignID"] == f"{CAPTURE}-a"][0]
+    # RFC 7946: [経度, 緯度] の順
+    assert f["geometry"]["coordinates"] == [139.7011, 35.6021]
+    assert f["properties"]["主要言語"] == "英語"  # PATCH 済みの値
+    assert f["properties"]["photo"] == f"photos/{CAPTURE}-a.jpg"
+    # full props は CSV 全字段
+    full = client.get("/export/geojson", params={"props": "full"}).json()
+    fprops = [x for x in full["features"]
+              if x["properties"]["SignID"] == f"{CAPTURE}-a"][0]["properties"]
+    assert "備考" in fprops and "SchemaVersion" in fprops
+
+
+def test_export_package_roundtrip():
+    """Dataset Package 導出 → そのまま導入できる（往返互換）。"""
+    r = client.post("/export/package", json={})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    assert job["fileName"].startswith("llmap_dataset_")
+    assert job["report"]["recordCount"] >= 3
+    dl = client.get(f"/export/jobs/{job['id']}/download")
+    assert dl.status_code == 200
+
+    zf = zipfile.ZipFile(io.BytesIO(dl.content))
+    names = set(zf.namelist())
+    for required in ["data.csv", "metadata.json", "schema.json",
+                     "manifest.json", "MANIFEST.txt", "README.md"]:
+        assert required in names, required
+    manifest = json.loads(zf.read("manifest.json"))
+    assert all(e["sha256"] and e["sizeBytes"] > 0 for e in manifest["files"])
+    # 欠落（LEGACY crop）は missingFiles に明示される
+    assert any(LEGACY_CAPTURE in e["path"] for e in manifest["missingFiles"])
+
+    # 同じ DB に再導入 → 全行 SignID 重複で skip（data.csv が本物の証明）
+    r2 = client.post(
+        "/datasets/import",
+        files={"file": (job["fileName"], dl.content, "application/zip")},
+    )
+    rep = r2.json()
+    assert rep["status"] == "imported"
+    assert rep["importedRecordCount"] == 0
+    assert rep["skippedRecordCount"] == rep["recordCount"]
+
+
+def test_export_package_respects_filters():
+    r = client.post("/export/package", json={"entryMode": "quick"})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done"
+    dl = client.get(f"/export/jobs/{job['id']}/download")
+    zf = zipfile.ZipFile(io.BytesIO(dl.content))
+    rows = list(csv.DictReader(
+        io.StringIO(zf.read("data.csv").decode("utf-8-sig"))))
+    assert len(rows) == 1
+    assert rows[0]["EntryMode"] == "quick"
+
+
+def test_export_photos_zip_dedup_and_mapping():
+    """写真 ZIP: SignID 命名・photo_mapping.csv・内容ハッシュ去重。"""
+    r = client.post("/export/photos",
+                    json={"content": "both", "naming": "signid"})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    dl = client.get(f"/export/jobs/{job['id']}/download")
+    zf = zipfile.ZipFile(io.BytesIO(dl.content))
+    names = zf.namelist()
+    assert "photo_mapping.csv" in names
+    # テストの写真はすべて同一バイト列 → 内容去重で実体は 1 つだけ
+    photo_files = [n for n in names if n.endswith(".jpg")]
+    # 同一バイト列の写真（a/b/source の 3 つ）は 1 実体に去重され、
+    # 別内容の写真（rename テストで導入した 1 枚）は別実体のまま。
+    assert len(photo_files) == 2
+    assert job["report"]["dedupedFiles"] >= 2
+    rows = list(csv.DictReader(
+        io.StringIO(zf.read("photo_mapping.csv").decode("utf-8-sig"))))
+    by_id = {r["SignID"]: r for r in rows}
+    shared = by_id[f"{CAPTURE}-a"]["照片文件"]
+    assert shared in photo_files
+    assert by_id[f"{CAPTURE}-b"]["照片文件"] == shared  # 同内容 → 同一実体
+    assert by_id[f"{CAPTURE}-a"]["原图文件"] == shared  # source も同内容
+    assert "MISSING.txt" in names
+
+
+def test_export_job_not_found_and_cancel():
+    assert client.get("/export/jobs/nonexistent").status_code == 404
+    r = client.post("/export/photos", json={"content": "crop",
+                                            "naming": "original"})
+    job_id = r.json()["jobId"]
+    _wait_job(job_id)
+    assert client.post(f"/export/jobs/{job_id}/cancel").json()["ok"] is True

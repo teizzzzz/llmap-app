@@ -38,6 +38,55 @@ def imports_dir() -> Path:
     return p
 
 
+def tmp_dir() -> Path:
+    """導入の一時作業目录。data_dir と同一ファイルシステムに置く
+    （写真を正式目录へ rename で移せる＝大容量でも複製コストゼロ）。"""
+    p = data_dir() / "tmp"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def archives_dir() -> Path:
+    """「原始 Dataset Package を保管する」オプション（既定オフ）の保存先。"""
+    p = data_dir() / "archives"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def exports_dir() -> Path:
+    """導出ジョブ（Dataset Package / 写真 ZIP）の出力先。"""
+    p = data_dir() / "exports"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+# ── 最小マイグレーション層 ──────────────────────────────────────────
+# SQLModel の create_all は**新テーブルしか作らない**（既存テーブルへの
+# 列追加はしない）。既存 DB に列を足す時は必ずここに ALTER を書き、
+# _SCHEMA_VERSION を上げる。PRAGMA user_version で適用済みを判定する。
+_SCHEMA_VERSION = 2
+
+
+def _migrate(engine) -> None:
+    with engine.connect() as conn:
+        current = conn.exec_driver_sql("PRAGMA user_version").scalar() or 0
+        if current >= _SCHEMA_VERSION:
+            return
+        if current < 2:
+            # v2: dataset.package_hash（導入包の SHA-256。重複導入の検出用）
+            cols = [r[1] for r in
+                    conn.exec_driver_sql("PRAGMA table_info(dataset)")]
+            if "package_hash" not in cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE dataset ADD COLUMN package_hash "
+                    "VARCHAR NOT NULL DEFAULT ''")
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_dataset_package_hash "
+                    "ON dataset (package_hash)")
+        conn.exec_driver_sql(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+        conn.commit()
+
+
 def get_engine():
     global _engine
     if _engine is None:
@@ -50,6 +99,7 @@ def get_engine():
         from . import db_models  # noqa: F401  テーブル定義を登録してから create_all
 
         SQLModel.metadata.create_all(_engine)
+        _migrate(_engine)
     return _engine
 
 

@@ -3,6 +3,7 @@
 import type {
   AiStatus,
   Dataset,
+  ExportJobStatus,
   ImportDatasetResult,
   MapQuery,
   MapRecord,
@@ -11,6 +12,8 @@ import type {
   RecordsResponse,
   SchemaInfo,
   StatsSummary,
+  StorageCleanupResult,
+  StorageSummary,
 } from './types';
 
 // 桌面版（Tauri shell）は起動時に backend の動的端口を注入する。
@@ -115,15 +118,75 @@ export const exportRecordsCsv = async (
   return res.blob();
 };
 
-/** Dataset Package（llmap_dataset_*.zip）を導入する。 */
-export const importDatasetPackage = (file: File) => {
+/** Dataset Package（llmap_dataset_*.zip）を導入する。
+    mode: 'ask'=重複包なら duplicate を返す（既定） / 'fill_missing'=欠落写真のみ補充。
+    keepOriginal: true なら原始 zip を archives/ に保管（既定は保管しない）。 */
+export const importDatasetPackage = (
+  file: File,
+  opts: { mode?: 'ask' | 'fill_missing'; keepOriginal?: boolean } = {},
+) => {
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('mode', opts.mode ?? 'ask');
+  formData.append('keepOriginal', String(opts.keepOriginal ?? false));
   return request<ImportDatasetResult>('/datasets/import', {
     method: 'POST',
     body: formData,
   });
 };
+
+export const getStorageSummary = () =>
+  request<StorageSummary>('/storage/summary');
+
+export const storageCleanup = (dryRun: boolean) =>
+  request<StorageCleanupResult>('/storage/cleanup', {
+    method: 'POST',
+    body: JSON.stringify({ dryRun }),
+  });
+
+/** GeoJSON（FeatureCollection）を取得する。props: minimal | full。 */
+export const exportGeoJson = async (
+  params: RecordsQuery = {},
+  props: 'minimal' | 'full' = 'minimal',
+): Promise<Blob> => {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${API_BASE_URL}/export/geojson${query({ ...params, props })}`);
+  } catch {
+    throw new ApiError(`Cannot reach backend at ${API_BASE_URL}.`);
+  }
+  if (!res.ok) {
+    throw new ApiError(`${res.status}: ${res.statusText}`, res.status);
+  }
+  return res.blob();
+};
+
+export const startPackageExport = (filters: RecordsQuery = {}) =>
+  request<{ jobId: string }>('/export/package', {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
+
+export const startPhotosExport = (
+  filters: RecordsQuery = {},
+  content: 'crop' | 'source' | 'both' = 'both',
+  naming: 'signid' | 'displayid' | 'original' = 'original',
+) =>
+  request<{ jobId: string }>('/export/photos', {
+    method: 'POST',
+    body: JSON.stringify({ ...filters, content, naming }),
+  });
+
+export const getExportJob = (id: string) =>
+  request<ExportJobStatus>(`/export/jobs/${id}`);
+
+export const cancelExportJob = (id: string) =>
+  request<{ ok: boolean }>(`/export/jobs/${id}/cancel`, { method: 'POST' });
+
+/** 完了ジョブのダウンロード URL（<a href> 用）。 */
+export const exportJobDownloadUrl = (id: string) =>
+  `${API_BASE_URL}/export/jobs/${id}/download`;
 
 export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');
