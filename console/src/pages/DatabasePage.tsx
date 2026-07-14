@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { ApiError, getRecords } from '../api/client';
-import type { RecordsQuery, RecordsResponse } from '../api/types';
+import type { Dataset, RecordsQuery, RecordsResponse } from '../api/types';
+import {
+  DatasetAlbumGrid, DatasetPhotoGrid,
+} from '../components/database/DatasetAlbums';
 import ImportDatasetDialog from '../components/database/ImportDatasetDialog';
 import RecordDetailPanel from '../components/database/RecordDetailPanel';
 import RecordsFilters from '../components/database/RecordsFilters';
@@ -22,6 +25,9 @@ export default function DatabasePage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const [importing, setImporting] = useState(false);
+  // 表示モード: 表格 / データセット相册（Step 17）。
+  const [view, setView] = useState<'table' | 'albums'>('table');
+  const [openAlbum, setOpenAlbum] = useState<Dataset | null>(null);
 
   // 筛选肢の元データ（Map ページと共用の hook）。
   const { schema, datasets, areas, collectors, refresh: fetchOptions } =
@@ -77,6 +83,22 @@ export default function DatabasePage() {
         </button>
       </div>
 
+      {/* 視図切替（表格 / 相册） */}
+      <div className="review-tabs">
+        <button
+          className={`chip${view === 'table' ? ' on' : ''}`}
+          onClick={() => { setView('table'); setOpenAlbum(null); }}
+        >
+          {t('database.viewTable')}
+        </button>
+        <button
+          className={`chip${view === 'albums' ? ' on' : ''}`}
+          onClick={() => setView('albums')}
+        >
+          {t('database.viewAlbums')}
+        </button>
+      </div>
+
       {importing && (
         <ImportDatasetDialog
           onClose={() => setImporting(false)}
@@ -87,6 +109,24 @@ export default function DatabasePage() {
         />
       )}
 
+      {view === 'albums' && (
+        openAlbum ? (
+          <DatasetPhotoGrid
+            dataset={openAlbum}
+            onBack={() => setOpenAlbum(null)}
+            onOpenInTable={() => {
+              patchFilters({ datasetId: openAlbum.id });
+              setOpenAlbum(null);
+              setView('table');
+            }}
+          />
+        ) : (
+          <DatasetAlbumGrid datasets={datasets} onOpen={setOpenAlbum} />
+        )
+      )}
+
+      {view === 'table' && (
+      <>
       <RecordsFilters
         value={filters}
         options={{
@@ -173,6 +213,8 @@ export default function DatabasePage() {
           />
         )}
       </div>
+      </>
+      )}
     </>
   );
 }

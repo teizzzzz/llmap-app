@@ -124,7 +124,16 @@
     "prev": "← Prev",
     "next": "Next →",
     "range": "{{from}}–{{to}} of {{total}}",
-    "pageSize": "Page size"
+    "pageSize": "Page size",
+    "viewTable": "Table",
+    "viewAlbums": "Dataset albums",
+    "albumMeta": "{{n}} records · {{size}}",
+    "importedOn": "Imported {{date}}",
+    "backToAlbums": "← Back to albums",
+    "openInTable": "View in table",
+    "loadMore": "Load more",
+    "albumNoPhotos": "No photos in this dataset.",
+    "noAlbums": "No datasets yet. Imported packages appear here as albums."
   },
   "table": {
     "area": "Area",
@@ -189,7 +198,10 @@
     "loadError": "Could not load map records.",
     "noMatch": "No mapped records match the current filters.",
     "noGps": "No records with GPS yet. Import a Dataset Package that contains coordinates.",
-    "unknownLanguage": "unknown"
+    "unknownLanguage": "unknown",
+    "fullscreen": "Fullscreen",
+    "exitFull": "Exit fullscreen (Esc)",
+    "toggleFilters": "Show/hide filters"
   },
   "review": {
     "title": "Review",
@@ -344,5 +356,9 @@
     "catImports": "Legacy imports",
     "catArchives": "Archived packages",
     "catExports": "Exports"
+  },
+  "lightbox": {
+    "fit": "Fit",
+    "rotate": "Rotate"
   }
 }

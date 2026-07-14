@@ -33,7 +33,7 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="sidebar-footer">console v0.8.3 · local-first</div>
+      <div className="sidebar-footer">console v0.9.0 · local-first</div>
     </aside>
   );
 }

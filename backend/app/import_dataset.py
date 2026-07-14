@@ -381,8 +381,29 @@ def _fill_missing_photos(
 
 @router.get("/datasets")
 def list_datasets(session: Session = Depends(get_session)):
-    items = session.exec(select(Dataset)).all()
-    return [d.model_dump(mode="json") for d in items]
+    """Dataset 一覧＋相册カード用の実測値（件数・写真容量・封面）。"""
+    from sqlmodel import func  # 局所 import（本ファイルは他で func 不使用）
+
+    out = []
+    for d in session.exec(select(Dataset)).all():
+        live_count = session.exec(
+            select(func.count()).select_from(SignRecord)
+            .where(SignRecord.dataset_id == d.id)).one()
+        photo_bytes = session.exec(
+            select(func.coalesce(func.sum(Photo.size_bytes), 0))
+            .where(Photo.dataset_id == d.id)).one()
+        cover = session.exec(
+            select(Photo.file_name)
+            .where(Photo.dataset_id == d.id, Photo.type == "crop",
+                   Photo.exists == True)  # noqa: E712
+            .limit(1)).first()
+        out.append({
+            **d.model_dump(mode="json"),
+            "liveRecordCount": live_count,
+            "photoBytes": photo_bytes,
+            "coverPhoto": cover,
+        })
+    return out
 
 
 def _to_float(v) -> float | None:

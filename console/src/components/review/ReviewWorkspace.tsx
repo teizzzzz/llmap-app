@@ -8,6 +8,7 @@ import {
   REVIEW_ACTIONS,
   type ReviewActionDef,
 } from '../../reviewStatus';
+import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from '../database/FieldEditor';
 import PhotoThumb from '../database/PhotoThumb';
 import StatusBadge from '../database/StatusBadge';
@@ -45,6 +46,7 @@ export default function ReviewWorkspace({
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null); // 実行中のアクション key
   const [actionError, setActionError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<'crop' | 'source' | null>(null);
 
   useEffect(() => {
     setDetail(null);
@@ -102,10 +104,6 @@ export default function ReviewWorkspace({
   }
   if (!detail) return <div className="card review-workspace muted">{t('record.loading')}</div>;
 
-  const openPhoto = (path: string | null) => {
-    const url = photoUrl(path);
-    if (url) window.open(url, '_blank', 'noopener');
-  };
 
   const actionBtn = (a: ReviewActionDef) => (
     <button
@@ -135,13 +133,21 @@ export default function ReviewWorkspace({
       <div className="review-columns">
         {/* ── 写真 ── */}
         <div className="review-photos">
-          <figure onClick={() => openPhoto(detail.photoUrl)} title={t('record.openFull')}>
+          <figure
+            style={{ cursor: detail.photoUrl ? 'zoom-in' : 'default' }}
+            onClick={() => detail.photoUrl && setLightbox('crop')}
+            title={t('record.openFull')}
+          >
             <PhotoThumb src={photoUrl(detail.photoUrl)} size={220} alt="crop" />
             <figcaption className="muted">
               {t('record.crop')} — {t('record.openFull')}
             </figcaption>
           </figure>
-          <figure onClick={() => openPhoto(detail.sourcePhotoUrl)} title={t('record.openFull')}>
+          <figure
+            style={{ cursor: detail.sourcePhotoUrl ? 'zoom-in' : 'default' }}
+            onClick={() => detail.sourcePhotoUrl && setLightbox('source')}
+            title={t('record.openFull')}
+          >
             <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={220} alt="source" />
             <figcaption className="muted">
               {t('record.source')} — {t('record.openFull')}
@@ -208,6 +214,19 @@ export default function ReviewWorkspace({
           </div>
         </div>
       </div>
+
+      {lightbox && (
+        <PhotoLightbox
+          items={[{
+            title: detail.DisplayID || detail.SignID,
+            cropUrl: photoUrl(detail.photoUrl),
+            sourceUrl: photoUrl(detail.sourcePhotoUrl),
+          }]}
+          index={0}
+          initialView={lightbox}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

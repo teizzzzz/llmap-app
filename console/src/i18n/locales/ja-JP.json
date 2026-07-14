@@ -124,7 +124,16 @@
     "prev": "← 前へ",
     "next": "次へ →",
     "range": "{{total}} 件中 {{from}}–{{to}}",
-    "pageSize": "表示件数"
+    "pageSize": "表示件数",
+    "viewTable": "テーブル",
+    "viewAlbums": "データセット相册",
+    "albumMeta": "{{n}} 件 · {{size}}",
+    "importedOn": "{{date}} 取込",
+    "backToAlbums": "← アルバム一覧",
+    "openInTable": "テーブルで表示",
+    "loadMore": "さらに読み込む",
+    "albumNoPhotos": "このデータセットに写真はありません。",
+    "noAlbums": "まだデータセットがありません。導入すると相册として表示されます。"
   },
   "table": {
     "area": "地区",
@@ -189,7 +198,10 @@
     "loadError": "地図用の記録を読み込めませんでした。",
     "noMatch": "現在の絞り込みに一致する記録は地図上にありません。",
     "noGps": "GPS 付きの記録がまだありません。座標を含む Dataset Package を取り込んでください。",
-    "unknownLanguage": "不明"
+    "unknownLanguage": "不明",
+    "fullscreen": "全画面",
+    "exitFull": "全画面を終了（Esc）",
+    "toggleFilters": "絞り込みバーの表示/非表示"
   },
   "review": {
     "title": "レビュー",
@@ -344,5 +356,9 @@
     "catImports": "旧導入遺留 (imports)",
     "catArchives": "保管パッケージ (archives)",
     "catExports": "導出 (exports)"
+  },
+  "lightbox": {
+    "fit": "全体表示",
+    "rotate": "回転"
   }
 }

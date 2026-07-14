@@ -68,6 +68,10 @@ export interface Dataset {
   normalized_legacy_record_count: number;
   missing_photo_count: number;
   missing_source_photo_count: number;
+  /** 相册カード用の実測値（Step 17。backend が集計して返す） */
+  liveRecordCount?: number;
+  photoBytes?: number;
+  coverPhoto?: string | null;
 }
 
 /** GET /map/records の1件（GPS を持つ記録のみ・軽量） */
