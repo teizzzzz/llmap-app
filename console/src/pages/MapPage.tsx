@@ -234,20 +234,28 @@ export default function MapPage() {
         <MapContainer
           center={[35.6021, 139.7011]}
           zoom={13}
+          maxZoom={22}
           className="map-canvas"
           scrollWheelZoom
         >
+          {/* OSM タイルはネイティブ z19 まで。z20–22 は z19 タイルの拡大表示
+              （overzoom）で、街路調査の密集点を分離できる深さまで寄れる。 */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={22}
+            maxNativeZoom={19}
           />
           <FitBounds records={valid} />
           <InvalidateOnChange dep={`${fullscreen}-${showFilters}`} />
-          {/* 密集エリアはクラスタ表示。クリックで展開、重なりは spiderfy。 */}
+          {/* 低倍率のみクラスタ表示。z18 以上ではクラスタを完全に解除し、
+              各点を実際の GPS 座標にそのまま置く。spiderfy（クリックで点を
+              放射状に散らす表示）は位置が実座標からずれるため使わない。 */}
           <MarkerClusterGroup
             chunkedLoading
             maxClusterRadius={48}
-            spiderfyOnMaxZoom
+            disableClusteringAtZoom={18}
+            spiderfyOnMaxZoom={false}
             showCoverageOnHover={false}
           >
             {valid.map((r) => (
