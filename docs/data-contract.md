@@ -58,7 +58,7 @@ short label:     OOK #008-a
 | 緯度 / 経度 / 採集日時 | 旧 | 同じ（採集日時は秒精度のまま） | 同じ |
 | EntryMode | **新** | 採集モード `quick` / `standard`(既定) / `research` | 空 |
 | DataStatus | **新** | 採番時: quick=`raw` / standard=`submitted` / research=`submitted`。以後は _status の遷移に追従（下表） | 空 → 導出時に _status から導出 |
-| SchemaVersion | **新** | `1.5`（本契約） | 空 |
+| SchemaVersion | **新** | `1.6`（字段定義表 v6。1.5 以前のレコードも列・値ともそのまま有効） | 空 |
 | AppVersion | **新** | 採集時のアプリ版（例 `v1.5.1`） | 空 |
 
 **DataStatus 対応表**（端末は `_status` が正。DataStatus は Research Console
