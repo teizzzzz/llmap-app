@@ -2,6 +2,7 @@
 // base URL は .env の VITE_API_BASE_URL（既定 http://localhost:8000）。
 import type {
   AiStatus,
+  AppConfig,
   Dataset,
   ExportJobStatus,
   ImportDatasetResult,
@@ -192,6 +193,15 @@ export const getHealth = () =>
   request<{ ok: boolean; version: string }>('/health');
 
 export const getAiStatus = () => request<AiStatus>('/ai/status');
+
+/** アプリ設定（導出目录など）。 */
+export const getConfig = () => request<AppConfig>('/config');
+
+export const updateConfig = (payload: { exportDir: string | null }) =>
+  request<AppConfig>('/config', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 
 /** 写真 URL（<img src> 用）。 */
 export const photoUrl = (path: string | null): string | null =>

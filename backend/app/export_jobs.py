@@ -432,6 +432,8 @@ def job_status(job_id: str):
         "done": job.done,
         "total": job.total,
         "fileName": job.file_name,
+        # 生成先のフルパス（導出目录設定の可視化。Console が「〜に生成しました」を出す）
+        "path": str(job.path) if job.path is not None else "",
         "sizeBytes": job.size_bytes,
         "error": job.error,
         "report": job.report,

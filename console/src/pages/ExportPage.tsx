@@ -169,6 +169,13 @@ export default function ExportPage() {
           <a className="btn" href={exportJobDownloadUrl(jc.job.id)}>
             {t('export.download')}
           </a>
+          {/* zip はこのパスに既に生成済み（導出目录設定の可視化）。
+              桌面版なら再ダウンロード不要でそのまま開ける。 */}
+          {jc.job.path && (
+            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              {t('export.savedTo')}: <code>{jc.job.path}</code>
+            </div>
+          )}
         </div>
       )}
       {jc.job?.status === 'cancelled' && (

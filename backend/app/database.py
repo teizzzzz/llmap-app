@@ -53,11 +53,50 @@ def archives_dir() -> Path:
     return p
 
 
-def exports_dir() -> Path:
-    """導出ジョブ（Dataset Package / 写真 ZIP）の出力先。"""
+# ── アプリ設定（settings.json） ─────────────────────────────────────
+# 例: {"exportDir": "F:\\LLMap\\exports"}。導出先を C 盘（data_dir）以外へ
+# 逃がすための設定。破損・欠落は既定値扱い（起動を止めない）。
+
+def _settings_file() -> Path:
+    return data_dir() / "settings.json"
+
+
+def load_settings() -> dict:
+    try:
+        import json
+        return json.loads(_settings_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_settings(settings: dict) -> None:
+    """原子的に保存（tmp → replace。書き込み中断で設定を失わない）。"""
+    import json
+    tmp = _settings_file().with_suffix(".json.tmp")
+    tmp.write_text(
+        json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, _settings_file())
+
+
+def default_exports_dir() -> Path:
     p = data_dir() / "exports"
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def exports_dir() -> Path:
+    """導出ジョブ（Dataset Package / 写真 ZIP）の出力先。
+    settings.json の exportDir を優先し、作成不能（ドライブ取り外し等）なら
+    既定の data_dir/exports へ静かにフォールバックする（導出を止めない）。"""
+    configured = load_settings().get("exportDir")
+    if configured:
+        p = Path(configured)
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        except OSError:
+            pass  # 到達不能 → 既定へ
+    return default_exports_dir()
 
 
 # ── 最小マイグレーション層 ──────────────────────────────────────────

@@ -614,3 +614,41 @@ def test_export_job_not_found_and_cancel():
     job_id = r.json()["jobId"]
     _wait_job(job_id)
     assert client.post(f"/export/jobs/{job_id}/cancel").json()["ok"] is True
+
+
+def test_config_export_dir_roundtrip():
+    """導出目录設定: 設定 → 導出がその目录に生成 → リセットで既定へ戻る。"""
+    from pathlib import Path
+
+    # 既定状態
+    cfg = client.get("/config").json()
+    assert cfg["exportDir"] is None
+    default_dir = cfg["defaultExportDir"]
+    assert cfg["effectiveExportDir"] == default_dir
+
+    custom = Path(os.environ["LLMAP_DATA_DIR"]) / "custom_exports"
+    try:
+        # 設定（絶対パス・自動作成・書き込み検証）
+        r = client.put("/config", json={"exportDir": str(custom)})
+        assert r.status_code == 200, r.text
+        assert r.json()["effectiveExportDir"] == str(custom)
+        assert custom.is_dir()
+
+        # 導出ジョブがその目录に生成される（job.path でフルパスも返る）
+        job = _wait_job(client.post("/export/package", json={}).json()["jobId"])
+        assert job["status"] == "done", job
+        assert job["path"].startswith(str(custom))
+        assert (custom / job["fileName"]).is_file()
+        # ダウンロードも従来どおり動く
+        assert client.get(f"/export/jobs/{job['id']}/download").status_code == 200
+
+        # 検証エラー: 相対パスは 400・設定は変わらない
+        assert client.put("/config", json={"exportDir": "relative/dir"}).status_code == 400
+        assert client.get("/config").json()["effectiveExportDir"] == str(custom)
+        # 未知キーは 400
+        assert client.put("/config", json={"bogus": 1}).status_code == 400
+    finally:
+        # リセット（他テストの exports 期待に影響させない）
+        r = client.put("/config", json={"exportDir": None})
+        assert r.json()["exportDir"] is None
+        assert r.json()["effectiveExportDir"] == default_dir

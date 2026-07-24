@@ -196,7 +196,18 @@ export interface ExportJobStatus {
   done: number;
   total: number;
   fileName: string;
+  /** 生成先のフルパス（done 時のみ。導出目录設定の可視化用） */
+  path: string;
   sizeBytes: number;
   error: string;
   report: Record<string, number>;
+}
+
+/** GET/PUT /config の応答（settings.json）。 */
+export interface AppConfig {
+  /** 設定済みの導出目录（未設定は null = 既定 data_dir/exports） */
+  exportDir: string | null;
+  /** フォールバック解決後の実効導出先 */
+  effectiveExportDir: string;
+  defaultExportDir: string;
 }
