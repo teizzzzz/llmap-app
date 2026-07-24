@@ -664,4 +664,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get statusFinal => '最终确定';
+
+  @override
+  String get fieldPlacement => '放置位置';
 }

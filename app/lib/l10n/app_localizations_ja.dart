@@ -669,4 +669,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get statusFinal => '確定';
+
+  @override
+  String get fieldPlacement => '放置位置';
 }

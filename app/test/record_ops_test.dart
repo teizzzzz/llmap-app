@@ -327,4 +327,83 @@ void main() {
       expect(f.matches(s), isTrue); // 空筛选はすべて通す
     });
   });
+
+  group('mergeAiDraft（v6: 既存を消さない・不確実は書かない）', () {
+    const multi = {'主要言語', '補助言語', '装飾の言語', '文字体系'};
+
+    test('備考は追記のみ — 「复数」+「123」→「复数 123」（定義表 r18 の例）', () {
+      final s = sign({'SignID': 'a', '備考': '复数'});
+      final n = mergeAiDraft(s, {'備考': '123'}, multiFields: multi);
+      expect(n, 1);
+      expect(s.get('備考'), '复数 123');
+    });
+
+    test('備考: 空なら新規記入・同文の重複追記はしない', () {
+      final s = sign({'SignID': 'a'});
+      mergeAiDraft(s, {'備考': '【判断】PayPay=平台标准贴纸'}, multiFields: multi);
+      expect(s.get('備考'), '【判断】PayPay=平台标准贴纸');
+      // 同じ内容をもう一度 → 変化なし
+      final n = mergeAiDraft(
+          s, {'備考': '【判断】PayPay=平台标准贴纸'}, multiFields: multi);
+      expect(n, 0);
+      expect(s.get('備考'), '【判断】PayPay=平台标准贴纸');
+    });
+
+    test('規則2: 空・null・空白のみの AI 値は一切書かない', () {
+      final s = sign({'SignID': 'a', '時間性': '常设'});
+      final n = mergeAiDraft(
+        s,
+        {'時間性': '', '可読性': null, '担体類型': '   ', '製作品質': ''},
+        multiFields: multi,
+      );
+      expect(n, 0);
+      expect(s.get('時間性'), '常设'); // 既存は不変
+      expect(s.get('可読性'), '');
+      expect(s.get('担体類型'), '');
+    });
+
+    test('単一選択字段: 既存があれば上書きしない・空欄だけ埋める', () {
+      final s = sign({'SignID': 'a', '時間性': '常设'});
+      final n = mergeAiDraft(
+        s,
+        {'時間性': '一过性', '可読性': '完全可读'},
+        multiFields: multi,
+      );
+      expect(n, 1);
+      expect(s.get('時間性'), '常设'); // 人の入力を守る
+      expect(s.get('可読性'), '完全可读'); // 空欄は埋まる
+    });
+
+    test('複数選択字段は和集合 — 既存値を保ち新値だけ後ろへ', () {
+      final s = sign({'SignID': 'a', '主要言語': '日本語'});
+      final n = mergeAiDraft(
+        s,
+        {'主要言語': '日本語/英語'},
+        multiFields: multi,
+      );
+      expect(n, 1);
+      expect(s.get('主要言語'), '日本語/英語');
+      // 既に全部含む → 変化なし
+      expect(
+        mergeAiDraft(s, {'主要言語': '英語'}, multiFields: multi),
+        0,
+      );
+    });
+
+    test('複数選択の「—」（無し）: 空欄には入るが既存値は消さない', () {
+      final empty = sign({'SignID': 'a'});
+      mergeAiDraft(empty, {'補助言語': '—'}, multiFields: multi);
+      expect(empty.get('補助言語'), '—');
+      final has = sign({'SignID': 'b', '補助言語': '韓国語'});
+      final n = mergeAiDraft(has, {'補助言語': '—'}, multiFields: multi);
+      expect(n, 0);
+      expect(has.get('補助言語'), '韓国語');
+    });
+
+    test('併合は _status を触らない（昇格判断は呼び出し側）', () {
+      final s = sign({'SignID': 'a', '_status': 'human-reviewed'});
+      mergeAiDraft(s, {'可読性': '完全可读'}, multiFields: multi);
+      expect(s.status, 'human-reviewed');
+    });
+  });
 }

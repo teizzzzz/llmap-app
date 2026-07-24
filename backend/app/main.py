@@ -1,4 +1,4 @@
-"""
+﻿"""
 LLMap backend (FastAPI) — Research Console 用ローカル DB サービス。
 - Dataset Package 導入・検索/筛选・編集・写真配信・地図・統計・CSV導出（SQLite）。
 - 旧 Phase 0 の採集補助エンドポイント（/extract・/ai・/export・/export_bundle）は
@@ -29,7 +29,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="LLMap backend", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="LLMap backend", version="0.5.0", lifespan=lifespan)
 
 app.include_router(import_dataset.router)
 app.include_router(records_api.router)
@@ -49,7 +49,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "llmap-backend", "version": "0.4.0"}
+    return {"ok": True, "service": "llmap-backend", "version": "0.5.0"}
 
 
 @app.get("/ai/status")

@@ -369,5 +369,6 @@
   "statusPending": "Pending",
   "statusAi": "AI draft",
   "statusHumanReviewed": "Reviewed",
-  "statusFinal": "Final"
+  "statusFinal": "Final",
+  "fieldPlacement": "Placement"
 }

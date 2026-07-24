@@ -202,5 +202,6 @@
   "statusPending": "待处理",
   "statusAi": "AI草稿",
   "statusHumanReviewed": "已确认",
-  "statusFinal": "最终确定"
+  "statusFinal": "最终确定",
+  "fieldPlacement": "放置位置"
 }

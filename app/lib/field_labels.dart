@@ -15,6 +15,7 @@ String fieldLabel(AppLocalizations t, String field) => switch (field) {
       '文字体系' => t.fieldScript,
       '多言語関係' => t.multilingual,
       '担体類型' => t.carrier,
+      '放置位置' => t.fieldPlacement,
       '空間階層' => t.fieldSpatial,
       '時間性' => t.fieldTemporality,
       '可読性' => t.fieldLegibility,

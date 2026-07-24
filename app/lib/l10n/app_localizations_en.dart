@@ -688,4 +688,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusFinal => 'Final';
+
+  @override
+  String get fieldPlacement => 'Placement';
 }

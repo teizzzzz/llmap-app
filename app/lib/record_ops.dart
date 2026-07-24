@@ -39,6 +39,79 @@ Set<String> orphanedPhotos({
   return deleted.difference(kept);
 }
 
+// ── AI 下書きの併合（字段定義表 v6 の 2 大規則） ─────────────────────
+//
+// 規則1: 既存内容は絶対に削除・上書きしない。
+//   - 備考: 既存があれば「既存 新規」の形で**後ろに追記**する
+//     （定義表 r18「本数据库之前已经有的内容，不要覆盖！」）。
+//   - 複数選択字段（主要言語等）: 既存値との**和集合**（新値のみ後ろへ追加）。
+//   - 単一選択字段: 既存が非空なら AI 値は書かない（人の入力を守る）。
+// 規則2: 不確実は空欄のまま。AI が "" / null を返した字段は一切書かない。
+
+/// AI が返した 1 値を記録へ併合してよい形に整える。null/空白/'—以外の無意味値' を弾く。
+String? _cleanAiValue(dynamic v) {
+  if (v == null) return null;
+  final s = v.toString().trim();
+  if (s.isEmpty) return null;
+  return s;
+}
+
+/// AI 下書き [draft] を記録 [s] へ併合する。実際に書き込んだ字段数を返す。
+/// [multiFields] は「/」併記の複数選択字段（AppSchema.multiFields を渡す）。
+/// 既存データは消えない・変わらない（備考は追記、multi は和集合、他は空欄のみ埋める）。
+int mergeAiDraft(
+  Sign s,
+  Map<String, dynamic> draft, {
+  required Set<String> multiFields,
+}) {
+  var changed = 0;
+  draft.forEach((field, raw) {
+    final value = _cleanAiValue(raw);
+    if (value == null) return; // 規則2: 不確実（空）は書かない
+
+    final existing = s.get(field).trim();
+
+    if (field == '備考') {
+      // 規則1: 追記のみ。同文が既に含まれていれば重複追記しない。
+      if (value == '—') return; // 「無し」相当は備考に書かない
+      if (existing.isEmpty) {
+        s.set(field, value);
+        changed++;
+      } else if (!existing.contains(value)) {
+        s.set(field, '$existing $value');
+        changed++;
+      }
+      return;
+    }
+
+    if (multiFields.contains(field)) {
+      // 和集合: 既存の選択値を保ち、新値だけ後ろへ追加（'—' は「無し」マーカー）。
+      final current = splitMulti(existing);
+      final incoming = splitMulti(value);
+      if (current.isEmpty) {
+        if (existing.isEmpty) {
+          s.set(field, value);
+          changed++;
+        }
+        return;
+      }
+      final added = incoming.where((v) => !current.contains(v)).toList();
+      if (added.isNotEmpty) {
+        s.set(field, [...current, ...added].join('/'));
+        changed++;
+      }
+      return;
+    }
+
+    // 単一選択・自由記述: 空欄のみ埋める（既存の人力/過去値は上書きしない）。
+    if (existing.isEmpty) {
+      s.set(field, value);
+      changed++;
+    }
+  });
+  return changed;
+}
+
 // ── 排序 ─────────────────────────────────────────────────────────────
 
 enum GallerySort { newestFirst, oldestFirst, displayIdAsc, displayIdDesc }

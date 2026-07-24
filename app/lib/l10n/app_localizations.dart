@@ -1317,6 +1317,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Final'**
   String get statusFinal;
+
+  /// No description provided for @fieldPlacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Placement'**
+  String get fieldPlacement;
 }
 
 class _AppLocalizationsDelegate

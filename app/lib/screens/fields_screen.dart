@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../ai.dart' as ai;
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
 import '../settings.dart';
 import '../store.dart';
 import '../theme/tokens.dart';
@@ -82,10 +83,18 @@ class _FieldsScreenState extends State<FieldsScreen> {
       );
       if (!mounted) return;
       setState(() {
-        fields.forEach((k, v) {
-          if (v != null && v.toString().isNotEmpty) sign.set(k, v.toString());
-        });
-        sign.setStatus('ai');
+        // v6 規則で併合: 既存内容は消さない（備考は追記・multi は和集合・
+        // 単一字段は空欄のみ）。空の AI 値は書かない。
+        final changed = mergeAiDraft(
+          sign,
+          fields,
+          multiFields: widget.schema.multiFields,
+        );
+        // 状態は「未処理→AI下書」への昇格のみ。人が確認済みの記録
+        // （human-reviewed/final）を AI 再実行で降格させない。
+        if (changed > 0 && sign.status == 'pending') {
+          sign.setStatus('ai');
+        }
       });
     } catch (e) {
       if (mounted) {

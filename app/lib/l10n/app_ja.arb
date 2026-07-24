@@ -202,5 +202,6 @@
   "statusPending": "未処理",
   "statusAi": "AI下書き",
   "statusHumanReviewed": "確認済み",
-  "statusFinal": "確定"
+  "statusFinal": "確定",
+  "fieldPlacement": "放置位置"
 }
