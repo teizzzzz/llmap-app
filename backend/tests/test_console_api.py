@@ -753,7 +753,8 @@ def test_ai_batch_job_merges_and_promotes(monkeypatch):
         "名称": "混入テスト",        # AI 対象外 → 落とされる
     }
     monkeypatch.setattr(
-        ai_engine, "judge_photo", lambda provider, path, fields, key: dict(draft))
+        ai_engine, "judge_photo",
+        lambda provider, path, fields, key, model="": dict(draft))
     client.put("/config", json={"claudeApiKey": "sk-test-dummy"})
     try:
         target_q = f"{CAPTURE}-b"  # pending / 主要言語=日本語 / 写真あり
@@ -802,7 +803,7 @@ def test_ai_batch_aborts_after_consecutive_failures(monkeypatch):
     """キー無効等の連続失敗は 3 件で中止（全件を空振りしない）。"""
     from app import ai_engine
 
-    def boom(provider, path, fields, key):
+    def boom(provider, path, fields, key, model=""):
         raise RuntimeError("Claude API 401: invalid x-api-key")
 
     monkeypatch.setattr(ai_engine, "judge_photo", boom)
@@ -824,3 +825,49 @@ def test_ai_job_requires_key_and_validates_provider():
             "/ai/jobs", json={"provider": "gpt"}).status_code == 400
     finally:
         client.put("/config", json={"claudeApiKey": None})
+
+
+def test_ai_model_selection(monkeypatch):
+    """モデル選択: 設定往復・不正値 400・ジョブが選択モデルで走る。"""
+    from app import ai_engine
+
+    # 既定: 選択肢の先頭（Haiku / Flash）
+    cfg = client.get("/config").json()
+    assert cfg["claudeModel"] == ai_engine.CLAUDE_MODELS[0]
+    assert cfg["geminiModel"] == ai_engine.GEMINI_MODELS[0]
+    s = client.get("/ai/status").json()
+    assert s["models"]["claude"] == ai_engine.CLAUDE_MODELS[0]
+    assert s["modelOptions"]["claude"] == list(ai_engine.CLAUDE_MODELS)
+
+    seen = {}
+
+    def fake(provider, path, fields, key, model=""):
+        seen["model"] = model
+        return {"文字性": ""}  # 何も書かない下書き
+
+    monkeypatch.setattr(ai_engine, "judge_photo", fake)
+    try:
+        # モデルを Sonnet 5 に切替
+        r = client.put("/config", json={
+            "claudeApiKey": "sk-test-dummy", "claudeModel": "claude-sonnet-5"})
+        assert r.status_code == 200, r.text
+        assert r.json()["claudeModel"] == "claude-sonnet-5"
+        assert client.get("/ai/status").json()["models"]["claude"] == "claude-sonnet-5"
+
+        # 不正モデルは 400・設定は不変
+        assert client.put(
+            "/config", json={"claudeModel": "gpt-5"}).status_code == 400
+        assert client.get("/config").json()["claudeModel"] == "claude-sonnet-5"
+
+        # ジョブは選択モデルで実行され、状態にも載る
+        job = _wait_ai_job(client.post(
+            "/ai/jobs", json={"q": f"{CAPTURE}-b"}).json()["jobId"])
+        assert job["status"] == "done", job
+        assert job["model"] == "claude-sonnet-5"
+        assert seen["model"] == "claude-sonnet-5"
+
+        # null で既定へ戻る
+        assert client.put("/config", json={"claudeModel": None}) \
+            .json()["claudeModel"] == ai_engine.CLAUDE_MODELS[0]
+    finally:
+        client.put("/config", json={"claudeApiKey": None, "claudeModel": None})

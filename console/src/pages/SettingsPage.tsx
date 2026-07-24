@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  API_BASE_URL, ApiError, getConfig, getStorageSummary, storageCleanup,
-  updateConfig,
+  API_BASE_URL, ApiError, getAiStatus, getConfig, getStorageSummary,
+  storageCleanup, updateConfig,
 } from '../api/client';
-import type { AppConfig, StorageSummary } from '../api/types';
+import type { AiStatus, AppConfig, StorageSummary } from '../api/types';
 import { SUPPORTED_LANGUAGES, setLanguage } from '../i18n';
 
 /** バイト数の人間向け表示（GB/MB/KB）。 */
@@ -53,16 +53,28 @@ export default function SettingsPage() {
     }
   };
 
-  // バッチ AI（プロバイダ・API キー）。キーは書き込みのみ — GET はヒントだけ返す。
+  // バッチ AI（プロバイダ・モデル・API キー）。キーは書き込みのみ — GET はヒントだけ返す。
   const [providerInput, setProviderInput] = useState('claude');
+  const [claudeModelInput, setClaudeModelInput] = useState('');
+  const [geminiModelInput, setGeminiModelInput] = useState('');
   const [claudeKeyInput, setClaudeKeyInput] = useState('');
   const [geminiKeyInput, setGeminiKeyInput] = useState('');
   const [savingAi, setSavingAi] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  // モデル選択肢は backend が唯一の正（/ai/status の modelOptions）。
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
 
   useEffect(() => {
-    if (config) setProviderInput(config.aiProvider ?? 'claude');
+    getAiStatus().then(setAiStatus).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (config) {
+      setProviderInput(config.aiProvider ?? 'claude');
+      setClaudeModelInput(config.claudeModel ?? '');
+      setGeminiModelInput(config.geminiModel ?? '');
+    }
   }, [config]);
 
   const applyAi = async (payload: Parameters<typeof updateConfig>[0]) => {
@@ -86,10 +98,18 @@ export default function SettingsPage() {
     const payload: Parameters<typeof updateConfig>[0] = {
       aiProvider: providerInput,
     };
+    if (claudeModelInput) payload.claudeModel = claudeModelInput;
+    if (geminiModelInput) payload.geminiModel = geminiModelInput;
     // 空欄のキー入力は「変更しない」（消したい時は専用の削除ボタン）。
     if (claudeKeyInput.trim()) payload.claudeApiKey = claudeKeyInput.trim();
     if (geminiKeyInput.trim()) payload.geminiApiKey = geminiKeyInput.trim();
     applyAi(payload);
+  };
+
+  /** モデルの表示ラベル: ID + 訳語ヒント（未知 ID は素通し）。 */
+  const modelLabel = (id: string) => {
+    const hint = t(`settings.modelHint.${id}`, { defaultValue: '' });
+    return hint ? `${id} — ${hint}` : id;
   };
 
   const loadStorage = useCallback(() => {
@@ -262,6 +282,23 @@ export default function SettingsPage() {
                 <option value="gemini">Gemini</option>
               </select>
             </label>
+            {([
+              ['claude', t('settings.aiClaudeModel'), claudeModelInput, setClaudeModelInput],
+              ['gemini', t('settings.aiGeminiModel'), geminiModelInput, setGeminiModelInput],
+            ] as const).map(([k, label, value, setValue]) => {
+              const options = aiStatus?.modelOptions?.[k]
+                ?? (value ? [value] : []);
+              return (
+                <label className="filter-field" key={`model-${k}`}>
+                  <span>{label}</span>
+                  <select value={value} onChange={(e) => setValue(e.target.value)}>
+                    {options.map((m) => (
+                      <option key={m} value={m}>{modelLabel(m)}</option>
+                    ))}
+                  </select>
+                </label>
+              );
+            })}
             {([
               ['claude', t('settings.aiClaudeKey'), claudeKeyInput, setClaudeKeyInput,
                 config.claudeApiKeySet, config.claudeApiKeyHint,

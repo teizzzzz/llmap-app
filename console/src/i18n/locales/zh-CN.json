@@ -340,7 +340,16 @@
     "aiKeyUnset": "未设置",
     "aiKeyClear": "删除",
     "aiKeyNote": "留空保存时不会更改密钥。",
-    "aiSaved": "已保存。"
+    "aiSaved": "已保存。",
+    "aiClaudeModel": "Claude 模型",
+    "aiGeminiModel": "Gemini 模型",
+    "modelHint": {
+      "claude-haiku-4-5-20251001": "Haiku 4.5 · 最快最便宜（默认）",
+      "claude-sonnet-5": "Sonnet 5 · 质量/价格平衡（推荐）",
+      "claude-opus-4-8": "Opus 4.8 · 最高质量（较贵）",
+      "gemini-2.5-flash": "Flash · 快速低价（默认）",
+      "gemini-2.5-pro": "Pro · 高质量"
+    }
   },
   "storage": {
     "title": "存储",

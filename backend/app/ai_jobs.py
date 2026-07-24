@@ -37,6 +37,7 @@ router = APIRouter(tags=["ai"])
 
 PROVIDERS = ("claude", "gemini")
 _KEY_OF = {"claude": "claudeApiKey", "gemini": "geminiApiKey"}
+_MODEL_KEY_OF = {"claude": "claudeModel", "gemini": "geminiModel"}
 # キー無効等で全件を空振りしないための中止閾値（連続失敗数）。
 _ABORT_AFTER = 3
 
@@ -51,9 +52,17 @@ def _provider_state() -> tuple[str, list[str], dict]:
     return provider, configured, settings
 
 
+def _model_of(provider: str, settings: dict) -> str:
+    """設定されたモデル（未設定・不正値は既定へ）。"""
+    options = ai_engine.CLAUDE_MODELS if provider == "claude" \
+        else ai_engine.GEMINI_MODELS
+    configured = settings.get(_MODEL_KEY_OF.get(provider, ""), "")
+    return configured if configured in options else options[0]
+
+
 @router.get("/ai/status")
 def ai_status():
-    provider, configured, _ = _provider_state()
+    provider, configured, settings = _provider_state()
     enabled = provider in configured
     if enabled:
         message = ""
@@ -66,8 +75,11 @@ def ai_status():
         "provider": provider,
         "providers": configured,
         "message": message,
-        "models": {"claude": ai_engine.CLAUDE_MODEL,
-                   "gemini": ai_engine.GEMINI_MODEL},
+        # 選択中のモデルと選択肢（Console の設定 UI・実行確認ダイアログ用）
+        "models": {"claude": _model_of("claude", settings),
+                   "gemini": _model_of("gemini", settings)},
+        "modelOptions": {"claude": list(ai_engine.CLAUDE_MODELS),
+                         "gemini": list(ai_engine.GEMINI_MODELS)},
     }
 
 
@@ -101,6 +113,7 @@ def ai_preview(payload: dict = Body(default={})):
 class AiJob:
     id: str
     provider: str
+    model: str = ""
     status: str = "running"  # running | done | error | cancelled
     done: int = 0
     total: int = 0
@@ -162,7 +175,7 @@ def _run_batch(job: AiJob, filters: dict, api_key: str) -> None:
 
             try:
                 draft = ai_engine.judge_photo(
-                    job.provider, path, AI_FIELDS, api_key)
+                    job.provider, path, AI_FIELDS, api_key, job.model)
                 consecutive_errors = 0
             except Exception as e:
                 consecutive_errors += 1
@@ -192,6 +205,7 @@ def _run_batch(job: AiJob, filters: dict, api_key: str) -> None:
         "skippedNoPhoto": skipped_no_photo,
         "errorCount": len(job.errors),
         "provider": job.provider,
+        "model": job.model,
     }
 
 
@@ -208,7 +222,8 @@ def start_ai_job(payload: dict = Body(default={})):
             400, f"{provider} の API キーが未設定です（設定 → AI で入力）。")
 
     filters = _filters_kwargs(payload)
-    job = AiJob(id=uuid.uuid4().hex[:12], provider=provider)
+    job = AiJob(id=uuid.uuid4().hex[:12], provider=provider,
+                model=_model_of(provider, settings))
     with _JOBS_LOCK:
         _JOBS[job.id] = job
 
@@ -241,6 +256,7 @@ def ai_job_status(job_id: str):
         "id": job.id,
         "kind": "ai",
         "provider": job.provider,
+        "model": job.model,
         "status": job.status,
         "done": job.done,
         "total": job.total,

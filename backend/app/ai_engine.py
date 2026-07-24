@@ -131,11 +131,21 @@ def image_to_base64(photo_bytes: bytes) -> str:
         return base64.b64encode(photo_bytes).decode("ascii")
 
 
-# ── プロバイダ呼び出し（モデル・端点はアプリ ai.dart と同一） ────────
-
-CLAUDE_MODEL = "claude-haiku-4-5-20251001"
-GEMINI_MODEL = "gemini-2.5-flash"
-_TIMEOUT = 60.0  # 秒。超過は例外 → ジョブのレコード単位エラーに載る
+# ── プロバイダ呼び出し（既定モデル・端点はアプリ ai.dart と同一） ────
+# 選択肢は設定（settings.json の claudeModel/geminiModel）で切替可能。
+# 既定は Haiku 4.5（モバイルと同一・最安）。Sonnet 5 は品質/価格の推奨。
+CLAUDE_MODELS = (
+    "claude-haiku-4-5-20251001",  # $1/$5 per MTok — 最安・高速（既定）
+    "claude-sonnet-5",            # $3/$15 — ほぼ Opus 品質・高解像度視覚（推奨）
+    "claude-opus-4-8",            # $5/$25 — 最高品質
+)
+GEMINI_MODELS = (
+    "gemini-2.5-flash",           # 既定（モバイルと同一）
+    "gemini-2.5-pro",
+)
+CLAUDE_MODEL = CLAUDE_MODELS[0]
+GEMINI_MODEL = GEMINI_MODELS[0]
+_TIMEOUT = 120.0  # 秒。上位モデルは1枚あたりが遅くなり得る。超過は例外 → レコード単位エラー
 
 
 def strip_json(text: str) -> dict:
@@ -150,7 +160,26 @@ def strip_json(text: str) -> dict:
         return {}
 
 
-def _judge_claude(b64: str, fields: list[str], key: str) -> dict:
+def _judge_claude(b64: str, fields: list[str], key: str, model: str) -> dict:
+    body = {
+        "model": model,
+        "max_tokens": 1500,  # v6 は 13 字段＋備考の自由記述 — 1000 だと切れ得る
+        "system": _SYSTEM_PROMPT,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": "image/jpeg",
+                            "data": b64}},
+                {"type": "text", "text": build_prompt(fields)},
+            ],
+        }],
+    }
+    # Sonnet 5 は thinking 省略時に adaptive が既定で走り、思考トークンが
+    # max_tokens を食って JSON が切れ得る — 分類バッチでは明示的に無効化する
+    # （Haiku は省略=無効、Opus 4.8 も省略=無効なので指定不要）。
+    if "sonnet-5" in model:
+        body["thinking"] = {"type": "disabled"}
     r = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={
@@ -158,20 +187,7 @@ def _judge_claude(b64: str, fields: list[str], key: str) -> dict:
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         },
-        json={
-            "model": CLAUDE_MODEL,
-            "max_tokens": 1500,  # v6 は 13 字段＋備考の自由記述 — 1000 だと切れ得る
-            "system": _SYSTEM_PROMPT,
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {"type": "image",
-                     "source": {"type": "base64", "media_type": "image/jpeg",
-                                "data": b64}},
-                    {"type": "text", "text": build_prompt(fields)},
-                ],
-            }],
-        },
+        json=body,
         timeout=_TIMEOUT,
     )
     if r.status_code != 200:
@@ -182,10 +198,10 @@ def _judge_claude(b64: str, fields: list[str], key: str) -> dict:
     return strip_json(str(text))
 
 
-def _judge_gemini(b64: str, fields: list[str], key: str) -> dict:
+def _judge_gemini(b64: str, fields: list[str], key: str, model: str) -> dict:
     r = httpx.post(
         "https://generativelanguage.googleapis.com/v1beta/"
-        f"models/{GEMINI_MODEL}:generateContent",
+        f"models/{model}:generateContent",
         headers={
             "content-type": "application/json",
             # key は URL クエリでなくヘッダで送る（プロキシ/アクセスログに残さない）。
@@ -211,13 +227,13 @@ def _judge_gemini(b64: str, fields: list[str], key: str) -> dict:
 
 
 def judge_photo(provider: str, photo_path: Path, fields: list[str],
-                api_key: str) -> dict:
+                api_key: str, model: str = "") -> dict:
     """写真 1 枚を判定して下書き dict を返す（ai_jobs から呼ばれる。
     テストはこの関数を monkeypatch して実 API 呼び出しを避ける）。"""
     b64 = image_to_base64(photo_path.read_bytes())
     if provider == "gemini":
-        return _judge_gemini(b64, fields, api_key)
-    return _judge_claude(b64, fields, api_key)
+        return _judge_gemini(b64, fields, api_key, model or GEMINI_MODEL)
+    return _judge_claude(b64, fields, api_key, model or CLAUDE_MODEL)
 
 
 # ── AI 下書きの併合（record_ops.dart mergeAiDraft の移植） ───────────

@@ -104,8 +104,10 @@ export interface AiStatus {
   /** API キー設定済みのプロバイダ一覧 */
   providers: string[];
   message: string;
-  /** プロバイダごとの使用モデル名（表示用） */
+  /** プロバイダごとの選択中モデル */
   models: Record<string, string>;
+  /** プロバイダごとの選択可能モデル一覧（設定 UI 用） */
+  modelOptions: Record<string, string[]>;
 }
 
 /** POST /ai/preview — バッチ対象の事前集計（AI 呼び出しなし） */
@@ -122,6 +124,7 @@ export interface AiJobStatus {
   id: string;
   kind: 'ai';
   provider: string;
+  model: string;
   status: 'running' | 'done' | 'error' | 'cancelled';
   done: number;
   total: number;
@@ -252,6 +255,9 @@ export interface AppConfig {
   claudeApiKeyHint: string;
   geminiApiKeySet: boolean;
   geminiApiKeyHint: string;
+  /** 選択中のモデル（未設定は既定値で返る） */
+  claudeModel: string;
+  geminiModel: string;
 }
 
 /** PUT /config の入力（部分更新。null でそのキーを既定に戻す/消す） */
@@ -260,4 +266,6 @@ export interface AppConfigUpdate {
   aiProvider?: string | null;
   claudeApiKey?: string | null;
   geminiApiKey?: string | null;
+  claudeModel?: string | null;
+  geminiModel?: string | null;
 }

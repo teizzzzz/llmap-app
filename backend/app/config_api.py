@@ -26,6 +26,11 @@ _AI_PROVIDERS = ("claude", "gemini")
 _AI_KEY_FIELDS = ("claudeApiKey", "geminiApiKey")
 
 
+def _ai_model_options() -> dict[str, tuple[str, ...]]:
+    from .ai_engine import CLAUDE_MODELS, GEMINI_MODELS
+    return {"claudeModel": CLAUDE_MODELS, "geminiModel": GEMINI_MODELS}
+
+
 def _key_hint(v: str) -> str:
     """キーの識別用ヒント（末尾4桁のみ）。CORS が全開のため GET で完全な
     キーを返さない — どの網站からでも fetch で読めてしまう。書き込みは PUT のみ。"""
@@ -45,6 +50,10 @@ def _config_payload() -> dict:
         v = (settings.get(f) or "").strip()
         payload[f + "Set"] = bool(v)
         payload[f + "Hint"] = _key_hint(v)
+    # モデル: 未設定は既定（選択肢の先頭）を返す。不正保存値も既定へ丸める。
+    for f, options in _ai_model_options().items():
+        v = settings.get(f) or ""
+        payload[f] = v if v in options else options[0]
     return payload
 
 
@@ -103,7 +112,20 @@ def put_config(payload: dict = Body(...)):
         else:
             raise HTTPException(400, f"{f} は文字列か null で指定してください")
 
-    known = {"exportDir", "aiProvider", *_AI_KEY_FIELDS}
+    model_options = _ai_model_options()
+    for f, options in model_options.items():
+        if f not in payload:
+            continue
+        raw = payload[f]
+        if raw in (None, ""):
+            settings.pop(f, None)  # 既定モデルへ戻す
+        elif raw in options:
+            settings[f] = raw
+        else:
+            raise HTTPException(
+                400, f"不正な {f} です（許容値: {list(options)}）: {raw}")
+
+    known = {"exportDir", "aiProvider", *_AI_KEY_FIELDS, *model_options}
     unknown = [k for k in payload if k not in known]
     if unknown:
         raise HTTPException(400, f"未知の設定キーです: {unknown}")

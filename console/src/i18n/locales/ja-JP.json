@@ -340,7 +340,16 @@
     "aiKeyUnset": "未設定",
     "aiKeyClear": "削除",
     "aiKeyNote": "空欄のまま保存するとキーは変更されません。",
-    "aiSaved": "保存しました。"
+    "aiSaved": "保存しました。",
+    "aiClaudeModel": "Claude モデル",
+    "aiGeminiModel": "Gemini モデル",
+    "modelHint": {
+      "claude-haiku-4-5-20251001": "Haiku 4.5 · 最速・最安（既定）",
+      "claude-sonnet-5": "Sonnet 5 · 品質/価格のバランス（推奨）",
+      "claude-opus-4-8": "Opus 4.8 · 最高品質（高価）",
+      "gemini-2.5-flash": "Flash · 高速・低価格（既定）",
+      "gemini-2.5-pro": "Pro · 高品質"
+    }
   },
   "storage": {
     "title": "ストレージ",
