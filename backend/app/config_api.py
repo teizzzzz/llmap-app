@@ -22,13 +22,30 @@ from .database import (
 router = APIRouter(tags=["config"])
 
 
+_AI_PROVIDERS = ("claude", "gemini")
+_AI_KEY_FIELDS = ("claudeApiKey", "geminiApiKey")
+
+
+def _key_hint(v: str) -> str:
+    """キーの識別用ヒント（末尾4桁のみ）。CORS が全開のため GET で完全な
+    キーを返さない — どの網站からでも fetch で読めてしまう。書き込みは PUT のみ。"""
+    v = v.strip()
+    return f"…{v[-4:]}" if len(v) >= 8 else ("設定済み" if v else "")
+
+
 def _config_payload() -> dict:
     settings = load_settings()
-    return {
+    payload = {
         "exportDir": settings.get("exportDir") or None,
         "effectiveExportDir": str(exports_dir()),
         "defaultExportDir": str(default_exports_dir()),
+        "aiProvider": settings.get("aiProvider") or None,
     }
+    for f in _AI_KEY_FIELDS:
+        v = (settings.get(f) or "").strip()
+        payload[f + "Set"] = bool(v)
+        payload[f + "Hint"] = _key_hint(v)
+    return payload
 
 
 @router.get("/config")
@@ -65,7 +82,29 @@ def put_config(payload: dict = Body(...)):
                 raise HTTPException(400, "exportDir は文字列か null で指定してください")
             settings["exportDir"] = str(_validate_export_dir(raw))
 
-    unknown = [k for k in payload if k != "exportDir"]
+    if "aiProvider" in payload:
+        raw = payload["aiProvider"]
+        if raw in (None, ""):
+            settings.pop("aiProvider", None)
+        elif raw in _AI_PROVIDERS:
+            settings["aiProvider"] = raw
+        else:
+            raise HTTPException(
+                400, f"不正な aiProvider です（{'/'.join(_AI_PROVIDERS)}）: {raw}")
+
+    for f in _AI_KEY_FIELDS:
+        if f not in payload:
+            continue
+        raw = payload[f]
+        if raw in (None, ""):
+            settings.pop(f, None)  # 明示的にキーを消す
+        elif isinstance(raw, str):
+            settings[f] = raw.strip()
+        else:
+            raise HTTPException(400, f"{f} は文字列か null で指定してください")
+
+    known = {"exportDir", "aiProvider", *_AI_KEY_FIELDS}
+    unknown = [k for k in payload if k not in known]
     if unknown:
         raise HTTPException(400, f"未知の設定キーです: {unknown}")
 

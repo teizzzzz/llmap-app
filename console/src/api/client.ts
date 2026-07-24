@@ -1,8 +1,11 @@
 // LLMap backend API client。
 // base URL は .env の VITE_API_BASE_URL（既定 http://localhost:8000）。
 import type {
+  AiJobStatus,
+  AiPreview,
   AiStatus,
   AppConfig,
+  AppConfigUpdate,
   Dataset,
   ExportJobStatus,
   ImportDatasetResult,
@@ -194,10 +197,29 @@ export const getHealth = () =>
 
 export const getAiStatus = () => request<AiStatus>('/ai/status');
 
-/** アプリ設定（導出目录など）。 */
+/** バッチ AI: 対象の事前集計（AI 呼び出し・書き込みなし）。 */
+export const aiPreview = (filters: RecordsQuery = {}) =>
+  request<AiPreview>('/ai/preview', {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
+
+export const startAiJob = (filters: RecordsQuery = {}, provider?: string) =>
+  request<{ jobId: string }>('/ai/jobs', {
+    method: 'POST',
+    body: JSON.stringify(provider ? { ...filters, provider } : filters),
+  });
+
+export const getAiJob = (id: string) =>
+  request<AiJobStatus>(`/ai/jobs/${id}`);
+
+export const cancelAiJob = (id: string) =>
+  request<{ ok: boolean }>(`/ai/jobs/${id}/cancel`, { method: 'POST' });
+
+/** アプリ設定（導出目录・AI プロバイダ/キーなど）。 */
 export const getConfig = () => request<AppConfig>('/config');
 
-export const updateConfig = (payload: { exportDir: string | null }) =>
+export const updateConfig = (payload: AppConfigUpdate) =>
   request<AppConfig>('/config', {
     method: 'PUT',
     body: JSON.stringify(payload),

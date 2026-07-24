@@ -53,6 +53,45 @@ export default function SettingsPage() {
     }
   };
 
+  // バッチ AI（プロバイダ・API キー）。キーは書き込みのみ — GET はヒントだけ返す。
+  const [providerInput, setProviderInput] = useState('claude');
+  const [claudeKeyInput, setClaudeKeyInput] = useState('');
+  const [geminiKeyInput, setGeminiKeyInput] = useState('');
+  const [savingAi, setSavingAi] = useState(false);
+  const [aiMsg, setAiMsg] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (config) setProviderInput(config.aiProvider ?? 'claude');
+  }, [config]);
+
+  const applyAi = async (payload: Parameters<typeof updateConfig>[0]) => {
+    setSavingAi(true);
+    setAiMsg(null);
+    setAiError(null);
+    try {
+      const c = await updateConfig(payload);
+      setConfig(c);
+      setClaudeKeyInput('');
+      setGeminiKeyInput('');
+      setAiMsg(t('settings.aiSaved'));
+    } catch (e: unknown) {
+      setAiError(e instanceof ApiError ? e.message : String(e));
+    } finally {
+      setSavingAi(false);
+    }
+  };
+
+  const saveAi = () => {
+    const payload: Parameters<typeof updateConfig>[0] = {
+      aiProvider: providerInput,
+    };
+    // 空欄のキー入力は「変更しない」（消したい時は専用の削除ボタン）。
+    if (claudeKeyInput.trim()) payload.claudeApiKey = claudeKeyInput.trim();
+    if (geminiKeyInput.trim()) payload.geminiApiKey = geminiKeyInput.trim();
+    applyAi(payload);
+  };
+
   const loadStorage = useCallback(() => {
     setStorageError(null);
     getStorageSummary()
@@ -200,6 +239,71 @@ export default function SettingsPage() {
           {dirError && (
             <div className="error-box" style={{ marginTop: 10 }}>
               <div className="hint">{dirError}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* バッチ AI: プロバイダと API キー。キーは settings.json（ローカル）に保存。 */}
+      {config && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ marginTop: 0 }}>{t('settings.aiTitle')}</h3>
+          <p className="muted" style={{ margin: '0 0 10px' }}>
+            {t('settings.aiDesc')}
+          </p>
+          <div style={{ display: 'grid', gap: 10, maxWidth: 640 }}>
+            <label className="filter-field">
+              <span>{t('settings.aiProvider')}</span>
+              <select
+                value={providerInput}
+                onChange={(e) => setProviderInput(e.target.value)}
+              >
+                <option value="claude">Claude</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </label>
+            {([
+              ['claude', t('settings.aiClaudeKey'), claudeKeyInput, setClaudeKeyInput,
+                config.claudeApiKeySet, config.claudeApiKeyHint,
+                { claudeApiKey: null }],
+              ['gemini', t('settings.aiGeminiKey'), geminiKeyInput, setGeminiKeyInput,
+                config.geminiApiKeySet, config.geminiApiKeyHint,
+                { geminiApiKey: null }],
+            ] as const).map(([k, label, value, setValue, isSet, hint, clearPayload]) => (
+              <div key={k} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span style={{ minWidth: 110 }}>{label}</span>
+                <input
+                  type="password"
+                  value={value}
+                  placeholder={isSet
+                    ? t('settings.aiKeySet', { hint })
+                    : t('settings.aiKeyUnset')}
+                  onChange={(e) => setValue(e.target.value)}
+                  style={{ flex: 1 }}
+                  autoComplete="off"
+                />
+                <button
+                  className="btn"
+                  disabled={savingAi || !isSet}
+                  onClick={() => applyAi(clearPayload)}
+                >
+                  {t('settings.aiKeyClear')}
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
+            <button className="btn primary" disabled={savingAi} onClick={saveAi}>
+              {t('settings.exportDirSave')}
+            </button>
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              {t('settings.aiKeyNote')}
+            </span>
+          </div>
+          {aiMsg && <div className="ok-box" style={{ marginTop: 10 }}>{aiMsg}</div>}
+          {aiError && (
+            <div className="error-box" style={{ marginTop: 10 }}>
+              <div className="hint">{aiError}</div>
             </div>
           )}
         </div>

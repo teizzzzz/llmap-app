@@ -3,9 +3,10 @@ uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 pydantic>=2.6
 sqlmodel>=0.0.16
+# バッチ AI（Step 18）: 画像縮小と Claude/Gemini への HTTP 呼び出し。
+# SDK（anthropic / google-genai）は使わない — アプリ ai.dart と同じ raw HTTP で
+# 依存を最小に保つ（PyInstaller 打包サイズにも効く）。
+httpx>=0.27
+pillow>=10.0
 # tests
 pytest>=8.0
-httpx>=0.27
-# 旧 Phase 0 依存（Pillow / piexif / anthropic / google-genai）は
-# /extract・/ai・/export 系エンドポイントの削除（Step 14）に伴い外した。
-# 将来 Console のバッチ AI を実装する時に必要なものだけ戻す。

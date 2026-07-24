@@ -284,51 +284,35 @@
   },
   "ai": {
     "title": "AI処理",
-    "subtitle": "大量データ向けの AI 一括支援。",
-    "note": "AI の提案は下書きです — 人がレビューした項目を上書きすることはなく、研究データになる前に必ず人の確認を通します。",
-    "safetyTitle": "安全ルール",
-    "safety1": "AI backend が設定されるまで、AI タスクは一切実行されません。",
-    "safety2": "API キーはリポジトリにコミットしません（キーは backend の環境変数から読み込みます）。",
-    "safety3": "AI の提案は人が確定した項目とは別に保存します",
-    "safety3Planned": "予定",
-    "safety4": "AI の結果は \"ai_drafted\" としてレビューキューに入り、人がそこで確認します。",
+    "subtitle": "大量データ向けの AI 一括起草。",
+    "note": "AI の提案は下書きです — 既存の内容を上書きすることはなく、人の校閲を通して確定します。",
+    "safetyTitle": "併合規則（v6・自動適用）",
+    "rule1": "既存の内容は絶対に削除・上書きしません — 備考は後ろに追記、複数選択字段は和集合、単一字段は空欄のみ埋めます。",
+    "rule2": "AI が不確実（空値）を返した字段は書き込みません。",
+    "rule3": "状態は pending → ai の昇格のみ。human-reviewed / final を AI 再実行で降格させません。",
+    "rule4": "記録ごとに保存するため、取消・中断しても完了分は残ります（再実行しても二重追記されません）。",
     "batchSelection": "1 · 対象の選択",
-    "taskType": "2 · タスク種別",
+    "taskType": "2 · タスク",
     "previewRun": "3 · プレビュー / 実行",
     "match": "{{n}} 件が該当",
     "loadError": "該当する記録を読み込めませんでした。",
-    "requiresBackend": "AI backend の設定が必要です。",
-    "selectedBatch": "選択中のバッチ: {{n}} 件 · タスク: 未選択",
+    "selectedBatch": "選択中のバッチ: {{n}} 件",
     "checking": "AI backend の状態を確認中…",
-    "notConfigured": "AI backend が設定されていません。",
+    "goSettings": "設定 → AI で API キーを入力してください。",
+    "disabledBadge": "未設定",
     "providers": "プロバイダ",
-    "dryRun": "ドライラン",
+    "dryRun": "対象を確認（AI 呼び出しなし）",
     "runBatch": "一括実行",
-    "tasks": {
-      "lang": {
-        "title": "言語識別",
-        "desc": "各看板写真に写っている言語を検出します。"
-      },
-      "ocr": {
-        "title": "OCR / テキスト抽出",
-        "desc": "裁切写真から可視テキストを抽出します。"
-      },
-      "fields": {
-        "title": "項目の提案",
-        "desc": "写真から研究項目（文字体系・担体・設置主体…）の下書きを作ります。"
-      },
-      "translate": {
-        "title": "翻訳",
-        "desc": "抽出したテキストを言語横断分析のために翻訳します。"
-      },
-      "dup": {
-        "title": "重複検出",
-        "desc": "同じ看板を撮った可能性の高い重複採集を見つけます。"
-      },
-      "privacy": {
-        "title": "プライバシーリスク検出",
-        "desc": "共有前に顔・ナンバープレート・個人情報を検出します。"
-      }
+    "confirmRun": "{{n}} 件の写真を {{model}} で判定します（API 課金対象）。実行しますか？",
+    "progress": "処理中 {{done}}/{{total}}…",
+    "doneSummary": "完了: {{changed}} 件更新（計 {{fields}} 字段）· 変更なし {{unchanged}} 件 · 写真なしスキップ {{skipped}} 件 · エラー {{errors}} 件",
+    "cancelledNote": "キャンセルしました（処理済み {{done}} 件分は保存されています）。",
+    "failed": "バッチ AI が失敗しました。",
+    "errorsTitle": "レコード別エラー（先頭20件）",
+    "previewResult": "写真あり {{withPhoto}} 件（AI 対象）· 写真なし/欠落 {{noPhoto}} 件 —",
+    "task": {
+      "title": "v6 字段起草（13 維度）",
+      "desc": "裁切写真から 文字性・主要/補助/装飾言語・多言語関係・担体類型・放置位置・時間性・可読性・重ね書き・ディスコース類型・製作品質・備考 を下書きします。モバイル版と同一のプロンプト・併合規則です。"
     }
   },
   "settings": {
@@ -346,7 +330,17 @@
     "backendUrl": "Backend URL",
     "current": "現在",
     "backendHelpPrefix": "Web/開発モードで変更するには",
-    "backendHelpSuffix": "を設定して npm run dev を再起動してください。デスクトップ版では起動時に URL が自動注入されます。"
+    "backendHelpSuffix": "を設定して npm run dev を再起動してください。デスクトップ版では起動時に URL が自動注入されます。",
+    "aiTitle": "AI（バッチ処理）",
+    "aiDesc": "AI 処理ページで使うプロバイダと API キー。キーはこの PC の settings.json にのみ保存され、読み出し API では返しません。",
+    "aiProvider": "プロバイダ",
+    "aiClaudeKey": "Claude キー",
+    "aiGeminiKey": "Gemini キー",
+    "aiKeySet": "設定済み（{{hint}}）— 入力すると置き換え",
+    "aiKeyUnset": "未設定",
+    "aiKeyClear": "削除",
+    "aiKeyNote": "空欄のまま保存するとキーは変更されません。",
+    "aiSaved": "保存しました。"
   },
   "storage": {
     "title": "ストレージ",

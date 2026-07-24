@@ -283,52 +283,36 @@
     "geojsonNote": "坐标顺序为 [经度, 纬度]（WGS84）。无 GPS 的记录不进入 Feature，跳过数量记录在文件中。"
   },
   "ai": {
-    "title": "AI处理",
-    "subtitle": "面向大批量数据的 AI 批量辅助。",
-    "note": "AI 建议只是草稿——绝不覆盖人工审核过的字段，且必须经人工审核后才能成为研究数据。",
-    "safetyTitle": "安全规则",
-    "safety1": "在配置 AI backend 之前，不会运行任何 AI 任务。",
-    "safety2": "不向仓库提交任何 API key（key 将从 backend 环境变量读取）。",
-    "safety3": "AI 建议将与人工确认的字段分开存储",
-    "safety3Planned": "计划",
-    "safety4": "AI 结果以 \"ai_drafted\" 状态进入审核队列，由人工在那里确认。",
-    "batchSelection": "1 · 选择批次",
-    "taskType": "2 · 任务类型",
-    "previewRun": "3 · 预览 / 运行",
-    "match": "匹配 {{n}} 条记录",
-    "loadError": "无法加载匹配的记录。",
-    "requiresBackend": "需要先配置 AI backend。",
-    "selectedBatch": "已选批次: {{n}} 条记录 · 任务: 未选择",
-    "checking": "正在检查 AI backend 状态…",
-    "notConfigured": "尚未配置 AI backend。",
-    "providers": "提供方",
-    "dryRun": "试运行",
-    "runBatch": "批量运行",
-    "tasks": {
-      "lang": {
-        "title": "语言识别",
-        "desc": "检测每张招牌照片上出现的语言。"
-      },
-      "ocr": {
-        "title": "OCR / 文本提取",
-        "desc": "从裁剪照片中提取可见文本。"
-      },
-      "fields": {
-        "title": "字段建议",
-        "desc": "根据照片起草研究字段（文字体系、载体、设置主体…）。"
-      },
-      "translate": {
-        "title": "翻译",
-        "desc": "翻译提取出的文本，用于跨语言分析。"
-      },
-      "dup": {
-        "title": "重复检测",
-        "desc": "找出可能拍摄了同一招牌的重复采集。"
-      },
-      "privacy": {
-        "title": "隐私风险检测",
-        "desc": "在共享前标记人脸、车牌或个人信息。"
-      }
+    "title": "AI 处理",
+    "subtitle": "面向大批量数据的 AI 批量起草。",
+    "note": "AI 的结果只是草稿——不会覆盖已有内容，须经人工校阅后确定。",
+    "safetyTitle": "合并规则（v6·自动执行）",
+    "rule1": "绝不删除或覆盖已有内容——备注只在末尾追加，多选字段取并集，单选字段仅填补空白。",
+    "rule2": "AI 不确定（返回空值）的字段一律不写入。",
+    "rule3": "状态只会 pending → ai 升级，不会把 human-reviewed / final 降级。",
+    "rule4": "逐条保存——取消或中断也会保留已完成部分（重复执行不会重复追加）。",
+    "batchSelection": "1 · 选择对象",
+    "taskType": "2 · 任务",
+    "previewRun": "3 · 预览 / 执行",
+    "match": "{{n}} 条符合",
+    "loadError": "无法加载符合的记录。",
+    "selectedBatch": "当前批次: {{n}} 条",
+    "checking": "正在确认 AI backend 状态…",
+    "goSettings": "请到 设置 → AI 输入 API 密钥。",
+    "disabledBadge": "未配置",
+    "providers": "提供商",
+    "dryRun": "确认对象（不调用 AI）",
+    "runBatch": "批量执行",
+    "confirmRun": "将用 {{model}} 判定 {{n}} 张照片（产生 API 费用）。确定执行？",
+    "progress": "处理中 {{done}}/{{total}}…",
+    "doneSummary": "完成: 更新 {{changed}} 条（共 {{fields}} 个字段）· 无变化 {{unchanged}} 条 · 无照片跳过 {{skipped}} 条 · 错误 {{errors}} 条",
+    "cancelledNote": "已取消（已处理的 {{done}} 条结果已保存）。",
+    "failed": "批量 AI 失败。",
+    "errorsTitle": "逐条错误（前20条）",
+    "previewResult": "有照片 {{withPhoto}} 条（AI 对象）· 无照片/缺失 {{noPhoto}} 条 —",
+    "task": {
+      "title": "v6 字段起草（13 维度）",
+      "desc": "从裁切照片起草 文字性、主要/辅助/装饰语言、多语言关系、载体类型、放置位置、时间性、可读性、叠写、话语类型、制作品质、备注。与手机端使用相同的提示词与合并规则。"
     }
   },
   "settings": {
@@ -346,7 +330,17 @@
     "backendUrl": "Backend URL",
     "current": "当前",
     "backendHelpPrefix": "在 Web/开发模式下修改时，请设置",
-    "backendHelpSuffix": "并重启 npm run dev。桌面版会在启动时自动注入 URL。"
+    "backendHelpSuffix": "并重启 npm run dev。桌面版会在启动时自动注入 URL。",
+    "aiTitle": "AI（批量处理）",
+    "aiDesc": "AI 处理页使用的提供商与 API 密钥。密钥只保存在本机 settings.json，读取接口不会返回。",
+    "aiProvider": "提供商",
+    "aiClaudeKey": "Claude 密钥",
+    "aiGeminiKey": "Gemini 密钥",
+    "aiKeySet": "已设置（{{hint}}）——输入新值可替换",
+    "aiKeyUnset": "未设置",
+    "aiKeyClear": "删除",
+    "aiKeyNote": "留空保存时不会更改密钥。",
+    "aiSaved": "已保存。"
   },
   "storage": {
     "title": "存储",

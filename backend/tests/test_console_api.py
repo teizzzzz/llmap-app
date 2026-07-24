@@ -349,11 +349,11 @@ def test_export_csv():
 
 
 def test_ai_status_disabled():
-    # AI バッチは scaffold のみ: 常に disabled・プロバイダ空・実呼び出しなし。
+    # キー未設定の初期状態: disabled・プロバイダ空・案内メッセージ。
     s = client.get("/ai/status").json()
     assert s["enabled"] is False
     assert s["providers"] == []
-    assert "not configured" in s["message"]
+    assert "未設定" in s["message"]
 
 
 def test_broken_package_rejected():
@@ -652,3 +652,175 @@ def test_config_export_dir_roundtrip():
         r = client.put("/config", json={"exportDir": None})
         assert r.json()["exportDir"] is None
         assert r.json()["effectiveExportDir"] == default_dir
+
+
+# ── Step 18: バッチ AI（v6 併合規則・設定・ジョブ） ──
+
+
+def test_merge_ai_draft_rules():
+    """record_ops.dart mergeAiDraft と同一の併合規則（移植の単体検証）。"""
+    from app.ai_engine import merge_ai_draft
+    from app.schema import MULTI_FIELDS
+
+    multi = set(MULTI_FIELDS)
+
+    # 備考: 追記のみ（例: 备注「复数」+ AI「123」→「复数 123」）
+    data = {"備考": "复数"}
+    assert merge_ai_draft(data, {"備考": "123"}, multi) == 1
+    assert data["備考"] == "复数 123"
+    # 同文の重複追記はしない / 「—」は書かない
+    assert merge_ai_draft(data, {"備考": "123"}, multi) == 0
+    assert merge_ai_draft(data, {"備考": "—"}, multi) == 0
+    assert data["備考"] == "复数 123"
+
+    # 複数選択: 和集合（既存を保ち新値のみ後ろへ）
+    data = {"主要言語": "日本語"}
+    assert merge_ai_draft(data, {"主要言語": "日本語/英語"}, multi) == 1
+    assert data["主要言語"] == "日本語/英語"
+    # 既存「—」（明示的な無し）は人の判断 — 上書きしない
+    data = {"補助言語": "—"}
+    assert merge_ai_draft(data, {"補助言語": "英語"}, multi) == 0
+    assert data["補助言語"] == "—"
+
+    # 単一選択: 空欄のみ埋める
+    data = {"時間性": "常设", "可読性": ""}
+    n = merge_ai_draft(data, {"時間性": "一过性", "可読性": "完全可读"}, multi)
+    assert n == 1
+    assert data["時間性"] == "常设"       # 既存は不変
+    assert data["可読性"] == "完全可读"   # 空欄は埋まる
+
+    # 規則2: 空値・null は一切書かない
+    data = {"文字性": ""}
+    assert merge_ai_draft(data, {"文字性": "", "製作品質": None}, multi) == 0
+    assert data["文字性"] == ""
+
+
+def test_ai_config_keys_and_status():
+    """AI キー設定: PUT で保存・GET は完全なキーを返さない（ヒントのみ）。"""
+    try:
+        r = client.put("/config", json={
+            "aiProvider": "claude", "claudeApiKey": "sk-ant-test-12345678"})
+        assert r.status_code == 200, r.text
+        cfg = r.json()
+        assert cfg["aiProvider"] == "claude"
+        assert cfg["claudeApiKeySet"] is True
+        assert cfg["claudeApiKeyHint"] == "…5678"
+        # CORS 全開のため GET 応答に生キーを含めない
+        assert "sk-ant-test-12345678" not in json.dumps(cfg)
+
+        s = client.get("/ai/status").json()
+        assert s["enabled"] is True
+        assert s["provider"] == "claude"
+        assert s["providers"] == ["claude"]
+
+        # 不正プロバイダは 400
+        assert client.put("/config", json={"aiProvider": "gpt"}).status_code == 400
+    finally:
+        r = client.put("/config", json={"aiProvider": None, "claudeApiKey": None})
+        assert r.json()["claudeApiKeySet"] is False
+    assert client.get("/ai/status").json()["enabled"] is False
+
+
+def test_ai_preview_counts():
+    p = client.post("/ai/preview", json={}).json()
+    assert p["total"] >= 3
+    assert p["withPhoto"] >= 2
+    assert p["total"] == p["withPhoto"] + p["withoutPhoto"] + p["missingPhotoFile"]
+    assert isinstance(p["byStatus"], dict) and p["byStatus"]
+
+
+def _wait_ai_job(job_id: str, timeout: float = 15.0) -> dict:
+    import time
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        st = client.get(f"/ai/jobs/{job_id}").json()
+        if st["status"] != "running":
+            return st
+        time.sleep(0.05)
+    raise AssertionError("ai job timed out")
+
+
+def test_ai_batch_job_merges_and_promotes(monkeypatch):
+    """バッチ AI: 下書き併合・pending→ai 昇格・再実行は冪等（二重追記しない）。"""
+    from app import ai_engine
+
+    draft = {
+        "文字性": "文字",
+        "主要言語": "日本語/英語",   # 既存「日本語」との和集合 → 英語のみ追加
+        "時間性": "常设",
+        "備考": "【判断】テスト観察",
+        "可読性": "",                # 不確実 → 書かない
+        "名称": "混入テスト",        # AI 対象外 → 落とされる
+    }
+    monkeypatch.setattr(
+        ai_engine, "judge_photo", lambda provider, path, fields, key: dict(draft))
+    client.put("/config", json={"claudeApiKey": "sk-test-dummy"})
+    try:
+        target_q = f"{CAPTURE}-b"  # pending / 主要言語=日本語 / 写真あり
+        r = client.post("/ai/jobs", json={"q": target_q})
+        assert r.status_code == 200, r.text
+        job = _wait_ai_job(r.json()["jobId"])
+        assert job["status"] == "done", job
+        assert job["provider"] == "claude"
+        assert job["report"]["changedRecords"] == 1
+        assert job["report"]["errorCount"] == 0
+
+        item = client.get("/records", params={"q": target_q}).json()["items"][0]
+        detail = client.get(f"/records/{item['id']}").json()
+        d = detail["data"]
+        assert d["文字性"] == "文字"
+        assert d["主要言語"] == "日本語/英語"
+        assert d["時間性"] == "常设"
+        assert d["備考"] == "【判断】テスト観察"
+        assert d.get("可読性", "") == ""          # 空値は書かれない
+        assert d.get("名称", "") == ""            # AI 対象外は混入しない
+        assert d["_status"] == "ai"               # pending → ai 昇格
+        assert d["DataStatus"] == "ai_drafted"
+
+        # 再実行 → 併合規則が守るので何も変わらない（備考の二重追記なし）
+        job2 = _wait_ai_job(
+            client.post("/ai/jobs", json={"q": target_q}).json()["jobId"])
+        assert job2["report"]["changedRecords"] == 0
+        assert job2["report"]["unchangedRecords"] == 1
+        d2 = client.get(f"/records/{item['id']}").json()["data"]
+        assert d2["備考"] == "【判断】テスト観察"
+        assert d2["_status"] == "ai"
+
+        # human-reviewed は昇格も降格もしない（併合だけ行われる）
+        legacy_q = f"{LEGACY_CAPTURE}-a"
+        job3 = _wait_ai_job(
+            client.post("/ai/jobs", json={"q": legacy_q}).json()["jobId"])
+        assert job3["status"] == "done", job3
+        litem = client.get("/records", params={"q": legacy_q}).json()["items"][0]
+        ld = client.get(f"/records/{litem['id']}").json()["data"]
+        assert ld["_status"] == "human-reviewed"
+    finally:
+        client.put("/config", json={"claudeApiKey": None})
+
+
+def test_ai_batch_aborts_after_consecutive_failures(monkeypatch):
+    """キー無効等の連続失敗は 3 件で中止（全件を空振りしない）。"""
+    from app import ai_engine
+
+    def boom(provider, path, fields, key):
+        raise RuntimeError("Claude API 401: invalid x-api-key")
+
+    monkeypatch.setattr(ai_engine, "judge_photo", boom)
+    client.put("/config", json={"claudeApiKey": "sk-test-bad"})
+    try:
+        job = _wait_ai_job(client.post("/ai/jobs", json={}).json()["jobId"])
+        assert job["status"] == "error"
+        assert "中止" in job["error"]
+        assert 1 <= len(job["errors"]) <= 20
+    finally:
+        client.put("/config", json={"claudeApiKey": None})
+
+
+def test_ai_job_requires_key_and_validates_provider():
+    assert client.post("/ai/jobs", json={}).status_code == 400
+    client.put("/config", json={"claudeApiKey": "sk-test-dummy"})
+    try:
+        assert client.post(
+            "/ai/jobs", json={"provider": "gpt"}).status_code == 400
+    finally:
+        client.put("/config", json={"claudeApiKey": None})

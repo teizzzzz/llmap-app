@@ -99,8 +99,43 @@ export interface MapQuery {
 /** GET /ai/status — AI バッチ処理の設定状態（scaffold） */
 export interface AiStatus {
   enabled: boolean;
+  /** 選択中のプロバイダ（claude | gemini） */
+  provider: string;
+  /** API キー設定済みのプロバイダ一覧 */
   providers: string[];
   message: string;
+  /** プロバイダごとの使用モデル名（表示用） */
+  models: Record<string, string>;
+}
+
+/** POST /ai/preview — バッチ対象の事前集計（AI 呼び出しなし） */
+export interface AiPreview {
+  total: number;
+  withPhoto: number;
+  withoutPhoto: number;
+  missingPhotoFile: number;
+  byStatus: Record<string, number>;
+}
+
+/** GET /ai/jobs/{id} — バッチ AI ジョブの進捗・結果 */
+export interface AiJobStatus {
+  id: string;
+  kind: 'ai';
+  provider: string;
+  status: 'running' | 'done' | 'error' | 'cancelled';
+  done: number;
+  total: number;
+  error: string;
+  errors: { signId: string; message: string }[];
+  report: {
+    recordCount?: number;
+    changedRecords?: number;
+    changedFieldTotal?: number;
+    unchangedRecords?: number;
+    skippedNoPhoto?: number;
+    errorCount?: number;
+    provider?: string;
+  };
 }
 
 /** POST /datasets/import の導入レポート */
@@ -210,4 +245,19 @@ export interface AppConfig {
   /** フォールバック解決後の実効導出先 */
   effectiveExportDir: string;
   defaultExportDir: string;
+  /** バッチ AI のプロバイダ（claude | gemini | null = 既定） */
+  aiProvider: string | null;
+  /** キーは GET で返らない（CORS 全開のため）— 有無とヒントのみ */
+  claudeApiKeySet: boolean;
+  claudeApiKeyHint: string;
+  geminiApiKeySet: boolean;
+  geminiApiKeyHint: string;
+}
+
+/** PUT /config の入力（部分更新。null でそのキーを既定に戻す/消す） */
+export interface AppConfigUpdate {
+  exportDir?: string | null;
+  aiProvider?: string | null;
+  claudeApiKey?: string | null;
+  geminiApiKey?: string | null;
 }

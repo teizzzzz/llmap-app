@@ -284,51 +284,35 @@
   },
   "ai": {
     "title": "AI Processing",
-    "subtitle": "Batch AI assistance for large collections.",
-    "note": "AI suggestions are drafts — they never overwrite human-reviewed fields and must be reviewed before becoming research data.",
-    "safetyTitle": "Safety rules",
-    "safety1": "No AI task will run until an AI backend is configured.",
-    "safety2": "No API key should be committed to the repository (keys will be read from backend environment variables).",
-    "safety3": "AI suggestions will be stored separately from human-confirmed fields",
-    "safety3Planned": "planned",
-    "safety4": "AI results enter the Review queue as \"ai_drafted\"; humans confirm them there.",
+    "subtitle": "Batch AI drafting for large datasets.",
+    "note": "AI output is a draft — it never overwrites existing content, and humans review before anything becomes final.",
+    "safetyTitle": "Merge rules (v6, enforced automatically)",
+    "rule1": "Existing content is never deleted or overwritten — remarks are appended, multi-select fields are unioned, single fields only fill blanks.",
+    "rule2": "Fields the AI is unsure about (empty values) are never written.",
+    "rule3": "Status is only promoted pending → ai; human-reviewed / final are never demoted by a re-run.",
+    "rule4": "Each record is saved individually — cancelling keeps completed work, and re-running never duplicates appends.",
     "batchSelection": "1 · Batch selection",
-    "taskType": "2 · Task type",
-    "previewRun": "3 · Preview / run",
+    "taskType": "2 · Task",
+    "previewRun": "3 · Preview / Run",
     "match": "{{n}} records match",
     "loadError": "Could not load matching records.",
-    "requiresBackend": "Requires AI backend configuration.",
-    "selectedBatch": "Selected batch: {{n}} records · task: none",
+    "selectedBatch": "Selected batch: {{n}} records",
     "checking": "Checking AI backend status…",
-    "notConfigured": "AI backend is not configured.",
-    "providers": "providers",
-    "dryRun": "Dry run",
+    "goSettings": "Enter an API key in Settings → AI.",
+    "disabledBadge": "Not configured",
+    "providers": "Providers",
+    "dryRun": "Check targets (no AI calls)",
     "runBatch": "Run batch",
-    "tasks": {
-      "lang": {
-        "title": "Language identification",
-        "desc": "Detect the languages appearing on each sign photo."
-      },
-      "ocr": {
-        "title": "OCR / text extraction",
-        "desc": "Extract visible text from crop photos."
-      },
-      "fields": {
-        "title": "Field suggestion",
-        "desc": "Draft research fields (script, carrier, agent…) from the photo."
-      },
-      "translate": {
-        "title": "Translation",
-        "desc": "Translate extracted text for cross-language analysis."
-      },
-      "dup": {
-        "title": "Duplicate detection",
-        "desc": "Find likely duplicate captures of the same sign."
-      },
-      "privacy": {
-        "title": "Privacy risk detection",
-        "desc": "Flag faces, plates, or personal data before sharing."
-      }
+    "confirmRun": "This will judge {{n}} photos with {{model}} (billable API usage). Continue?",
+    "progress": "Processing {{done}}/{{total}}…",
+    "doneSummary": "Done: {{changed}} records updated ({{fields}} fields) · {{unchanged}} unchanged · {{skipped}} skipped (no photo) · {{errors}} errors",
+    "cancelledNote": "Cancelled ({{done}} processed records are kept).",
+    "failed": "Batch AI failed.",
+    "errorsTitle": "Per-record errors (first 20)",
+    "previewResult": "{{withPhoto}} with photo (AI targets) · {{noPhoto}} without/missing —",
+    "task": {
+      "title": "v6 field drafting (13 dimensions)",
+      "desc": "Drafts scripturality, main/sub/decorative languages, multilingual relation, carrier type, placement, temporality, legibility, overwriting, discourse type, production quality and remarks from the crop photo. Same prompt and merge rules as the mobile app."
     }
   },
   "settings": {
@@ -346,7 +330,17 @@
     "backendUrl": "Backend URL",
     "current": "Current",
     "backendHelpPrefix": "To change it in web/dev mode, set",
-    "backendHelpSuffix": "and restart npm run dev. The desktop app injects the URL automatically at startup."
+    "backendHelpSuffix": "and restart npm run dev. The desktop app injects the URL automatically at startup.",
+    "aiTitle": "AI (batch processing)",
+    "aiDesc": "Provider and API keys used by the AI Processing page. Keys are stored only in settings.json on this machine and never returned by the read API.",
+    "aiProvider": "Provider",
+    "aiClaudeKey": "Claude key",
+    "aiGeminiKey": "Gemini key",
+    "aiKeySet": "Set ({{hint}}) — type to replace",
+    "aiKeyUnset": "Not set",
+    "aiKeyClear": "Remove",
+    "aiKeyNote": "Saving with an empty field keeps the current key.",
+    "aiSaved": "Saved."
   },
   "storage": {
     "title": "Storage",
