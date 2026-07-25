@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
 import type { RecordDetail, SchemaInfo } from '../../api/types';
+import { groupedResearchFields } from '../../lib/researchFields';
 import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from './FieldEditor';
 import PhotoThumb from './PhotoThumb';
@@ -9,16 +10,12 @@ import StatusBadge from './StatusBadge';
 
 // 只読で表示する識別情報（系統字段。backend 側でも編集がロックされている）。
 // キーは**データの字段名そのもの**であり翻訳しない — 表示ラベルのみ i18n。
+// DataStatus はここ（只読）にのみ出す — 編集は「状態(_status)」に一本化し、
+// DataStatus は保存時に backend が自動同期する（v6 定義表の状態は 1 つ）。
 const IDENTITY_FIELDS = [
   'SignID', 'CaptureID', 'DisplayID', '写真ファイル名', '元写真ファイル名',
   '採集者ID', '地区コード', '採集日時', '緯度', '経度',
   'EntryMode', 'DataStatus', 'SchemaVersion', 'AppVersion',
-];
-
-// 第一版で編集を許可する字段（backend の EDITABLE_FIELDS の部分集合）。
-const EDITABLE_FIELDS = [
-  '主要言語', '補助言語', '文字体系', '担体類型', '設置主体', '多言語関係',
-  '備考', '_status', 'DataStatus',
 ];
 
 /** 詳情面板: 写真＋識別情報（只読）＋研究字段の編集（dirty/Save/Cancel）。 */
@@ -157,18 +154,43 @@ export default function RecordDetailPanel({
         {t('record.researchFields')}{' '}
         {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
       </h3>
-      <div className="edit-grid">
-        {EDITABLE_FIELDS.map((f) => (
-          <label key={f} className="edit-row">
-            <span className="k">{fieldLabel(f)}</span>
-            <FieldEditor
-              field={f}
-              value={current(f)}
-              schema={schema}
-              onChange={(v) => setDraft((d) => ({ ...d, [f]: v }))}
-            />
-          </label>
-        ))}
+      {/* v6 定義表と同じ区分・順序。字段リストは schema から派生（ハードコードしない）。 */}
+      {groupedResearchFields(schema).map((g) => (
+        <div key={g.key}>
+          <div className="muted" style={{ margin: '10px 0 4px', fontSize: 12, fontWeight: 600 }}>
+            {t(`fields.group.${g.key}`)}
+          </div>
+          <div className="edit-grid">
+            {g.fields.map((f) => (
+              <label key={f} className="edit-row">
+                <span className="k">
+                  {fieldLabel(f)}
+                  {schema?.ai_fields.includes(f) && (
+                    <span className="muted" style={{ fontSize: 10, marginLeft: 4 }}>AI</span>
+                  )}
+                </span>
+                <FieldEditor
+                  field={f}
+                  value={current(f)}
+                  schema={schema}
+                  onChange={(v) => setDraft((d) => ({ ...d, [f]: v }))}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+      {/* 状態は 1 つだけ（v6 D 区の末尾）。DataStatus は backend が自動同期。 */}
+      <div className="edit-grid" style={{ marginTop: 10 }}>
+        <label className="edit-row">
+          <span className="k">{fieldLabel('_status')}</span>
+          <FieldEditor
+            field="_status"
+            value={current('_status')}
+            schema={schema}
+            onChange={(v) => setDraft((d) => ({ ...d, _status: v }))}
+          />
+        </label>
       </div>
 
       {saveError && (

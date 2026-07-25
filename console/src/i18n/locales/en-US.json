@@ -75,7 +75,22 @@
     "地区コード": "Area code",
     "採集日時": "Collected at",
     "緯度": "Latitude",
-    "経度": "Longitude"
+    "経度": "Longitude",
+    "文字性": "Textuality",
+    "装飾の言語": "Decorative language",
+    "時間性": "Temporality",
+    "可読性": "Legibility",
+    "重ね書き": "Layering",
+    "ディスコース類型": "Discourse type",
+    "製作品質": "Production quality",
+    "_status": "Status",
+    "DataStatus": "Review status (auto)",
+    "group": {
+      "B": "B Language",
+      "C": "C Material & state",
+      "D": "D Social & function",
+      "other": "Other"
+    }
   },
   "dashboard": {
     "title": "Dashboard",

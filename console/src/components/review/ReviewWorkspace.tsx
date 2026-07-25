@@ -8,15 +8,11 @@ import {
   REVIEW_ACTIONS,
   type ReviewActionDef,
 } from '../../reviewStatus';
+import { groupedResearchFields } from '../../lib/researchFields';
 import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from '../database/FieldEditor';
 import PhotoThumb from '../database/PhotoThumb';
 import StatusBadge from '../database/StatusBadge';
-
-// 審核で編集を許可する研究字段（状態はアクションボタン経由でのみ変更する）。
-const EDITABLE_FIELDS = [
-  '主要言語', '補助言語', '文字体系', '担体類型', '設置主体', '多言語関係', '備考',
-];
 
 // 只読の元情報。
 const META_FIELDS = [
@@ -161,19 +157,33 @@ export default function ReviewWorkspace({
             {t('record.researchFields')}{' '}
             {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
           </h3>
-          <div className="edit-grid">
-            {EDITABLE_FIELDS.map((f) => (
-              <label key={f} className="edit-row">
-                <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
-                <FieldEditor
-                  field={f}
-                  value={current(f)}
-                  schema={schema}
-                  onChange={(v) => setDraft((d) => ({ ...d, [f]: v }))}
-                />
-              </label>
-            ))}
-          </div>
+          {/* v6 定義表と同じ区分・順序（schema から派生）。
+              状態はアクションボタン経由でのみ変更する。 */}
+          {groupedResearchFields(schema).map((g) => (
+            <div key={g.key}>
+              <div className="muted" style={{ margin: '8px 0 4px', fontSize: 12, fontWeight: 600 }}>
+                {t(`fields.group.${g.key}`)}
+              </div>
+              <div className="edit-grid">
+                {g.fields.map((f) => (
+                  <label key={f} className="edit-row">
+                    <span className="k">
+                      {t(`fields.${f}`, { defaultValue: f })}
+                      {schema?.ai_fields.includes(f) && (
+                        <span className="muted" style={{ fontSize: 10, marginLeft: 4 }}>AI</span>
+                      )}
+                    </span>
+                    <FieldEditor
+                      field={f}
+                      value={current(f)}
+                      schema={schema}
+                      onChange={(v) => setDraft((d) => ({ ...d, [f]: v }))}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* ── 元情報＋アクション ── */}

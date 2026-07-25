@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import init_db
 from .schema import (
     AI_FIELDS, CSV_HEADER, ENUMS, LANGUAGE_COLORS, MULTI_FIELDS, STATUS_VALUES,
+    SYSTEM_FIELDS,
 )
 from . import (
     ai_jobs, config_api, export_api, export_jobs, import_dataset,
@@ -29,7 +30,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="LLMap backend", version="0.6.2", lifespan=lifespan)
+app = FastAPI(title="LLMap backend", version="0.6.3", lifespan=lifespan)
 
 app.include_router(import_dataset.router)
 app.include_router(records_api.router)
@@ -51,7 +52,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "llmap-backend", "version": "0.6.2"}
+    return {"ok": True, "service": "llmap-backend", "version": "0.6.3"}
 
 
 @app.get("/schema")
@@ -64,4 +65,7 @@ def get_schema():
         "ai_fields": AI_FIELDS,
         "language_colors": LANGUAGE_COLORS,
         "multi_fields": MULTI_FIELDS,
+        # Console が研究字段を「表頭 − 系統字段」で派生するための一覧。
+        # 字段清単のハードコードをやめる（v6 で漏れた事故の再発防止）。
+        "system_fields": SYSTEM_FIELDS,
     }

@@ -907,3 +907,15 @@ def test_ai_job_realtime_logs(monkeypatch):
         assert empty["logs"] == []
     finally:
         client.put("/config", json={"claudeApiKey": None})
+
+
+def test_schema_exposes_system_fields():
+    """Console の研究字段派生（表頭 − 系統字段）の材料が /schema に載る。"""
+    s = client.get("/schema").json()
+    assert "_status" in s["system_fields"]
+    assert "DataStatus" in s["system_fields"]
+    research = [f for f in s["csv_header"] if f not in s["system_fields"]]
+    # v6 の 13 AI 維度＋人力字段が全て導出できる（UI 側の隠し分は Console の責務）
+    for f in ("文字性", "装飾の言語", "放置位置", "時間性", "可読性",
+              "重ね書き", "ディスコース類型", "製作品質", "備考"):
+        assert f in research, f

@@ -218,6 +218,8 @@ export interface SchemaInfo {
   ai_fields: string[];
   language_colors: Record<string, string>;
   multi_fields: string[];
+  /** 系統字段（研究字段の派生用）。旧 backend では未配信のため optional。 */
+  system_fields?: string[];
 }
 
 /** GET /records の筛选パラメータ */
