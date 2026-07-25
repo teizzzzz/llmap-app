@@ -167,12 +167,7 @@ export default function ReviewWorkspace({
               <div className="edit-grid">
                 {g.fields.map((f) => (
                   <label key={f} className="edit-row">
-                    <span className="k">
-                      {t(`fields.${f}`, { defaultValue: f })}
-                      {schema?.ai_fields.includes(f) && (
-                        <span className="muted" style={{ fontSize: 10, marginLeft: 4 }}>AI</span>
-                      )}
-                    </span>
+                    <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
                     <FieldEditor
                       field={f}
                       value={current(f)}

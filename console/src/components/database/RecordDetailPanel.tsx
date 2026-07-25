@@ -163,12 +163,7 @@ export default function RecordDetailPanel({
           <div className="edit-grid">
             {g.fields.map((f) => (
               <label key={f} className="edit-row">
-                <span className="k">
-                  {fieldLabel(f)}
-                  {schema?.ai_fields.includes(f) && (
-                    <span className="muted" style={{ fontSize: 10, marginLeft: 4 }}>AI</span>
-                  )}
-                </span>
+                <span className="k">{fieldLabel(f)}</span>
                 <FieldEditor
                   field={f}
                   value={current(f)}

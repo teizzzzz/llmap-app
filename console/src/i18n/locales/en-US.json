@@ -86,9 +86,9 @@
     "_status": "Status",
     "DataStatus": "Review status (auto)",
     "group": {
-      "B": "B Language",
-      "C": "C Material & state",
-      "D": "D Social & function",
+      "B": "Language",
+      "C": "Material & state",
+      "D": "Social & function",
       "other": "Other"
     }
   },
