@@ -13,7 +13,8 @@ app/.flutter-plugins-dependencies
 app/.packages
 
 # Build outputs
-dist/*.apk
+# dist/ は配布物・データ備份置き場（APK/IPA/備份とも git に入れない）
+dist/
 
 # Data / secrets
 *.key
@@ -24,3 +25,15 @@ backend/uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Backend local database & imported photos (Research Console)
+backend/data/
+
+# Console (React/Vite)
+console/node_modules/
+console/dist/
+console/.env
+
+# PyInstaller backend binary artifacts
+backend/build/
+backend/dist/

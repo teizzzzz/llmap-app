@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../field_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../theme.dart';
@@ -24,7 +25,7 @@ class SignForm extends StatelessWidget {
   // final（確定済）は人の編集でも保持する。
   void _markEdited() {
     if (sign.status == 'pending' || sign.status == 'ai') {
-      sign.set('_status', 'human-reviewed');
+      sign.setStatus('human-reviewed');
     }
   }
 
@@ -42,10 +43,10 @@ class SignForm extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(sign.id,
+              child: Text(sign.displayId,
                   style: AppText.body().copyWith(fontWeight: FontWeight.w800)),
             ),
-            statusBadge(sign.status),
+            statusBadge(sign.status, label: statusLabel(t, sign.status)),
           ],
         ),
         Text(
@@ -56,17 +57,19 @@ class SignForm extends StatelessWidget {
             ),
             style: AppText.caption()),
         const Divider(),
-        for (final field in schema.editableFields) _fieldEditor(field),
+        for (final field in schema.editableFields) _fieldEditor(t, field),
       ],
     );
   }
 
-  Widget _fieldEditor(String field) {
+  Widget _fieldEditor(AppLocalizations t, String field) {
+    // ラベルのみ本地化（データのキー・選択肢の値は正準のまま）。
+    final label = fieldLabel(t, field);
     // 複数選択かつ自由追加できる字段（言語3つ・文字体系）。
     if (schema.multiFields.contains(field)) {
       return _MultiSelectField(
         key: ValueKey('${sign.id}-$field-multi'),
-        label: field,
+        label: label,
         options: schema.enums[field] ?? const [],
         value: sign.get(field),
         onChanged: (v) {
@@ -87,7 +90,7 @@ class SignForm extends StatelessWidget {
           initialValue: value.isEmpty ? null : value,
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: field,
+            labelText: label,
             isDense: true,
             border: const OutlineInputBorder(),
           ),
@@ -107,13 +110,15 @@ class SignForm extends StatelessWidget {
         key: ValueKey('${sign.id}-$field'),
         initialValue: value,
         decoration: InputDecoration(
-          labelText: field,
+          labelText: label,
           isDense: true,
           border: const OutlineInputBorder(),
         ),
         onChanged: (v) {
           sign.set(field, v);
-          _markEdited();
+          // dirty 通知も親へ届ける（TextFormField は再構築でも入力状態を保持
+          // するため、キー入力ごとの onChanged 呼び出しで問題ない）。
+          _onEdited();
         },
       ),
     );
@@ -218,17 +223,17 @@ class _MultiSelectFieldState extends State<_MultiSelectField> {
               Expanded(
                 child: TextField(
                   controller: _custom,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     isDense: true,
-                    hintText: '+ 自定义 / カスタム追加',
-                    border: OutlineInputBorder(),
+                    hintText: AppLocalizations.of(context).customAddHint,
+                    border: const OutlineInputBorder(),
                   ),
                   onSubmitted: (_) => _addCustom(),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.add),
-                tooltip: '追加',
+                tooltip: AppLocalizations.of(context).add,
                 onPressed: _addCustom,
               ),
             ],

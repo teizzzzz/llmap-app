@@ -747,6 +747,582 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'GPS: {lat}, {lng} · Collected: {time}'**
   String signMeta(String lat, String lng, String time);
+
+  /// No description provided for @captureMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture mode'**
+  String get captureMode;
+
+  /// No description provided for @captureModeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.'**
+  String get captureModeNote;
+
+  /// No description provided for @modeQuick.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick mode'**
+  String get modeQuick;
+
+  /// No description provided for @modeQuickDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Save right after boxing; fill fields later'**
+  String get modeQuickDesc;
+
+  /// No description provided for @modeStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard mode'**
+  String get modeStandard;
+
+  /// No description provided for @modeStandardDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Just pick the languages on the sign (default)'**
+  String get modeStandardDesc;
+
+  /// No description provided for @modeResearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Research mode'**
+  String get modeResearch;
+
+  /// No description provided for @modeResearchDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Full research field form for formal annotation'**
+  String get modeResearchDesc;
+
+  /// No description provided for @fieldScheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Field scheme'**
+  String get fieldScheme;
+
+  /// No description provided for @fieldSchemeOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Official fields'**
+  String get fieldSchemeOfficial;
+
+  /// No description provided for @fieldSchemeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom fields'**
+  String get fieldSchemeCustom;
+
+  /// No description provided for @savedQuick.
+  ///
+  /// In en, this message translates to:
+  /// **'Record saved. You can add fields later.'**
+  String get savedQuick;
+
+  /// No description provided for @savedStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Record submitted.'**
+  String get savedStandard;
+
+  /// No description provided for @savedResearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Research record saved.'**
+  String get savedResearch;
+
+  /// No description provided for @stdLangPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the languages on this sign'**
+  String get stdLangPrompt;
+
+  /// No description provided for @stdMoreInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add more info'**
+  String get stdMoreInfo;
+
+  /// No description provided for @fieldScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Script'**
+  String get fieldScript;
+
+  /// No description provided for @fieldNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get fieldNote;
+
+  /// No description provided for @datasetExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Dataset Package exported'**
+  String get datasetExported;
+
+  /// No description provided for @select.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get select;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(int count);
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @deselectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Deselect all'**
+  String get deselectAll;
+
+  /// No description provided for @deleteMultipleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} records?'**
+  String deleteMultipleTitle(int count);
+
+  /// No description provided for @deleteIrreversibleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone.'**
+  String get deleteIrreversibleBody;
+
+  /// No description provided for @deletedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} records'**
+  String deletedCount(int count);
+
+  /// No description provided for @sortTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sortTitle;
+
+  /// No description provided for @sortNewestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get sortNewestFirst;
+
+  /// No description provided for @sortOldestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest first'**
+  String get sortOldestFirst;
+
+  /// No description provided for @sortIdAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'ID ascending'**
+  String get sortIdAsc;
+
+  /// No description provided for @sortIdDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'ID descending'**
+  String get sortIdDesc;
+
+  /// No description provided for @filterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filterTitle;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @resultsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} shown'**
+  String resultsCount(int count);
+
+  /// No description provided for @filterMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get filterMode;
+
+  /// No description provided for @filterStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get filterStatus;
+
+  /// No description provided for @filterArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Area'**
+  String get filterArea;
+
+  /// No description provided for @filterCollector.
+  ///
+  /// In en, this message translates to:
+  /// **'Collector'**
+  String get filterCollector;
+
+  /// No description provided for @filterGps.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS'**
+  String get filterGps;
+
+  /// No description provided for @filterPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get filterPhoto;
+
+  /// No description provided for @filterSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source photo'**
+  String get filterSource;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @allRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'All records'**
+  String get allRecords;
+
+  /// No description provided for @newAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'New album'**
+  String get newAlbum;
+
+  /// No description provided for @albumNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Album name'**
+  String get albumNameHint;
+
+  /// No description provided for @renameAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename album'**
+  String get renameAlbum;
+
+  /// No description provided for @deleteAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete album'**
+  String get deleteAlbum;
+
+  /// No description provided for @deleteAlbumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String deleteAlbumTitle(String name);
+
+  /// No description provided for @deleteAlbumBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Records in this album are not deleted.'**
+  String get deleteAlbumBody;
+
+  /// No description provided for @addToAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to album'**
+  String get addToAlbum;
+
+  /// No description provided for @removeFromAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from album'**
+  String get removeFromAlbum;
+
+  /// No description provided for @addedToAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {count} to “{name}”'**
+  String addedToAlbum(int count, String name);
+
+  /// No description provided for @removedFromAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {count} from album'**
+  String removedFromAlbum(int count);
+
+  /// No description provided for @albumEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No records in this album yet.'**
+  String get albumEmpty;
+
+  /// No description provided for @unfiled.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfiled'**
+  String get unfiled;
+
+  /// No description provided for @filed.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed'**
+  String get filed;
+
+  /// No description provided for @noUnfiledRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'No unfiled records'**
+  String get noUnfiledRecords;
+
+  /// No description provided for @allRecordsFiled.
+  ///
+  /// In en, this message translates to:
+  /// **'All records have been organized into albums'**
+  String get allRecordsFiled;
+
+  /// No description provided for @noFiledRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'No filed records'**
+  String get noFiledRecords;
+
+  /// No description provided for @recordsAddedToAlbumsAppearHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Records added to albums will appear here'**
+  String get recordsAddedToAlbumsAppearHere;
+
+  /// No description provided for @exportDataset.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Dataset Package'**
+  String get exportDataset;
+
+  /// No description provided for @exportScopeCurrentView.
+  ///
+  /// In en, this message translates to:
+  /// **'Current view'**
+  String get exportScopeCurrentView;
+
+  /// No description provided for @exportScopeSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected records'**
+  String get exportScopeSelected;
+
+  /// No description provided for @exportScopeAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Current album'**
+  String get exportScopeAlbum;
+
+  /// No description provided for @exportConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Export 1 record?} other{Export {count} records?}}'**
+  String exportConfirmTitle(int count);
+
+  /// No description provided for @exportConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will create a Dataset Package containing only the selected records and required photos.'**
+  String get exportConfirmBody;
+
+  /// No description provided for @noRecordsToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No records to export.'**
+  String get noRecordsToExport;
+
+  /// No description provided for @exportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportAction;
+
+  /// No description provided for @exportSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Export selected'**
+  String get exportSelected;
+
+  /// No description provided for @exportPickAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an album…'**
+  String get exportPickAlbum;
+
+  /// No description provided for @permissionDeniedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission needed'**
+  String get permissionDeniedTitle;
+
+  /// No description provided for @cameraDeniedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is off. Enable it in Settings → LLMap → Camera to take photos.'**
+  String get cameraDeniedBody;
+
+  /// No description provided for @photoDeniedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo library access is off. Enable it in Settings → LLMap → Photos to import images.'**
+  String get photoDeniedBody;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSettings;
+
+  /// No description provided for @discardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get discardTitle;
+
+  /// No description provided for @discardEditBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard the changes and close?'**
+  String get discardEditBody;
+
+  /// No description provided for @discardCaptureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Abandon this capture? Entered fields and cropped photos will not be saved.'**
+  String get discardCaptureBody;
+
+  /// No description provided for @discard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discard;
+
+  /// No description provided for @processFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing failed: {error}'**
+  String processFailed(String error);
+
+  /// No description provided for @customAddHint.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add custom'**
+  String get customAddHint;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @fieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get fieldName;
+
+  /// No description provided for @fieldTextuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Text presence'**
+  String get fieldTextuality;
+
+  /// No description provided for @fieldDecorLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Decorative language'**
+  String get fieldDecorLang;
+
+  /// No description provided for @fieldSpatial.
+  ///
+  /// In en, this message translates to:
+  /// **'Spatial layer'**
+  String get fieldSpatial;
+
+  /// No description provided for @fieldTemporality.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporality'**
+  String get fieldTemporality;
+
+  /// No description provided for @fieldLegibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Legibility'**
+  String get fieldLegibility;
+
+  /// No description provided for @fieldOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwriting'**
+  String get fieldOverwrite;
+
+  /// No description provided for @fieldDiscourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Discourse type'**
+  String get fieldDiscourse;
+
+  /// No description provided for @fieldQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Production quality'**
+  String get fieldQuality;
+
+  /// No description provided for @statusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get statusPending;
+
+  /// No description provided for @statusAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI draft'**
+  String get statusAi;
+
+  /// No description provided for @statusHumanReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed'**
+  String get statusHumanReviewed;
+
+  /// No description provided for @statusFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final'**
+  String get statusFinal;
+
+  /// No description provided for @fieldPlacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Placement'**
+  String get fieldPlacement;
 }
 
 class _AppLocalizationsDelegate

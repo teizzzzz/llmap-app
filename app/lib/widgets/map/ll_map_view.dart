@@ -41,7 +41,7 @@ class LLMapView extends StatelessWidget {
   Color _langColor(String lang) =>
       parseHexColor(schema.languageColors[lang] ?? '#888888');
 
-  String _suffixOf(Sign s) => s.id.split('-').last;
+  String _suffixOf(Sign s) => s.cropSuffix;
 
   @override
   Widget build(BuildContext context) {

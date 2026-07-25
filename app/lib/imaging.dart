@@ -7,14 +7,65 @@ import 'package:image/image.dart' as img;
 
 import 'schema_defaults.dart';
 
-// ── ID 採番（schema.py の photo_id / sign_id を踏襲） ──
+// ── ID 採番（新契約: CaptureID を一意性の中心にする。docs/data-contract.md 参照） ──
+//
+// CaptureID   = AREA-COLLECTORID-YYMMDDHHMMSSmmm   … 1回の撮影イベントの一意ID
+// SignID      = CaptureID-suffix
+// 写真ファイル名   = CaptureID-<suffix>.jpg
+// 元写真ファイル名 = CaptureID-source.jpg
+// DisplayID   = AREA-YYYYMMDD-SEQ-suffix           … 表示専用（主キーにしない）
+//
+// 採集者ID＋ミリ秒時刻を含むため、複数人が同日同地区で採集しても衝突しない。
 
-/// 写真ID: AREA-YYYYMMDD-NNN （§5.2）
+/// CaptureID: AREA-COLLECTORID-YYMMDDHHMMSSmmm。1回の撮影イベントの一意ID。
+/// collectorId が空（想定外）でも時刻部で一意性を保つ。
+String makeCaptureId(String area, String collectorId, DateTime capturedAt) {
+  final a = area.toUpperCase();
+  final c = collectorId.trim();
+  final head = c.isEmpty ? a : '$a-$c';
+  return '$head-${_timestampMs(capturedAt)}';
+}
+
+/// SignID: CaptureID-suffix。同一写真内の各 sign を識別する。
+String makeSignId(String captureId, String suffix) => '$captureId-$suffix';
+
+/// DisplayID: AREA-YYYYMMDD-SEQ-suffix。人が読む表示専用ID（一意性は担わない）。
+String makeDisplayId(String area, DateTime capturedAt, int seq, String suffix) {
+  String p(int n) => n.toString().padLeft(2, '0');
+  final d = '${capturedAt.year}${p(capturedAt.month)}${p(capturedAt.day)}';
+  return '${area.toUpperCase()}-$d-${seq.toString().padLeft(3, '0')}-$suffix';
+}
+
+/// 元写真（原始完整写真）のファイル名: CaptureID-source.jpg。
+String sourcePhotoName(String captureId) => '$captureId-source.jpg';
+
+/// 裁切写真のファイル名: `CaptureID-<suffix>.jpg`。
+String cropPhotoName(String captureId, String suffix) =>
+    '$captureId-$suffix.jpg';
+
+/// 'YYMMDDHHMMSSmmm'（ミリ秒15桁）。CaptureID の時刻部。
+String _timestampMs(DateTime t) {
+  String p(int n) => n.toString().padLeft(2, '0');
+  return '${p(t.year % 100)}${p(t.month)}${p(t.day)}'
+      '${p(t.hour)}${p(t.minute)}${p(t.second)}'
+      '${t.millisecond.toString().padLeft(3, '0')}';
+}
+
+/// DateTime を採集日時 'YYYY-MM-DD HH:MM:SS' に整形。
+String formatCaptured(DateTime d) {
+  String p(int n) => n.toString().padLeft(2, '0');
+  return '${d.year}-${p(d.month)}-${p(d.day)} '
+      '${p(d.hour)}:${p(d.minute)}:${p(d.second)}';
+}
+
+// ── 旧ID採番（legacy）。旧データの解釈用に保持。新規採番には使わない ──
+
+/// [legacy] 写真ID: AREA-YYYYMMDD-NNN。新規レコードでは 写真ID=CaptureID。
 String photoId(String area, String yyyymmdd, int seq) =>
     '${area.toUpperCase()}-$yyyymmdd-${seq.toString().padLeft(3, '0')}';
 
-/// SignID: 地点-採集者-序号（採集字段定義表 v3）。例 OOK-K7m9Qp4t-S001-a。
-/// collector（採集者ID）が空なら従来の AREA-SNNN-suffix。suffix は常に末尾。
+/// [legacy] SignID: 地点-採集者-序号（例 OOK-K7m9Qp4t-S001-a）。
+/// 新規レコードは makeSignId(makeCaptureId(...), suffix) を使う。
 String signId(String area, int seq, String suffix, {String collector = ''}) {
   final a = area.toUpperCase();
   final s = seq.toString().padLeft(3, '0');
@@ -29,20 +80,19 @@ String yyyymmdd(String captured) {
 }
 
 /// 端末時刻を採集日時 'YYYY-MM-DD HH:MM:SS' に整形。
-String nowCaptured() {
-  final d = DateTime.now();
-  String p(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${p(d.month)}-${p(d.day)} '
-      '${p(d.hour)}:${p(d.minute)}:${p(d.second)}';
-}
+String nowCaptured() => formatCaptured(DateTime.now());
 
 // ── クロップ（storage.save_crop を踏襲：相対矩形→JPEG q90） ──
 
 /// 全景バイト列から相対矩形 (0..1) を切り出して JPEG bytes を返す。
-/// ユーザーが表示画像上で囲んだ座標なので、向き補正せず生バイトのまま切る。
+/// 框选座標は「画面に表示された向き」基準。Flutter の表示は EXIF Orientation を
+/// 適用するが、image パッケージの decode は生ピクセルのままなので、切り出し前に
+/// bakeOrientation で向きをピクセルへ焼き込み、表示と座標系を一致させる
+/// （EXIF 付き縦位置写真で框选が 90° ずれるのを防ぐ。Orientation=1 は実質無変換）。
 Uint8List cropJpeg(Uint8List src, double x, double y, double w, double h) {
-  final image = img.decodeImage(src);
-  if (image == null) return src; // デコード不能時は全景をそのまま返す
+  final decoded = img.decodeImage(src);
+  if (decoded == null) return src; // デコード不能時は全景をそのまま返す
+  final image = img.bakeOrientation(decoded);
   final W = image.width, H = image.height;
   final left = (x * W).floor().clamp(0, W);
   final top = (y * H).floor().clamp(0, H);

@@ -363,4 +363,313 @@ class AppLocalizationsJa extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS：$lat, $lng · 採集：$time';
   }
+
+  @override
+  String get captureMode => '採集モード';
+
+  @override
+  String get captureModeNote =>
+      '撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。';
+
+  @override
+  String get modeQuick => 'クイックモード';
+
+  @override
+  String get modeQuickDesc => '框選後すぐ保存。フィールドは後で補完';
+
+  @override
+  String get modeStandard => '標準モード';
+
+  @override
+  String get modeStandardDesc => '標識に現れる言語を選ぶだけ（既定）';
+
+  @override
+  String get modeResearch => '研究モード';
+
+  @override
+  String get modeResearchDesc => '完全な研究フィールド表単で正式に採集・標注';
+
+  @override
+  String get fieldScheme => 'フィールド構成';
+
+  @override
+  String get fieldSchemeOfficial => '公式フィールド';
+
+  @override
+  String get fieldSchemeCustom => 'カスタムフィールド';
+
+  @override
+  String get savedQuick => '記録を保存しました。フィールドは後から補完できます。';
+
+  @override
+  String get savedStandard => '記録を提出しました。';
+
+  @override
+  String get savedResearch => '研究記録を保存しました。';
+
+  @override
+  String get stdLangPrompt => '標識に現れる言語を選択';
+
+  @override
+  String get stdMoreInfo => '＋ 情報を追加';
+
+  @override
+  String get fieldScript => '文字体系';
+
+  @override
+  String get fieldNote => '備考（任意）';
+
+  @override
+  String get datasetExported => 'Dataset Package を書き出しました';
+
+  @override
+  String get select => '選択';
+
+  @override
+  String selectedCount(int count) {
+    return '$count 件選択中';
+  }
+
+  @override
+  String get selectAll => 'すべて選択';
+
+  @override
+  String get deselectAll => '選択解除';
+
+  @override
+  String deleteMultipleTitle(int count) {
+    return '$count 件の記録を削除しますか？';
+  }
+
+  @override
+  String get deleteIrreversibleBody => 'この操作は取り消せません。';
+
+  @override
+  String deletedCount(int count) {
+    return '$count 件削除しました';
+  }
+
+  @override
+  String get sortTitle => '並べ替え';
+
+  @override
+  String get sortNewestFirst => '新しい順';
+
+  @override
+  String get sortOldestFirst => '古い順';
+
+  @override
+  String get sortIdAsc => 'ID 昇順';
+
+  @override
+  String get sortIdDesc => 'ID 降順';
+
+  @override
+  String get filterTitle => '絞り込み';
+
+  @override
+  String get clearFilters => '絞り込みをクリア';
+
+  @override
+  String resultsCount(int count) {
+    return '$count 件を表示';
+  }
+
+  @override
+  String get filterMode => 'モード';
+
+  @override
+  String get filterStatus => '状態';
+
+  @override
+  String get filterArea => '地区';
+
+  @override
+  String get filterCollector => '採集者';
+
+  @override
+  String get filterGps => 'GPS';
+
+  @override
+  String get filterPhoto => '写真';
+
+  @override
+  String get filterSource => '元写真';
+
+  @override
+  String get yes => 'あり';
+
+  @override
+  String get no => 'なし';
+
+  @override
+  String get allRecords => 'すべての記録';
+
+  @override
+  String get newAlbum => '新規アルバム';
+
+  @override
+  String get albumNameHint => 'アルバム名';
+
+  @override
+  String get renameAlbum => 'アルバム名を変更';
+
+  @override
+  String get deleteAlbum => 'アルバムを削除';
+
+  @override
+  String deleteAlbumTitle(String name) {
+    return '「$name」を削除しますか？';
+  }
+
+  @override
+  String get deleteAlbumBody => 'アルバム内の記録は削除されません。';
+
+  @override
+  String get addToAlbum => 'アルバムに追加';
+
+  @override
+  String get removeFromAlbum => 'アルバムから外す';
+
+  @override
+  String addedToAlbum(int count, String name) {
+    return '「$name」に $count 件追加しました';
+  }
+
+  @override
+  String removedFromAlbum(int count) {
+    return 'アルバムから $count 件外しました';
+  }
+
+  @override
+  String get albumEmpty => 'このアルバムにはまだ記録がありません。';
+
+  @override
+  String get unfiled => '未分類';
+
+  @override
+  String get filed => '分類済み';
+
+  @override
+  String get noUnfiledRecords => '未分類の記録はありません';
+
+  @override
+  String get allRecordsFiled => 'すべての記録がアルバムに整理されています';
+
+  @override
+  String get noFiledRecords => '分類済みの記録はありません';
+
+  @override
+  String get recordsAddedToAlbumsAppearHere => '記録をアルバムに追加すると、ここに表示されます';
+
+  @override
+  String get exportDataset => 'データセットパッケージを書き出す';
+
+  @override
+  String get exportScopeCurrentView => '現在の表示';
+
+  @override
+  String get exportScopeSelected => '選択中の記録';
+
+  @override
+  String get exportScopeAlbum => '現在のアルバム';
+
+  @override
+  String exportConfirmTitle(int count) {
+    return '$count 件の記録を書き出しますか？';
+  }
+
+  @override
+  String get exportConfirmBody => '選択された記録と必要な写真のみを含むデータセットパッケージを作成します。';
+
+  @override
+  String get noRecordsToExport => '書き出す記録がありません。';
+
+  @override
+  String get exportAction => '書き出す';
+
+  @override
+  String get exportSelected => '選択中を書き出す';
+
+  @override
+  String get exportPickAlbum => 'アルバムから選ぶ…';
+
+  @override
+  String get permissionDeniedTitle => '権限が必要です';
+
+  @override
+  String get cameraDeniedBody =>
+      'カメラへのアクセスがオフです。撮影するには 設定 → LLMap → カメラ を有効にしてください。';
+
+  @override
+  String get photoDeniedBody =>
+      '写真へのアクセスがオフです。取り込むには 設定 → LLMap → 写真 を有効にしてください。';
+
+  @override
+  String get openSettings => '設定を開く';
+
+  @override
+  String get discardTitle => '未保存の変更があります';
+
+  @override
+  String get discardEditBody => '変更を破棄して閉じますか？';
+
+  @override
+  String get discardCaptureBody => 'この採集を中止しますか？入力内容と切り出した写真は保存されません。';
+
+  @override
+  String get discard => '破棄する';
+
+  @override
+  String processFailed(String error) {
+    return '処理に失敗しました: $error';
+  }
+
+  @override
+  String get customAddHint => '＋ カスタム追加';
+
+  @override
+  String get add => '追加';
+
+  @override
+  String get fieldName => '名称';
+
+  @override
+  String get fieldTextuality => '文字性';
+
+  @override
+  String get fieldDecorLang => '装飾の言語';
+
+  @override
+  String get fieldSpatial => '空間階層';
+
+  @override
+  String get fieldTemporality => '時間性';
+
+  @override
+  String get fieldLegibility => '可読性';
+
+  @override
+  String get fieldOverwrite => '重ね書き';
+
+  @override
+  String get fieldDiscourse => 'ディスコース類型';
+
+  @override
+  String get fieldQuality => '製作品質';
+
+  @override
+  String get statusPending => '未処理';
+
+  @override
+  String get statusAi => 'AI下書き';
+
+  @override
+  String get statusHumanReviewed => '確認済み';
+
+  @override
+  String get statusFinal => '確定';
+
+  @override
+  String get fieldPlacement => '放置位置';
 }

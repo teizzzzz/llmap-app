@@ -13,6 +13,9 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'albums.dart';
+import 'dataset_package.dart';
+import 'export_normalizer.dart';
 import 'imaging.dart';
 import 'models.dart';
 
@@ -40,7 +43,44 @@ class LocalStore {
 
   File _projectFile() => File('${_root!.path}/project.json');
 
+  File _albumsFile() => File('${_root!.path}/albums.json');
+
   File photoFile(String name) => File('${_photos!.path}/$name');
+
+  /// 写真ファイルを削除する（存在しないものは無視）。削除できた数を返す。
+  /// **必ず record_ops.orphanedPhotos で「残る記録から参照されない」名前だけを
+  /// 渡すこと** — 共有元写真（1图多sign）を誤って消さないため。
+  Future<int> deletePhotos(Set<String> names) async {
+    await _ensure();
+    var deleted = 0;
+    for (final name in names) {
+      if (name.isEmpty) continue;
+      final f = photoFile(name);
+      if (await f.exists()) {
+        await f.delete();
+        deleted++;
+      }
+    }
+    return deleted;
+  }
+
+  /// 相册一覧を読む（無ければ空。壊れた保存は無視して空扱い）。
+  Future<List<Album>> loadAlbums() async {
+    await _ensure();
+    final f = _albumsFile();
+    if (!await f.exists()) return [];
+    try {
+      return albumsFromJson(await f.readAsString());
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// 相册一覧を保存する。相册は端末内の整理機能で、Dataset Package には入らない。
+  Future<void> saveAlbums(List<Album> albums) async {
+    await _ensure();
+    await _albumsFile().writeAsString(albumsToJson(albums), flush: true);
+  }
 
   Future<bool> hasPhoto(String name) async {
     if (name.isEmpty) return false;
@@ -48,13 +88,41 @@ class LocalStore {
     return photoFile(name).exists();
   }
 
-  /// 写真（全景/裁切）を端末に保存。同名は上書き。
-  Future<void> savePhoto(String name, Uint8List bytes) async {
+  /// 写真（元写真/裁切）を端末に保存し、**実際に保存したファイル名**を返す。
+  /// - 同名で内容が同一: 書き込みをスキップしてそのまま返す。
+  /// - 同名で内容が異なる: 静黙上書きせず `名前~2.jpg` 形式の衝突回避名で保存する
+  ///   （多人採集データの取り込み・合并時にデータを失わないための保護）。
+  Future<String> savePhoto(String name, Uint8List bytes) async {
     await _ensure();
-    await photoFile(name).writeAsBytes(bytes, flush: true);
+    var target = name;
+    var n = 2;
+    while (await photoFile(target).exists()) {
+      final existing = await photoFile(target).readAsBytes();
+      if (_sameBytes(existing, bytes)) return target; // 同一内容 → スキップ
+      final dot = name.lastIndexOf('.');
+      final stem = dot < 0 ? name : name.substring(0, dot);
+      final ext = dot < 0 ? '' : name.substring(dot);
+      target = '$stem~$n$ext';
+      n++;
+    }
+    await photoFile(target).writeAsBytes(bytes, flush: true);
+    return target;
+  }
+
+  static bool _sameBytes(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// 採集記録＋セッション（地区/連番）を JSON で保存。変更ごとに呼ぶ。
+  ///
+  /// **原子的に書く**: まず .tmp へ書き切り、既存の project.json を .bak に
+  /// 退避してから置換する。書き込み途中でアプリが落ちても、
+  /// project.json / .tmp / .bak のどれかは必ず完全な状態で残る
+  /// （唯一のデータファイルを直接上書きして全記録を失わないための保護）。
   Future<void> saveProject(List<Sign> signs, String area, int nextSeq) async {
     await _ensure();
     final json = jsonEncode({
@@ -63,15 +131,40 @@ class LocalStore {
       'nextSeq': nextSeq,
       'signs': signs.map((s) => s.toJson()).toList(),
     });
-    await _projectFile().writeAsString(json, flush: true);
+    final file = _projectFile();
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(json, flush: true); // 完全に書けてから置換に進む
+    if (await file.exists()) {
+      try {
+        final bak = File('${file.path}.bak');
+        if (await bak.exists()) await bak.delete();
+        await file.copy(bak.path);
+        // Windows は既存ファイルへの rename が失敗するため先に消す。
+        // この一瞬に落ちても .tmp（完全）と .bak が残り、load が拾う。
+        await file.delete();
+      } catch (_) {
+        // バックアップ失敗でも保存自体は続行する
+      }
+    }
+    await tmp.rename(file.path);
   }
 
   /// 保存済みの採集記録を復元。無ければ null。
+  /// project.json が欠損/破損していても .tmp → .bak の順で復旧を試み、
+  /// 壊れたファイルは**消さずに**残す（手動レスキューの余地を残す）。
   Future<ProjectState?> loadProject() async {
     await _ensure();
-    final f = _projectFile();
-    if (!await f.exists()) return null;
+    final base = _projectFile().path;
+    for (final path in [base, '$base.tmp', '$base.bak']) {
+      final state = await _tryReadProject(File(path));
+      if (state != null) return state;
+    }
+    return null;
+  }
+
+  Future<ProjectState?> _tryReadProject(File f) async {
     try {
+      if (!await f.exists()) return null;
       final map = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
       final signs = (map['signs'] as List? ?? [])
           .map((s) => Sign.fromJson(Map<String, dynamic>.from(s)))
@@ -84,57 +177,65 @@ class LocalStore {
             : int.tryParse('${map['nextSeq']}') ?? 1,
       );
     } catch (_) {
-      return null; // 壊れた保存は無視して新規扱い
+      return null; // このファイルは壊れている → 次の候補を試す
     }
   }
 
-  /// CSV＋参照写真を 1つの ZIP にまとめて一時ファイルへ書き出し、パスを返す。
-  /// backend /export_bundle のローカル版（PC off でも書き出せる）。
+  /// Dataset Package（llmap_dataset_YYYYMMDD_HHMMSS.zip）を一時ファイルへ
+  /// 書き出し、パスを返す。構造は dataset_package.dart / docs/data-contract.md §5。
+  /// 導出前に規範化（export_normalizer）を通し、旧レコードも新データ契約で出す
+  /// （本地の記録・写真ファイルは書き換えない。導出包内でのみ新名に複製）。
   /// [onProgress] は写真を1枚追加するごとに (done, total) を通知する。
   /// 圧縮は**別アイソレート**で実行し、UI スレッドを固めない（進捗はポートで受信）。
   Future<String> buildBundle(
     List<Sign> signs,
-    List<String> csvHeader, {
+    AppSchema schema, {
     void Function(int done, int total)? onProgress,
   }) async {
     await _ensure();
 
-    // 参照写真を集計（存在するものだけ同梱）。パス解決はメイン側で行う。
-    final wanted = <String>{};
-    for (final s in signs) {
-      for (final k in ['写真ファイル名', '全景写真ファイル名']) {
-        final name = s.get(k);
-        if (name.isNotEmpty) wanted.add(name);
-      }
+    final norm = normalizeForExport(signs);
+
+    // 参照写真の存在確認（本地に存在するものだけ同梱）。CSV と zip 内の名前は必ず一致。
+    final stats = <PhotoStat>[];
+    for (final p in norm.photos) {
+      final f = photoFile(p.localName);
+      stats.add(await f.exists()
+          ? PhotoStat(p, exists: true, sizeBytes: await f.length())
+          : PhotoStat(p, exists: false));
     }
-    final existing = <String>[];
-    final missing = <String>[];
-    for (final name in wanted.toList()..sort()) {
-      if (await photoFile(name).exists()) {
-        existing.add(name);
-      } else {
-        missing.add(name);
-      }
-    }
-    final total = existing.length;
+    final included = stats.where((s) => s.exists).toList();
+    final total = included.length;
     onProgress?.call(0, total);
 
-    final out = File('${Directory.systemTemp.path}/llmap_export.zip');
+    final exportedAt = DateTime.now();
+    final out =
+        File('${Directory.systemTemp.path}/${datasetFileName(exportedAt)}');
     if (await out.exists()) await out.delete();
 
-    final csvBytes = Uint8List.fromList(utf8.encode(
-        signsToCsv(signs.map((s) => s.toJson()).toList(), header: csvHeader)));
-    final manifest = StringBuffer()
-      ..writeln('records: ${signs.length}')
-      ..writeln('photos_included: ${existing.length}')
-      ..writeln('photos_missing: ${missing.length}');
-    for (final m in missing) {
-      manifest.writeln('  - $m');
-    }
-    final manifestBytes = Uint8List.fromList(utf8.encode(manifest.toString()));
-    // [zip内パス, 実ファイルパス]
+    const json = JsonEncoder.withIndent('  ');
+    Uint8List enc(String s) => Uint8List.fromList(utf8.encode(s));
+    // zip 冒頭に置くテキスト類（[zip内パス, 内容]）。manifest.json が主フォーマット。
+    final textEntries = <List<Object>>[
+      ['data.csv', enc(signsToCsv(norm.rows, header: schema.csvHeader))],
+      [
+        'metadata.json',
+        enc(json.convert(buildMetadataJson(
+          recordCount: signs.length,
+          stats: stats,
+          norm: norm,
+          exportedAt: exportedAt,
+        ))),
+      ],
+      ['schema.json', enc(json.convert(buildSchemaJson(schema)))],
+      ['manifest.json', enc(json.convert(buildManifestJson(stats, norm)))],
+      ['MANIFEST.txt', enc(buildManifestTxt(signs.length, stats, norm))],
+      ['README.md', enc(buildReadme())],
+    ];
+    // [zip内パス, 実ファイルパス]。crop → photos/、source → source_photos/。
     final photos = [
-      for (final name in existing) [name, photoFile(name).path],
+      for (final s in included)
+        [zipPathFor(s.photo), photoFile(s.photo.localName).path],
     ];
 
     // 別アイソレートで圧縮。進捗・完了・エラーをポートで受け取る。
@@ -142,7 +243,7 @@ class LocalStore {
     final completer = Completer<void>();
     final isolate = await Isolate.spawn(
       _zipWorker,
-      _ZipJob(rp.sendPort, out.path, csvBytes, photos, manifestBytes),
+      _ZipJob(rp.sendPort, out.path, textEntries, photos),
     );
     rp.listen((msg) {
       if (msg is List<int>) {
@@ -170,11 +271,9 @@ class LocalStore {
 class _ZipJob {
   final SendPort port;
   final String outPath;
-  final Uint8List csvBytes;
+  final List<List<Object>> textEntries; // [zip内パス, Uint8List]
   final List<List<String>> photos; // [zip内パス, 実ファイルパス]
-  final Uint8List manifestBytes;
-  _ZipJob(this.port, this.outPath, this.csvBytes, this.photos,
-      this.manifestBytes);
+  _ZipJob(this.port, this.outPath, this.textEntries, this.photos);
 }
 
 /// 別アイソレートで ZIP をストリーミング生成（重い deflate をここで実行）。
@@ -182,17 +281,17 @@ Future<void> _zipWorker(_ZipJob job) async {
   try {
     final encoder = ZipFileEncoder();
     encoder.create(job.outPath);
-    encoder.addArchiveFile(
-        ArchiveFile('data.csv', job.csvBytes.length, job.csvBytes));
+    for (final e in job.textEntries) {
+      final bytes = e[1] as Uint8List;
+      encoder.addArchiveFile(ArchiveFile(e[0] as String, bytes.length, bytes));
+    }
     final total = job.photos.length;
     var done = 0;
     for (final p in job.photos) {
-      await encoder.addFile(File(p[1]), 'photos/${p[0]}');
+      await encoder.addFile(File(p[1]), p[0]);
       done++;
       job.port.send(<int>[done, total]); // 進捗通知
     }
-    encoder.addArchiveFile(ArchiveFile(
-        'MANIFEST.txt', job.manifestBytes.length, job.manifestBytes));
     await encoder.close();
     job.port.send('ok');
   } catch (e) {

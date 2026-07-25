@@ -1,16 +1,18 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../albums.dart';
 import '../api.dart';
 import '../capture.dart';
+import '../capture_mode.dart';
+import '../export_flow.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
 import '../settings.dart';
 import '../store.dart';
 import '../theme/tokens.dart';
@@ -42,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _opening = false; // 二重起動防止
   AiConfig _ai = AiConfig();
   String _collector = ''; // 採集者ID（設定で自動生成/自定义）。SignID に入る。
+  CaptureMode _mode = CaptureMode.standard; // 採集モード（既定 standard）
 
   // 地図主体首页の表示状態
   final _map = MapController();
@@ -60,6 +63,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
     loadCollectorId().then((id) {
       if (mounted) setState(() => _collector = id);
+    });
+    loadCaptureMode().then((m) {
+      if (mounted) setState(() => _mode = m);
     });
     _initialGps = currentGps(); // 起動と同時に現在地取得を開始
     _loadSaved();
@@ -119,6 +125,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _persist() =>
       LocalStore.instance.saveProject(_signs, _area, _nextSeq);
 
+  /// 記録を削除し、**残る記録から参照されない**写真ファイルだけを一緒に消す
+  /// （複数 sign が同じ元写真を共有するケースを壊さない）。単発削除・
+  /// Gallery の批量削除の両方がこの経路を通る。
+  Future<void> _deleteSigns(List<Sign> toDelete) async {
+    if (toDelete.isEmpty) return;
+    final del = toDelete.toSet();
+    final remaining = _signs.where((s) => !del.contains(s)).toList();
+    final orphans = orphanedPhotos(deleting: del, remaining: remaining);
+    setState(() {
+      _signs
+        ..clear()
+        ..addAll(remaining);
+    });
+    await _persist(); // 先に記録を確定してから写真を消す（途中断でも参照切れ側に倒す）
+    await LocalStore.instance.deletePhotos(orphans);
+  }
+
   /// 撮影直後に Activity 再生成で失われた写真を image_picker から復旧。
   Future<void> _recoverLostData() async {
     if (!isMobile) return;
@@ -154,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             seq: _nextSeq,
             collector: _collector,
             aiConfig: _ai,
+            mode: _mode,
           ),
         ),
       );
@@ -173,96 +197,110 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _showSavedDialog() {
     final t = AppLocalizations.of(context);
+    // 保存メッセージは採集モードで変える（quick=後で補完可 / standard=提交済 /
+    // research=研究記録として保存）。
+    final message = switch (_mode) {
+      CaptureMode.quick => t.savedQuick,
+      CaptureMode.standard => t.savedStandard,
+      CaptureMode.research => t.savedResearch,
+    };
     return showLLDialog(
       context,
       icon: Icons.check_rounded,
       iconColor: AppColors.success,
       title: t.savedTitle,
-      message: t.savedBody,
+      message: message,
       primaryLabel: t.backToMap,
     );
   }
 
-  /// CSV＋写真を ZIP で一括エクスポート（端末内生成・進捗ダイアログ表示）。
+  /// Dataset Package の導出（Step 14: 範囲選択つき）。
+  /// 入口は従来どおりメニューの「データをエクスポート」だが、押した直後に
+  /// 範囲（全部 / 未分類 / 分類済み / 相册指定）を選ぶ。実行は export_flow。
+  /// 表示中の Gallery 筛选・選択・相册の導出は Gallery 側の入口が担う。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
-    final t = AppLocalizations.of(context);
-    final progress = ValueNotifier<({int done, int total})>((done: 0, total: 0));
-    final sw = Stopwatch()..start();
-    // 進捗ダイアログは1回だけ閉じる（success と catch の二重 pop で
-    // 本体ページまで pop してしまい黒画面になるのを防ぐ）。
-    var dialogOpen = true;
-    void closeDialog() {
-      if (dialogOpen && mounted) {
-        dialogOpen = false;
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LLProgressDialog(
-        title: t.exporting,
-        unit: t.unitPhotos,
-        progress: progress,
-      ),
-    );
+    // 归納状態の件数計算のため相册を読む。**読めなかった時は归納状態の
+    // 選択肢を出さない** — albums=[] のまま出すと「未分類=全件」という
+    // 誤った件数を見せ、意図しない全件導出につながるため（誠実に降級）。
+    List<Album>? albums;
     try {
-      final zipPath = await LocalStore.instance.buildBundle(
-        _signs,
-        widget.schema.csvHeader,
-        onProgress: (done, total) =>
-            progress.value = (done: done, total: total),
-      );
-      // 少量でも進捗→完成が見えるよう、最低 ~0.9 秒は表示する。
-      final remain = 900 - sw.elapsedMilliseconds;
-      if (remain > 0) {
-        await Future.delayed(Duration(milliseconds: remain));
-      }
-      if (!mounted) return;
-      closeDialog(); // 進捗ダイアログを閉じる
-      if (isMobile) {
-        // iPad では sharePositionOrigin 必須（無いと presentation で例外）。
-        final box = context.findRenderObject() as RenderBox?;
-        await Share.shareXFiles(
-          [XFile(zipPath)],
-          text: 'LLMap',
-          sharePositionOrigin:
-              box != null ? box.localToGlobal(Offset.zero) & box.size : null,
-        );
-      } else {
-        final dir =
-            Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
-        final dest = File('$dir/Downloads/llmap_export.zip');
-        await dest.parent.create(recursive: true);
-        await File(zipPath).copy(dest.path);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t.exportedTo(dest.path))),
-          );
-        }
-      }
-    } catch (e) {
-      closeDialog(); // 進捗ダイアログを閉じる（まだ開いていれば）
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(t.exportFailed('$e'))));
-      }
-    } finally {
-      progress.dispose();
+      albums = await LocalStore.instance.loadAlbums();
+    } catch (_) {
+      albums = null;
     }
+    if (!mounted) return;
+    final t = AppLocalizations.of(context);
+    final all = exportCandidates(scope: ExportScope.all, allSigns: _signs);
+    final unfiled = albums == null
+        ? const <Sign>[]
+        : exportCandidates(
+            scope: ExportScope.unfiled, allSigns: _signs, albums: albums);
+    final filed = albums == null
+        ? const <Sign>[]
+        : exportCandidates(
+            scope: ExportScope.filed, allSigns: _signs, albums: albums);
+    final schema = widget.schema;
+    showLLBottomSheet(context, title: t.exportDataset, children: [
+      LLSheetTile(
+          icon: Icons.folder_zip_outlined,
+          label: '${t.allRecords} (${all.length})',
+          onTap: () {
+            Navigator.pop(context);
+            confirmAndRunDatasetExport(context, signs: all, schema: schema);
+          }),
+      if (albums != null) ...[
+        LLSheetTile(
+            icon: Icons.inbox_outlined,
+            label: '${t.unfiled} (${unfiled.length})',
+            onTap: () {
+              Navigator.pop(context);
+              confirmAndRunDatasetExport(context,
+                  signs: unfiled, schema: schema);
+            }),
+        LLSheetTile(
+            icon: Icons.photo_album_outlined,
+            label: '${t.filed} (${filed.length})',
+            onTap: () {
+              Navigator.pop(context);
+              confirmAndRunDatasetExport(context,
+                  signs: filed, schema: schema);
+            }),
+        // 任意の相册を選んで導出（範囲 5）。相册が無ければ出さない。
+        if (albums.isNotEmpty)
+          LLSheetTile(
+              icon: Icons.collections_bookmark_outlined,
+              label: t.exportPickAlbum,
+              onTap: () {
+                Navigator.pop(context);
+                showAlbumExportPicker(context,
+                    albums: albums!, allSigns: _signs, schema: schema);
+              }),
+      ],
+      LLSheetTile(
+          icon: Icons.close,
+          label: t.cancel,
+          color: AppColors.textSecondary,
+          showChevron: false,
+          onTap: () => Navigator.pop(context)),
+    ]);
   }
 
   Future<void> _openSettings() async {
-    final result =
-        await Navigator.push<({String baseUrl, AiConfig ai, String collectorId})>(
+    final result = await Navigator.push<
+        ({
+          String baseUrl,
+          AiConfig ai,
+          String collectorId,
+          CaptureMode captureMode,
+        })>(
       context,
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
           baseUrl: widget.api.baseUrl,
           ai: _ai,
           collectorId: _collector,
+          captureMode: _mode,
         ),
       ),
     );
@@ -270,11 +308,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await saveBaseUrl(result.baseUrl);
     await saveAiConfig(result.ai);
     await saveCollectorId(result.collectorId);
+    await saveCaptureMode(result.captureMode);
     widget.api.baseUrl = result.baseUrl;
     if (mounted) {
       setState(() {
         _ai = result.ai;
         _collector = result.collectorId;
+        _mode = result.captureMode;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
@@ -290,10 +330,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (_) => GalleryScreen(
           signs: _signs,
           schema: widget.schema,
-          onDelete: (s) {
-            setState(() => _signs.remove(s));
-            _persist();
-          },
+          onDeleteMany: _deleteSigns, // 単発/批量とも写真安全削除の同一経路
           onChanged: () {
             setState(() {});
             _persist();
@@ -303,17 +340,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _editSign(int i) async {
+  Future<void> _editSign(Sign sign) async {
     final r = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditSignScreen(sign: _signs[i], schema: widget.schema),
+        builder: (_) => EditSignScreen(sign: sign, schema: widget.schema),
       ),
     );
     if (!mounted) return;
     if (r == 'deleted') {
-      setState(() => _signs.removeAt(i));
-      _persist();
+      await _deleteSigns([sign]);
     } else if (r == 'saved') {
       setState(() {});
       _persist();
@@ -566,6 +602,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _recordsPanel(ScrollController scroll) {
     final t = AppLocalizations.of(context);
+    // 表示は新しい順（Gallery の既定排序と揃える）。_signs 自体は採集順のまま。
+    final ordered = _signs.reversed.toList();
+    // builder で遅延構築する（記録が数百件でも抽屉が固まらないように）。
+    // 行構成: [0]=ヘッダ / [1..n]=記録（空なら空状態1行）/ 末尾=余白。
+    final rowCount = 1 + (ordered.isEmpty ? 1 : ordered.length) + 1;
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surfaceIvory,
@@ -573,93 +614,113 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         boxShadow: AppShadows.floating,
       ),
       clipBehavior: Clip.antiAlias,
-      child: ListView(
+      child: ListView.builder(
         controller: scroll,
         padding: EdgeInsets.zero,
-        children: [
-          const SizedBox(height: 10),
-          Center(
-            child: Container(
-              width: 44,
-              height: 5,
-              decoration: BoxDecoration(
-                color: AppColors.borderSubtle,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+        itemCount: rowCount,
+        itemBuilder: (context, row) {
+          if (row == 0) return _panelHeader(t);
+          if (row == rowCount - 1) return const SizedBox(height: AppSpacing.xl);
+          if (ordered.isEmpty) return _emptyRecords();
+          final s = ordered[row - 1];
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
+            child: Dismissible(
+              key: ValueKey('${s.id}-${identityHashCode(s)}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: AppSpacing.xl),
+                child: const Icon(Icons.delete_outline, color: Colors.white),
               ),
+              confirmDismiss: (_) => showLLDialog<bool>(
+                context,
+                icon: Icons.delete_outline,
+                iconColor: AppColors.danger,
+                title: t.deleteRecordTitle,
+                message: t.deleteRecordConfirm(s.displayId),
+                primaryLabel: t.delete,
+                onPrimary: () => Navigator.pop(context, true),
+                secondaryLabel: t.cancel,
+                onSecondary: () => Navigator.pop(context, false),
+              ),
+              onDismissed: (_) => _deleteSigns([s]),
+              child: LLSignCard(
+                  sign: s,
+                  // 番号は採集順を保つ（最新 = 最大番号が先頭に来る）。
+                  index: _signs.length - row,
+                  onTap: () => _editSign(s)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 抽屉ヘッダ（ハンドル＋タイトル行）。
+  Widget _panelHeader(AppLocalizations t) {
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Center(
+          child: Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppColors.borderSubtle,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
-            child: Row(
-              children: [
-                Text(t.recordsTitle, style: AppText.sectionTitle()),
-                const SizedBox(width: AppSpacing.sm),
-                Text(t.recordsCount(_signs.length), style: AppText.caption()),
-                const Spacer(),
-                if (_signs.isNotEmpty)
-                  IconButton(
-                    onPressed: _openGallery,
-                    icon: const Icon(Icons.grid_view_outlined, size: 20),
-                    color: AppColors.accentTerracotta,
-                    tooltip: t.archiveTooltip,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                LLTagChip(
-                    label: '$_area #$_nextSeq', color: AppColors.accentBlue),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
+          child: Row(
+            children: [
+              Text(t.recordsTitle, style: AppText.sectionTitle()),
+              const SizedBox(width: AppSpacing.sm),
+              Text(t.recordsCount(_signs.length), style: AppText.caption()),
+              const Spacer(),
+              if (_signs.isNotEmpty)
                 IconButton(
-                  onPressed: _editArea,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textSecondary,
-                  tooltip: t.areaCodeTooltip,
+                  onPressed: _openGallery,
+                  icon: const Icon(Icons.grid_view_outlined, size: 20),
+                  color: AppColors.accentTerracotta,
+                  tooltip: t.archiveTooltip,
                   visualDensity: VisualDensity.compact,
                 ),
-              ],
-            ),
-          ),
-          if (_signs.isEmpty)
-            _emptyRecords()
-          else
-            ...List.generate(_signs.length, (i) {
-              final s = _signs[i];
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
-                child: Dismissible(
-                  key: ValueKey('${s.id}-$i'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.danger,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: AppSpacing.xl),
-                    child: const Icon(Icons.delete_outline, color: Colors.white),
-                  ),
-                  confirmDismiss: (_) => showLLDialog<bool>(
-                    context,
-                    icon: Icons.delete_outline,
-                    iconColor: AppColors.danger,
-                    title: t.deleteRecordTitle,
-                    message: t.deleteRecordConfirm(s.id),
-                    primaryLabel: t.delete,
-                    onPrimary: () => Navigator.pop(context, true),
-                    secondaryLabel: t.cancel,
-                    onSecondary: () => Navigator.pop(context, false),
-                  ),
-                  onDismissed: (_) {
-                    setState(() => _signs.removeAt(i));
-                    _persist();
+              // 現在の採集モード（設定で切替。タップで設定へ）。
+              InkWell(
+                onTap: _openSettings,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: LLTagChip(
+                  label: _mode.label(t),
+                  color: switch (_mode) {
+                    CaptureMode.quick => AppColors.accentMustard,
+                    CaptureMode.standard => AppColors.accentBlue,
+                    CaptureMode.research => AppColors.accentViolet,
                   },
-                  child: LLSignCard(
-                      sign: s, index: i, onTap: () => _editSign(i)),
                 ),
-              );
-            }),
-          const SizedBox(height: AppSpacing.xl),
-        ],
-      ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              LLTagChip(
+                  label: '$_area #$_nextSeq', color: AppColors.accentBlue),
+              IconButton(
+                onPressed: _editArea,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                color: AppColors.textSecondary,
+                tooltip: t.areaCodeTooltip,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

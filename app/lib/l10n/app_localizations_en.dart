@@ -371,4 +371,324 @@ class AppLocalizationsEn extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS: $lat, $lng · Collected: $time';
   }
+
+  @override
+  String get captureMode => 'Capture mode';
+
+  @override
+  String get captureModeNote =>
+      'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.';
+
+  @override
+  String get modeQuick => 'Quick mode';
+
+  @override
+  String get modeQuickDesc => 'Save right after boxing; fill fields later';
+
+  @override
+  String get modeStandard => 'Standard mode';
+
+  @override
+  String get modeStandardDesc =>
+      'Just pick the languages on the sign (default)';
+
+  @override
+  String get modeResearch => 'Research mode';
+
+  @override
+  String get modeResearchDesc =>
+      'Full research field form for formal annotation';
+
+  @override
+  String get fieldScheme => 'Field scheme';
+
+  @override
+  String get fieldSchemeOfficial => 'Official fields';
+
+  @override
+  String get fieldSchemeCustom => 'Custom fields';
+
+  @override
+  String get savedQuick => 'Record saved. You can add fields later.';
+
+  @override
+  String get savedStandard => 'Record submitted.';
+
+  @override
+  String get savedResearch => 'Research record saved.';
+
+  @override
+  String get stdLangPrompt => 'Select the languages on this sign';
+
+  @override
+  String get stdMoreInfo => '+ Add more info';
+
+  @override
+  String get fieldScript => 'Script';
+
+  @override
+  String get fieldNote => 'Note (optional)';
+
+  @override
+  String get datasetExported => 'Dataset Package exported';
+
+  @override
+  String get select => 'Select';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String get deselectAll => 'Deselect all';
+
+  @override
+  String deleteMultipleTitle(int count) {
+    return 'Delete $count records?';
+  }
+
+  @override
+  String get deleteIrreversibleBody => 'This action cannot be undone.';
+
+  @override
+  String deletedCount(int count) {
+    return 'Deleted $count records';
+  }
+
+  @override
+  String get sortTitle => 'Sort';
+
+  @override
+  String get sortNewestFirst => 'Newest first';
+
+  @override
+  String get sortOldestFirst => 'Oldest first';
+
+  @override
+  String get sortIdAsc => 'ID ascending';
+
+  @override
+  String get sortIdDesc => 'ID descending';
+
+  @override
+  String get filterTitle => 'Filters';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String resultsCount(int count) {
+    return '$count shown';
+  }
+
+  @override
+  String get filterMode => 'Mode';
+
+  @override
+  String get filterStatus => 'Status';
+
+  @override
+  String get filterArea => 'Area';
+
+  @override
+  String get filterCollector => 'Collector';
+
+  @override
+  String get filterGps => 'GPS';
+
+  @override
+  String get filterPhoto => 'Photo';
+
+  @override
+  String get filterSource => 'Source photo';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get allRecords => 'All records';
+
+  @override
+  String get newAlbum => 'New album';
+
+  @override
+  String get albumNameHint => 'Album name';
+
+  @override
+  String get renameAlbum => 'Rename album';
+
+  @override
+  String get deleteAlbum => 'Delete album';
+
+  @override
+  String deleteAlbumTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get deleteAlbumBody => 'Records in this album are not deleted.';
+
+  @override
+  String get addToAlbum => 'Add to album';
+
+  @override
+  String get removeFromAlbum => 'Remove from album';
+
+  @override
+  String addedToAlbum(int count, String name) {
+    return 'Added $count to “$name”';
+  }
+
+  @override
+  String removedFromAlbum(int count) {
+    return 'Removed $count from album';
+  }
+
+  @override
+  String get albumEmpty => 'No records in this album yet.';
+
+  @override
+  String get unfiled => 'Unfiled';
+
+  @override
+  String get filed => 'Filed';
+
+  @override
+  String get noUnfiledRecords => 'No unfiled records';
+
+  @override
+  String get allRecordsFiled => 'All records have been organized into albums';
+
+  @override
+  String get noFiledRecords => 'No filed records';
+
+  @override
+  String get recordsAddedToAlbumsAppearHere =>
+      'Records added to albums will appear here';
+
+  @override
+  String get exportDataset => 'Export Dataset Package';
+
+  @override
+  String get exportScopeCurrentView => 'Current view';
+
+  @override
+  String get exportScopeSelected => 'Selected records';
+
+  @override
+  String get exportScopeAlbum => 'Current album';
+
+  @override
+  String exportConfirmTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Export $count records?',
+      one: 'Export 1 record?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get exportConfirmBody =>
+      'This will create a Dataset Package containing only the selected records and required photos.';
+
+  @override
+  String get noRecordsToExport => 'No records to export.';
+
+  @override
+  String get exportAction => 'Export';
+
+  @override
+  String get exportSelected => 'Export selected';
+
+  @override
+  String get exportPickAlbum => 'Choose an album…';
+
+  @override
+  String get permissionDeniedTitle => 'Permission needed';
+
+  @override
+  String get cameraDeniedBody =>
+      'Camera access is off. Enable it in Settings → LLMap → Camera to take photos.';
+
+  @override
+  String get photoDeniedBody =>
+      'Photo library access is off. Enable it in Settings → LLMap → Photos to import images.';
+
+  @override
+  String get openSettings => 'Open Settings';
+
+  @override
+  String get discardTitle => 'Unsaved changes';
+
+  @override
+  String get discardEditBody => 'Discard the changes and close?';
+
+  @override
+  String get discardCaptureBody =>
+      'Abandon this capture? Entered fields and cropped photos will not be saved.';
+
+  @override
+  String get discard => 'Discard';
+
+  @override
+  String processFailed(String error) {
+    return 'Processing failed: $error';
+  }
+
+  @override
+  String get customAddHint => '+ Add custom';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get fieldName => 'Name';
+
+  @override
+  String get fieldTextuality => 'Text presence';
+
+  @override
+  String get fieldDecorLang => 'Decorative language';
+
+  @override
+  String get fieldSpatial => 'Spatial layer';
+
+  @override
+  String get fieldTemporality => 'Temporality';
+
+  @override
+  String get fieldLegibility => 'Legibility';
+
+  @override
+  String get fieldOverwrite => 'Overwriting';
+
+  @override
+  String get fieldDiscourse => 'Discourse type';
+
+  @override
+  String get fieldQuality => 'Production quality';
+
+  @override
+  String get statusPending => 'Pending';
+
+  @override
+  String get statusAi => 'AI draft';
+
+  @override
+  String get statusHumanReviewed => 'Reviewed';
+
+  @override
+  String get statusFinal => 'Final';
+
+  @override
+  String get fieldPlacement => 'Placement';
 }

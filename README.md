@@ -16,14 +16,17 @@ PC（後端）は不要。後端は将来の多人共享（Phase 4）用に温�
 
 ```
 llmap-app/
-  app/        Flutter モバイルアプリ（採集・框选・地図预览・字段表单・AI判定・端末内保存）
-  backend/    Python FastAPI 轻后端（任意。EXIF抽出と、将来の多人共享用）
+  app/        Flutter モバイル採集端（採集・框选・地図预览・字段表单・AI判定・端末内保存）
+  backend/    Python FastAPI（採集補助＋Research Console 用ローカルDBサービス）
+  console/    LLMap Research Console（PC/Web 研究管理台・React+Vite。開発中）
+  docs/       データ契約・字段規範（docs/data-contract.md）
 ```
 
 - **単人本地**で完結。データは端末内（記録 `project.json` ＋写真）に永続化。
 - AI判定は端末から Claude / Gemini API を直接呼ぶ（APIキーはアプリ設定で端末内保存）。
 - CSV標準字段（`mapv2.0/PROJECT_STANDARD.md` §6/§7）を踏襲し、CSV import/export を維持。
 - データ構造は将来の**多人共享**（クラウド同期）を予約。
+- Build matrix（どの OS でどの成果物をビルドするか）: [docs/build-matrix.md](docs/build-matrix.md)
 
 ## ロードマップ
 
@@ -45,9 +48,30 @@ flutter run -d windows
 後端なしで起動する（v1.1〜）。AI判定を使う場合は、アプリ右上の歯車 →「AI自動識別」をオンにし、
 プロバイダ（Claude / Gemini）と **APIキー**を入力（端末内に保存）。
 
-## backend（任意 / 通常は不要）
+## PC でまとめて起動する（developer launcher）
 
-v1.1 以降、通常運用に後端は不要。EXIF抽出の利用や、将来の多人共享の開発時のみ起動する。
+backend＋Research Console を一発起動するスクリプトを用意している
+（**最終製品ではない**。将来のインストール版は
+[docs/desktop-offline-design.md](docs/desktop-offline-design.md) 参照）:
+
+```bash
+./scripts/start-llmap-local.sh        # macOS / Linux（.command は macOS 双击用）
+scripts\start-llmap-local.bat         # Windows（ps1 の双击入口）
+```
+
+データは三平台標準のユーザーデータ目录
+（macOS: `~/Library/Application Support/LLMap` / Windows: `%APPDATA%\LLMap` /
+Linux: `~/.local/share/LLMap`）に保存され、`LLMAP_DATA_DIR` で変更できる。
+Ctrl+C で backend / console を両方停止する。
+
+## backend（採集は不要 / Research Console 用ローカルDBサービス）
+
+採集はスマホ単体で完結する（後端不要）。backend v0.2.0 からは、将来の
+**LLMap Research Console**（PC/Web 研究管理台）向けのローカルDBサービスを兼ねる:
+アプリが导出した Dataset Package（`llmap_dataset_*.zip`）を `POST /datasets/import`
+で取り込み、検索/筛选（`/records`）・編集（`PATCH /records/{id}`）・写真配信・
+地図（`/map/records`）・統計（`/stats/summary`）・CSV導出（`/export/csv`）を提供する
+（SQLite・完全ローカル。テスト: `cd backend && python -m pytest tests/ -q`）。
 
 ```bash
 cd backend
@@ -74,7 +98,7 @@ flutter build apk --release
 #   -> build\app\outputs\flutter-apk\app-release.apk
 
 # 成果物を dist/ に v1.x 名で回収（dist は git 管理外）
-Copy-Item build\app\outputs\flutter-apk\app-release.apk ..\dist\LLMap-v1.4.0-release.apk -Force
+Copy-Item build\app\outputs\flutter-apk\app-release.apk ..\dist\LLMap-v1.10.2-release.apk -Force
 ```
 
 ⚠️ ビルド時の注意:
@@ -84,7 +108,7 @@ Copy-Item build\app\outputs\flutter-apk\app-release.apk ..\dist\LLMap-v1.4.0-rel
 - パスに**非ASCII文字が含まれると release(AOT) が失敗する**。その場合は ASCII パスへコピーしてビルド:
   `robocopy app C:\llmap_build\app /E /XD build .dart_tool .gradle /XF *.apk`
 
-最新ビルド: `dist/LLMap-v1.4.0-release.apk`（arm/arm64/x64 同梱の universal APK）。
+最新ビルド: `dist/LLMap-v1.10.0-release.apk`（arm/arm64/x64 同梱の universal APK）。
 
 ## Android 実機で使う（v1.1〜：PC不要）
 

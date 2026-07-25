@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'capture_mode.dart';
 import 'l10n/app_localizations.dart';
 import 'models.dart';
 import 'schema_defaults.dart';
@@ -77,19 +78,30 @@ class _BootState extends State<_Boot> {
   Future<void> _editUrl() async {
     final ai = await loadAiConfig();
     final collector = await loadCollectorId();
+    final captureMode = await loadCaptureMode();
     if (!mounted) return;
-    final result =
-        await Navigator.push<({String baseUrl, AiConfig ai, String collectorId})>(
+    final result = await Navigator.push<
+        ({
+          String baseUrl,
+          AiConfig ai,
+          String collectorId,
+          CaptureMode captureMode,
+        })>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            SettingsScreen(baseUrl: api.baseUrl, ai: ai, collectorId: collector),
+        builder: (_) => SettingsScreen(
+          baseUrl: api.baseUrl,
+          ai: ai,
+          collectorId: collector,
+          captureMode: captureMode,
+        ),
       ),
     );
     if (result == null) return;
     await saveBaseUrl(result.baseUrl);
     await saveAiConfig(result.ai);
     await saveCollectorId(result.collectorId);
+    await saveCaptureMode(result.captureMode);
     api.baseUrl = result.baseUrl;
     _load();
   }

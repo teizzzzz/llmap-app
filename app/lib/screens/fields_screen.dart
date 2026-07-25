@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../ai.dart' as ai;
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
 import '../settings.dart';
 import '../store.dart';
 import '../theme/tokens.dart';
@@ -51,7 +52,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
   bool get _isLast => _index >= widget.signs.length - 1;
 
   CropRegion? _regionFor(Sign sign) {
-    final suffix = sign.id.split('-').last; // AREA-SNNN-suffix
+    final suffix = sign.cropSuffix; // 新: CropSuffix 字段 / 旧: SignID 末尾
     for (final r in widget.regions) {
       if (r.suffix == suffix) return r;
     }
@@ -71,8 +72,9 @@ class _FieldsScreenState extends State<FieldsScreen> {
       // 端末に保存済みの裁切写真を読み、無ければ全景にフォールバック。
       final name = sign.get('写真ファイル名');
       final f = LocalStore.instance.photoFile(name);
-      final bytes =
-          await f.exists() ? await f.readAsBytes() : widget.imageBytes;
+      final bytes = await f.exists()
+          ? await f.readAsBytes()
+          : widget.imageBytes;
       final fields = await ai.judge(
         photoBytes: bytes,
         provider: widget.aiConfig.provider,
@@ -81,15 +83,24 @@ class _FieldsScreenState extends State<FieldsScreen> {
       );
       if (!mounted) return;
       setState(() {
-        fields.forEach((k, v) {
-          if (v != null && v.toString().isNotEmpty) sign.set(k, v.toString());
-        });
-        sign.set('_status', 'ai');
+        // v6 規則で併合: 既存内容は消さない（備考は追記・multi は和集合・
+        // 単一字段は空欄のみ）。空の AI 値は書かない。
+        final changed = mergeAiDraft(
+          sign,
+          fields,
+          multiFields: widget.schema.multiFields,
+        );
+        // 状態は「未処理→AI下書」への昇格のみ。人が確認済みの記録
+        // （human-reviewed/final）を AI 再実行で降格させない。
+        if (changed > 0 && sign.status == 'pending') {
+          sign.setStatus('ai');
+        }
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).aiFailed('$e'))));
+          SnackBar(content: Text(AppLocalizations.of(context).aiFailed('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _aiBusy = false);
@@ -115,10 +126,28 @@ class _FieldsScreenState extends State<FieldsScreen> {
   /// 入力済みとして保存（pending/ai なら human-reviewed に昇格）。
   void _save() {
     if (_current.status == 'pending' || _current.status == 'ai') {
-      _current.set('_status', 'human-reviewed');
+      _current.setStatus('human-reviewed');
     }
     _saved.add(_current);
     _advance();
+  }
+
+  /// 途中放棄の確認。放棄すると CropScreen 側が今回保存した写真を清掃する。
+  Future<void> _confirmAbandon(bool didPop) async {
+    if (didPop) return;
+    final t = AppLocalizations.of(context);
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.help_outline,
+      iconColor: AppColors.warning,
+      title: t.discardTitle,
+      message: t.discardCaptureBody,
+      primaryLabel: t.discard,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok == true && mounted) Navigator.pop(context);
   }
 
   @override
@@ -126,83 +155,88 @@ class _FieldsScreenState extends State<FieldsScreen> {
     final t = AppLocalizations.of(context);
     final total = widget.signs.length;
     final sign = _current;
-    final suffix = sign.id.split('-').last;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.fieldsTitle(suffix, _index + 1, total)),
-        bottom: total > 1
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(4),
-                child: LinearProgressIndicator(
-                  value: (_index + 1) / total,
-                  minHeight: 4,
-                  backgroundColor: AppColors.muted,
-                  color: AppColors.accentTerracotta,
+    final suffix = sign.cropSuffix;
+    return PopScope(
+      canPop: false, // 進入時点で写真は保存済み → 放棄は必ず確認を通す
+      onPopInvokedWithResult: (didPop, _) => _confirmAbandon(didPop),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t.fieldsTitle(suffix, _index + 1, total)),
+          bottom: total > 1
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(4),
+                  child: LinearProgressIndicator(
+                    value: (_index + 1) / total,
+                    minHeight: 4,
+                    backgroundColor: AppColors.muted,
+                    color: AppColors.accentTerracotta,
+                  ),
+                )
+              : null,
+          actions: [
+            if (widget.aiConfig.enabled)
+              IconButton(
+                tooltip: t.reRecognize,
+                onPressed: _aiBusy ? null : () => _runAi(sign),
+                icon: const Icon(Icons.auto_awesome),
+              ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            ListView(
+              key: ValueKey(sign.id),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                LLCard(
+                  padding: EdgeInsets.zero,
+                  child: CropPreview(
+                    imageBytes: widget.imageBytes,
+                    region: _regionFor(sign),
+                  ),
                 ),
-              )
-            : null,
-        actions: [
-          if (widget.aiConfig.enabled)
-            IconButton(
-              tooltip: t.reRecognize,
-              onPressed: _aiBusy ? null : () => _runAi(sign),
-              icon: const Icon(Icons.auto_awesome),
+                const SizedBox(height: AppSpacing.md),
+                SignForm(
+                  sign: sign,
+                  schema: widget.schema,
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: 80),
+              ],
             ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            key: ValueKey(sign.id),
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              LLCard(
-                padding: EdgeInsets.zero,
-                child: CropPreview(
-                  imageBytes: widget.imageBytes,
-                  region: _regionFor(sign),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              SignForm(
-                sign: sign,
-                schema: widget.schema,
-                onChanged: () => setState(() {}),
-              ),
-              const SizedBox(height: 80),
-            ],
-          ),
-          if (_aiBusy)
-            Positioned(
-              top: AppSpacing.sm,
-              right: AppSpacing.sm,
-              child: LLTagChip(
+            if (_aiBusy)
+              Positioned(
+                top: AppSpacing.sm,
+                right: AppSpacing.sm,
+                child: LLTagChip(
                   label: t.recognizing,
                   color: AppColors.accentBlue,
-                  icon: Icons.auto_awesome),
+                  icon: Icons.auto_awesome,
+                ),
+              ),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 暂存 = 不填写直接入库（之后可批量 AI/修正）。主ボタン。
+                LLPrimaryButton(
+                  label: _isLast ? t.stashDone : t.stashNext,
+                  icon: _isLast ? Icons.check : Icons.skip_next,
+                  onPressed: _aiBusy ? null : _skip,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                // 填写后保存（modified）。副ボタン。
+                LLSecondaryButton(
+                  label: _isLast ? t.saveDone : t.saveNext,
+                  icon: Icons.save_outlined,
+                  onPressed: _aiBusy ? null : _save,
+                ),
+              ],
             ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 暂存 = 不填写直接入库（之后可批量 AI/修正）。主ボタン。
-              LLPrimaryButton(
-                label: _isLast ? t.stashDone : t.stashNext,
-                icon: _isLast ? Icons.check : Icons.skip_next,
-                onPressed: _aiBusy ? null : _skip,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              // 填写后保存（modified）。副ボタン。
-              LLSecondaryButton(
-                label: _isLast ? t.saveDone : t.saveNext,
-                icon: Icons.save_outlined,
-                onPressed: _aiBusy ? null : _save,
-              ),
-            ],
           ),
         ),
       ),

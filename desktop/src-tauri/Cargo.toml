@@ -1,0 +1,23 @@
+# LLMap Desktop shell (Tauri 2 prototype)。
+# Console(React) を窗口に読み込み、llmap-backend sidecar を管理する。
+[package]
+name = "llmap-desktop"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# PyInstaller onefile は「bootloader 親＋server 子」の2プロセスで動くため、
+# 終了時はプロセスグループごと回収する必要がある（unix のみ）。
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[profile.release]
+strip = true
+lto = true

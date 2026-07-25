@@ -1,4 +1,4 @@
-/// アプリのバージョン表示。
+﻿/// アプリのバージョン表示。
 library;
 
-const String kAppVersion = 'v1.4.0';
+const String kAppVersion = 'v1.12.1';

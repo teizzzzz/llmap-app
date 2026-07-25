@@ -361,4 +361,310 @@ class AppLocalizationsZh extends AppLocalizations {
   String signMeta(String lat, String lng, String time) {
     return 'GPS：$lat, $lng · 采集：$time';
   }
+
+  @override
+  String get captureMode => '采集模式';
+
+  @override
+  String get captureModeNote => '决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。';
+
+  @override
+  String get modeQuick => '快速模式';
+
+  @override
+  String get modeQuickDesc => '拍照框选后直接保存，字段稍后补充';
+
+  @override
+  String get modeStandard => '标准模式';
+
+  @override
+  String get modeStandardDesc => '只需选择标识上出现的语言（默认）';
+
+  @override
+  String get modeResearch => '研究模式';
+
+  @override
+  String get modeResearchDesc => '完整研究字段表单，用于正式采集标注';
+
+  @override
+  String get fieldScheme => '字段方案';
+
+  @override
+  String get fieldSchemeOfficial => '官方字段';
+
+  @override
+  String get fieldSchemeCustom => '自定义字段';
+
+  @override
+  String get savedQuick => '记录已保存，可稍后在采集档案中补充字段。';
+
+  @override
+  String get savedStandard => '记录已提交。';
+
+  @override
+  String get savedResearch => '研究记录已保存。';
+
+  @override
+  String get stdLangPrompt => '选择标识中出现的语言';
+
+  @override
+  String get stdMoreInfo => '＋ 添加更多信息';
+
+  @override
+  String get fieldScript => '文字体系';
+
+  @override
+  String get fieldNote => '备注（可选）';
+
+  @override
+  String get datasetExported => 'Dataset Package 已导出';
+
+  @override
+  String get select => '选择';
+
+  @override
+  String selectedCount(int count) {
+    return '已选择 $count 项';
+  }
+
+  @override
+  String get selectAll => '全选';
+
+  @override
+  String get deselectAll => '取消全选';
+
+  @override
+  String deleteMultipleTitle(int count) {
+    return '删除 $count 条记录？';
+  }
+
+  @override
+  String get deleteIrreversibleBody => '此操作无法撤销。';
+
+  @override
+  String deletedCount(int count) {
+    return '已删除 $count 条记录';
+  }
+
+  @override
+  String get sortTitle => '排序';
+
+  @override
+  String get sortNewestFirst => '最新优先';
+
+  @override
+  String get sortOldestFirst => '最旧优先';
+
+  @override
+  String get sortIdAsc => 'ID 升序';
+
+  @override
+  String get sortIdDesc => 'ID 降序';
+
+  @override
+  String get filterTitle => '筛选';
+
+  @override
+  String get clearFilters => '清除筛选';
+
+  @override
+  String resultsCount(int count) {
+    return '显示 $count 条';
+  }
+
+  @override
+  String get filterMode => '模式';
+
+  @override
+  String get filterStatus => '状态';
+
+  @override
+  String get filterArea => '地区';
+
+  @override
+  String get filterCollector => '采集者';
+
+  @override
+  String get filterGps => 'GPS';
+
+  @override
+  String get filterPhoto => '照片';
+
+  @override
+  String get filterSource => '原图';
+
+  @override
+  String get yes => '有';
+
+  @override
+  String get no => '无';
+
+  @override
+  String get allRecords => '全部记录';
+
+  @override
+  String get newAlbum => '新建相册';
+
+  @override
+  String get albumNameHint => '相册名称';
+
+  @override
+  String get renameAlbum => '重命名相册';
+
+  @override
+  String get deleteAlbum => '删除相册';
+
+  @override
+  String deleteAlbumTitle(String name) {
+    return '删除“$name”？';
+  }
+
+  @override
+  String get deleteAlbumBody => '相册中的记录不会被删除。';
+
+  @override
+  String get addToAlbum => '加入相册';
+
+  @override
+  String get removeFromAlbum => '从相册移除';
+
+  @override
+  String addedToAlbum(int count, String name) {
+    return '已将 $count 条加入“$name”';
+  }
+
+  @override
+  String removedFromAlbum(int count) {
+    return '已从相册移除 $count 条';
+  }
+
+  @override
+  String get albumEmpty => '该相册还没有记录。';
+
+  @override
+  String get unfiled => '未归纳';
+
+  @override
+  String get filed => '已归纳';
+
+  @override
+  String get noUnfiledRecords => '没有未归纳的记录';
+
+  @override
+  String get allRecordsFiled => '所有记录都已经整理到相册中';
+
+  @override
+  String get noFiledRecords => '没有已归纳的记录';
+
+  @override
+  String get recordsAddedToAlbumsAppearHere => '将记录加入相册后会显示在这里';
+
+  @override
+  String get exportDataset => '导出数据集包';
+
+  @override
+  String get exportScopeCurrentView => '当前显示结果';
+
+  @override
+  String get exportScopeSelected => '已选择记录';
+
+  @override
+  String get exportScopeAlbum => '当前相册';
+
+  @override
+  String exportConfirmTitle(int count) {
+    return '要导出 $count 条记录吗？';
+  }
+
+  @override
+  String get exportConfirmBody => '将创建一个只包含所选记录及其所需照片的数据集包。';
+
+  @override
+  String get noRecordsToExport => '没有可导出的记录。';
+
+  @override
+  String get exportAction => '导出';
+
+  @override
+  String get exportSelected => '导出已选';
+
+  @override
+  String get exportPickAlbum => '按相册选择…';
+
+  @override
+  String get permissionDeniedTitle => '需要权限';
+
+  @override
+  String get cameraDeniedBody => '相机权限已关闭。请在 设置 → LLMap → 相机 中开启后再拍照。';
+
+  @override
+  String get photoDeniedBody => '相册权限已关闭。请在 设置 → LLMap → 照片 中开启后再导入。';
+
+  @override
+  String get openSettings => '打开设置';
+
+  @override
+  String get discardTitle => '有未保存的更改';
+
+  @override
+  String get discardEditBody => '要放弃更改并关闭吗？';
+
+  @override
+  String get discardCaptureBody => '要放弃本次采集吗？已输入的内容和裁剪的照片都不会保存。';
+
+  @override
+  String get discard => '放弃';
+
+  @override
+  String processFailed(String error) {
+    return '处理失败: $error';
+  }
+
+  @override
+  String get customAddHint => '+ 自定义添加';
+
+  @override
+  String get add => '添加';
+
+  @override
+  String get fieldName => '名称';
+
+  @override
+  String get fieldTextuality => '文字性';
+
+  @override
+  String get fieldDecorLang => '装饰性语言';
+
+  @override
+  String get fieldSpatial => '空间层级';
+
+  @override
+  String get fieldTemporality => '时间性';
+
+  @override
+  String get fieldLegibility => '可读性';
+
+  @override
+  String get fieldOverwrite => '覆盖书写';
+
+  @override
+  String get fieldDiscourse => '话语类型';
+
+  @override
+  String get fieldQuality => '制作质量';
+
+  @override
+  String get statusPending => '待处理';
+
+  @override
+  String get statusAi => 'AI草稿';
+
+  @override
+  String get statusHumanReviewed => '已确认';
+
+  @override
+  String get statusFinal => '最终确定';
+
+  @override
+  String get fieldPlacement => '放置位置';
 }

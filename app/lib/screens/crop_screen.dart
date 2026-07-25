@@ -1,19 +1,25 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../capture.dart';
+import '../capture_mode.dart';
 import '../imaging.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
+import '../record_ops.dart';
+import '../schema_defaults.dart';
 import '../settings.dart';
 import '../store.dart';
+import '../version.dart';
 import '../theme/tokens.dart';
 import '../widgets/box_selector.dart';
 import '../widgets/ll/ll.dart';
 import 'fields_screen.dart';
 import 'select_location_screen.dart';
+import 'standard_fields_screen.dart';
 
 /// 框选画面：1枚の写真から複数 sign を矩形で切り出す（②）。
 /// 「完了」で backend /extract を呼び、字段入力画面へ。
@@ -26,6 +32,7 @@ class CropScreen extends StatefulWidget {
   final int seq;
   final String collector;
   final AiConfig aiConfig;
+  final CaptureMode mode;
 
   const CropScreen({
     super.key,
@@ -37,6 +44,7 @@ class CropScreen extends StatefulWidget {
     required this.seq,
     required this.collector,
     required this.aiConfig,
+    this.mode = CaptureMode.standard,
   });
 
   @override
@@ -65,37 +73,66 @@ class _CropScreenState extends State<CropScreen> {
       // 端末内で sign 群を生成し、写真を端末に保存する（後端非依存／PC off 可）。
       final signs = await _extractLocal(gps);
       if (!mounted) return;
+
+      // 採集モードで框选後のフローを分岐する（首页・データ構造は共通）。
+      if (widget.mode == CaptureMode.quick) {
+        // quick: 表単を出さず直接保存（字段は後で Gallery/編集から補完）。
+        Navigator.pop(context, signs);
+        return;
+      }
       final result = await Navigator.push<List<Sign>>(
         context,
         MaterialPageRoute(
-          builder: (_) => FieldsScreen(
-            schema: widget.schema,
-            imageBytes: widget.imageBytes,
-            signs: signs,
-            regions: _regions,
-            aiConfig: widget.aiConfig,
-          ),
+          builder: (_) => widget.mode == CaptureMode.research
+              // research: 完全な研究字段表単（AI下書も可）。
+              ? FieldsScreen(
+                  schema: widget.schema,
+                  imageBytes: widget.imageBytes,
+                  signs: signs,
+                  regions: _regions,
+                  aiConfig: widget.aiConfig,
+                )
+              // standard: 簡易言語選択（既定モード）。
+              : StandardFieldsScreen(
+                  schema: widget.schema,
+                  imageBytes: widget.imageBytes,
+                  signs: signs,
+                  regions: _regions,
+                ),
         ),
       );
-      if (result != null && mounted) Navigator.pop(context, result);
+      if (result != null && mounted) {
+        Navigator.pop(context, result);
+      } else if (result == null) {
+        // 表単を放棄した: _extractLocal が保存した写真を削除する（孤児化防止）。
+        // CaptureID はミリ秒一意のため、既存記録のファイルと重なることはない。
+        await LocalStore.instance.deletePhotos({
+          for (final s in signs) ...photoRefsOf(s),
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('字段处理失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).processFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  /// 後端 /extract のローカル版：写真を端末保存し sign 群を組み立てる。
+  /// 後端 /extract のローカル版：元写真を端末保存し sign 群を組み立てる。
+  /// ID は新契約で採番する: CaptureID = AREA-COLLECTORID-YYMMDDHHMMSSmmm。
+  /// 採集者ID＋ミリ秒時刻を含むため多人採集でもファイル名/SignID が衝突しない。
   Future<List<Sign>> _extractLocal(({double lat, double lng})? gps) async {
-    final captured = nowCaptured();
-    final pid = photoId(widget.area, yyyymmdd(captured), widget.seq);
-    final panoName = '$pid.jpg';
-    await LocalStore.instance.savePhoto(panoName, widget.imageBytes);
+    final capturedAt = DateTime.now();
+    final captured = formatCaptured(capturedAt);
+    final captureId = makeCaptureId(widget.area, widget.collector, capturedAt);
 
-    // 框选が無ければ全景1枚を1 sign として扱う。
+    // 元写真（原始完整写真）。衝突時は store が別名を割り当てるため戻り値を使う。
+    final sourceName = await LocalStore.instance
+        .savePhoto(sourcePhotoName(captureId), widget.imageBytes);
+
+    // 框选が無ければ元写真全体を1 sign として扱う（CropRect は 0,0,1,1）。
     final regions = _regions.isEmpty
         ? [CropRegion(suffix: 'a', x: 0, y: 0, w: 1, h: 1)]
         : _regions;
@@ -103,25 +140,37 @@ class _CropScreenState extends State<CropScreen> {
     final signs = <Sign>[];
     for (final r in regions) {
       final isFull = r.w >= 0.999 && r.h >= 0.999;
-      String fname;
-      if (isFull) {
-        fname = panoName;
-      } else {
-        final cropped =
-            await cropJpegAsync(widget.imageBytes, r.x, r.y, r.w, r.h);
-        fname = '$pid-${r.suffix}.jpg';
-        await LocalStore.instance.savePhoto(fname, cropped);
-      }
+      final bytes = isFull
+          ? widget.imageBytes
+          : await cropJpegAsync(widget.imageBytes, r.x, r.y, r.w, r.h);
+      final fname = await LocalStore.instance
+          .savePhoto(cropPhotoName(captureId, r.suffix), bytes);
       signs.add(Sign({
-        'SignID':
-            signId(widget.area, widget.seq, r.suffix, collector: widget.collector),
+        'SignID': makeSignId(captureId, r.suffix),
         '_status': 'pending',
-        '写真ID': pid,
+        'CaptureID': captureId,
+        'DisplayID':
+            makeDisplayId(widget.area, capturedAt, widget.seq, r.suffix),
+        '採集者ID': widget.collector,
+        '地区コード': widget.area.toUpperCase(),
+        'LocalSeq': widget.seq,
+        'CropSuffix': r.suffix,
+        'CropRect': jsonEncode({'x': r.x, 'y': r.y, 'w': r.w, 'h': r.h}),
+        // 旧字段互換: 写真ID は CaptureID と同値、全景写真ファイル名 は 元写真 と同値。
+        '写真ID': captureId,
         '写真ファイル名': fname,
-        '全景写真ファイル名': isFull ? '' : panoName,
+        '元写真ファイル名': sourceName,
+        '全景写真ファイル名': sourceName,
         '緯度': gps?.lat,
         '経度': gps?.lng,
         '採集日時': captured,
+        // 溯源字段: 採集方式・審核状態(Console対応値)・契約/アプリ版。
+        // DataStatus 初期値: quick=raw / standard=submitted / research=submitted
+        // （research は校閲保存で setStatus により reviewed へ昇格）。
+        'EntryMode': widget.mode.entryMode,
+        'DataStatus': widget.mode.initialDataStatus,
+        'SchemaVersion': kSchemaVersion,
+        'AppVersion': kAppVersion,
       }));
     }
     return signs;
@@ -191,8 +240,13 @@ class _CropScreenState extends State<CropScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: LLPrimaryButton(
-            label: _regions.isEmpty ? t.nextWholeImage : t.nextFillFields,
-            icon: Icons.arrow_forward,
+            // quick は框选で完了（表単に進まない）ためラベルも「完了」。
+            label: widget.mode == CaptureMode.quick
+                ? t.done
+                : (_regions.isEmpty ? t.nextWholeImage : t.nextFillFields),
+            icon: widget.mode == CaptureMode.quick
+                ? Icons.check
+                : Icons.arrow_forward,
             busy: _busy,
             onPressed: _busy ? null : _next,
           ),

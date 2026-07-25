@@ -9,6 +9,7 @@ class LLCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress; // 長押し（Gallery の選択モード入口など）
   final double radius;
   final Color? color;
   final bool shadow;
@@ -17,6 +18,7 @@ class LLCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.onTap,
+    this.onLongPress,
     this.radius = AppRadius.lg,
     this.color,
     this.shadow = true,
@@ -33,11 +35,12 @@ class LLCard extends StatelessWidget {
         boxShadow: shadow ? AppShadows.card : null,
       ),
       clipBehavior: Clip.antiAlias,
-      child: onTap == null
+      child: (onTap == null && onLongPress == null)
           ? content
           : Material(
               color: Colors.transparent,
-              child: InkWell(onTap: onTap, child: content),
+              child: InkWell(
+                  onTap: onTap, onLongPress: onLongPress, child: content),
             ),
     );
   }

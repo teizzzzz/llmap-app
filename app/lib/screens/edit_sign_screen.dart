@@ -11,6 +11,10 @@ import '../widgets/sign_form.dart';
 
 /// 既存 sign の編集／削除。フォームはウィザードと共用。
 /// 戻り値: 'saved' 保存 / 'deleted' 削除 / null キャンセル。
+///
+/// 編集は **draft 副本**に対して行い、「保存」時だけ元の Sign に反映する。
+/// 戻る＝破棄が本当に成立する（以前は就地編集のため、キャンセルしても
+/// メモリ上の記録が書き換わり、次回の永続化で保存されてしまっていた）。
 class EditSignScreen extends StatefulWidget {
   final Sign sign;
   final AppSchema schema;
@@ -21,6 +25,35 @@ class EditSignScreen extends StatefulWidget {
 }
 
 class _EditSignScreenState extends State<EditSignScreen> {
+  late final Sign _draft =
+      Sign(Map<String, dynamic>.from(widget.sign.data));
+  bool _dirty = false;
+
+  void _save() {
+    widget.sign.data
+      ..clear()
+      ..addAll(_draft.data);
+    Navigator.pop(context, 'saved');
+  }
+
+  /// 未保存の変更があるときだけ破棄確認を出す。
+  Future<void> _onPopRequested(bool didPop) async {
+    if (didPop) return;
+    final t = AppLocalizations.of(context);
+    final ok = await showLLDialog<bool>(
+      context,
+      icon: Icons.help_outline,
+      iconColor: AppColors.warning,
+      title: t.discardTitle,
+      message: t.discardEditBody,
+      primaryLabel: t.discard,
+      onPrimary: () => Navigator.pop(context, true),
+      secondaryLabel: t.cancel,
+      onSecondary: () => Navigator.pop(context, false),
+    );
+    if (ok == true && mounted) Navigator.pop(context);
+  }
+
   Future<void> _confirmDelete() async {
     final t = AppLocalizations.of(context);
     final ok = await showLLDialog<bool>(
@@ -28,7 +61,7 @@ class _EditSignScreenState extends State<EditSignScreen> {
       icon: Icons.delete_outline,
       iconColor: AppColors.danger,
       title: t.deleteRecordTitle,
-      message: t.deleteRecordConfirmIrreversible(widget.sign.id),
+      message: t.deleteRecordConfirmIrreversible(widget.sign.displayId),
       primaryLabel: t.delete,
       onPrimary: () => Navigator.pop(context, true),
       secondaryLabel: t.cancel,
@@ -87,7 +120,7 @@ class _EditSignScreenState extends State<EditSignScreen> {
           appBar: AppBar(
             backgroundColor: Colors.black,
             foregroundColor: Colors.white,
-            title: Text(widget.sign.id),
+            title: Text(widget.sign.displayId),
           ),
           body: Center(
             child: InteractiveViewer(
@@ -101,40 +134,106 @@ class _EditSignScreenState extends State<EditSignScreen> {
     );
   }
 
+  /// 識別情報カード（詳情表示）。短いラベルを見出しに、展開で全システム字段を出す。
+  /// 字段キーは研究用の正準名のためそのまま表示する（i18n 対象外）。
+  Widget _identityCard() {
+    final s = widget.sign;
+    final rows = <(String, String)>[
+      ('SignID', s.id),
+      ('CaptureID', s.captureId),
+      ('DisplayID', s.displayId),
+      ('写真ファイル名', s.fileName),
+      ('元写真ファイル名', s.sourceFileName),
+      ('採集者ID', s.collectorId),
+      ('地区コード', s.get('地区コード')),
+      ('採集日時', s.get('採集日時')),
+      ('緯度', s.get('緯度')),
+      ('経度', s.get('経度')),
+      ('EntryMode', s.get('EntryMode')),
+      ('DataStatus', s.get('DataStatus')),
+      ('SchemaVersion', s.get('SchemaVersion')),
+      ('AppVersion', s.get('AppVersion')),
+    ].where((e) => e.$2.isNotEmpty).toList();
+    return LLCard(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding:
+              const EdgeInsets.symmetric(horizontal: AppSpacing.md + 2),
+          childrenPadding: const EdgeInsets.fromLTRB(
+              AppSpacing.md + 2, 0, AppSpacing.md + 2, AppSpacing.md),
+          title: Text(s.shortLabel,
+              style: AppText.body()
+                  .copyWith(fontSize: 15, fontWeight: FontWeight.w800)),
+          subtitle: Text(s.id,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.caption()),
+          children: [
+            for (final r in rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(r.$1, style: AppText.caption()),
+                    ),
+                    Expanded(
+                      child: SelectableText(r.$2,
+                          style: AppText.body().copyWith(fontSize: 12.5)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.editTitle),
-        actions: [
-          IconButton(
-            onPressed: _confirmDelete,
-            icon: const Icon(Icons.delete_outline),
-            color: AppColors.danger,
-            tooltip: t.delete,
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          _preview(),
-          const SizedBox(height: AppSpacing.md),
-          SignForm(
-            sign: widget.sign,
-            schema: widget.schema,
-            onChanged: () => setState(() {}),
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) => _onPopRequested(didPop),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t.editTitle),
+          actions: [
+            IconButton(
+              onPressed: _confirmDelete,
+              icon: const Icon(Icons.delete_outline),
+              color: AppColors.danger,
+              tooltip: t.delete,
+            ),
+          ],
+        ),
+        body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
-          child: LLPrimaryButton(
-            label: t.saveChanges,
-            icon: Icons.check,
-            onPressed: () => Navigator.pop(context, 'saved'),
+          children: [
+            _preview(),
+            const SizedBox(height: AppSpacing.md),
+            _identityCard(),
+            const SizedBox(height: AppSpacing.md),
+            SignForm(
+              sign: _draft, // 保存まで元の記録に触れない
+              schema: widget.schema,
+              onChanged: () => setState(() => _dirty = true),
+            ),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: LLPrimaryButton(
+              label: t.saveChanges,
+              icon: Icons.check,
+              onPressed: _save,
+            ),
           ),
         ),
       ),

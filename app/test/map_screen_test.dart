@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:llmap_app/l10n/app_localizations.dart';
 import 'package:llmap_app/models.dart';
 import 'package:llmap_app/screens/map_screen.dart';
 import 'package:llmap_app/theme/tokens.dart';
@@ -35,15 +36,21 @@ void main() {
       Sign({'SignID': 'HAS-S003-a', '名称': '無座標', '主要言語': '英語'}),
     ];
 
+    // MapScreen は AppLocalizations を使うため delegates 必須（ja 固定で検証）。
     await tester.pumpWidget(
-      MaterialApp(home: MapScreen(signs: signs, schema: _schema())),
+      MaterialApp(
+        locale: const Locale('ja'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MapScreen(signs: signs, schema: _schema()),
+      ),
     );
     await tester.pump(const Duration(milliseconds: 300));
 
     // 2件の座標ありマーカー
     expect(find.byType(MapPin), findsNWidgets(2));
-    // 座標なし警告
-    expect(find.textContaining('无坐标 1 条'), findsOneWidget);
+    // 座標なし警告（ja: 「座標なし 1 件は非表示」）
+    expect(find.textContaining('座標なし 1 件'), findsOneWidget);
 
     // マーカータップで詳情カード
     await tester.tap(find.byType(MapPin).first);

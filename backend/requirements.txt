@@ -1,9 +1,12 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
-Pillow>=10.0
-piexif>=1.1.3
 pydantic>=2.6
-# AI providers (optional at runtime; only needed for /ai)
-anthropic>=0.40
-google-genai>=0.3
+sqlmodel>=0.0.16
+# バッチ AI（Step 18）: 画像縮小と Claude/Gemini への HTTP 呼び出し。
+# SDK（anthropic / google-genai）は使わない — アプリ ai.dart と同じ raw HTTP で
+# 依存を最小に保つ（PyInstaller 打包サイズにも効く）。
+httpx>=0.27
+pillow>=10.0
+# tests
+pytest>=8.0

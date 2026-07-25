@@ -24,7 +24,7 @@ class LLMapDetailCard extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final color =
         parseHexColor(schema.languageColors[sign.mainLangPrimary] ?? '#888888');
-    final suffix = sign.id.split('-').last;
+    final suffix = sign.cropSuffix;
     String v(String k) => sign.get(k).isEmpty ? '—' : sign.get(k);
 
     return Container(
@@ -77,7 +77,7 @@ class LLMapDetailCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(sign.id, style: AppText.caption()),
+                      child: Text(sign.displayId, style: AppText.caption()),
                     ),
                     statusBadge(sign.status),
                   ],
