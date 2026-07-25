@@ -210,8 +210,9 @@ export const startAiJob = (filters: RecordsQuery = {}, provider?: string) =>
     body: JSON.stringify(provider ? { ...filters, provider } : filters),
   });
 
-export const getAiJob = (id: string) =>
-  request<AiJobStatus>(`/ai/jobs/${id}`);
+/** afterSeq 以降のログだけを増分取得（-1 = 全件）。 */
+export const getAiJob = (id: string, afterSeq = -1) =>
+  request<AiJobStatus>(`/ai/jobs/${id}${query({ afterSeq })}`);
 
 export const cancelAiJob = (id: string) =>
   request<{ ok: boolean }>(`/ai/jobs/${id}/cancel`, { method: 'POST' });

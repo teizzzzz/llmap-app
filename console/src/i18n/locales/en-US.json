@@ -313,6 +313,16 @@
     "task": {
       "title": "v6 field drafting (13 dimensions)",
       "desc": "Drafts scripturality, main/sub/decorative languages, multilingual relation, carrier type, placement, temporality, legibility, overwriting, discourse type, production quality and remarks from the crop photo. Same prompt and merge rules as the mobile app."
+    },
+    "log": {
+      "title": "Run log",
+      "jobStart": "Batch started: {{model}} · {{total}} records",
+      "changed": "drafted {{n}} fields",
+      "unchanged": "no change (existing content / AI blank)",
+      "skipped": "skipped (no photo)",
+      "abort": "Aborted: {{message}}",
+      "cancelled": "Cancelled (processed records are kept)",
+      "done": "Done: {{changed}} updated · {{unchanged}} unchanged · {{skipped}} skipped · {{errors}} errors"
     }
   },
   "settings": {

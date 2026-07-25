@@ -871,3 +871,39 @@ def test_ai_model_selection(monkeypatch):
             .json()["claudeModel"] == ai_engine.CLAUDE_MODELS[0]
     finally:
         client.put("/config", json={"claudeApiKey": None, "claudeModel": None})
+
+
+def test_ai_job_realtime_logs(monkeypatch):
+    """実時ログ: jobStart→レコード結果→done、afterSeq の増分取得。"""
+    from app import ai_engine
+
+    monkeypatch.setattr(
+        ai_engine, "judge_photo",
+        lambda provider, path, fields, key, model="": {"備考": "【判断】log-test"})
+    client.put("/config", json={"claudeApiKey": "sk-test-dummy"})
+    try:
+        jid = client.post("/ai/jobs", json={"q": CAPTURE}).json()["jobId"]
+        st = _wait_ai_job(jid)
+        assert st["status"] == "done", st
+
+        logs = st["logs"]
+        assert logs[0]["event"] == "jobStart"
+        assert logs[0]["data"]["total"] == st["report"]["recordCount"]
+        assert logs[-1]["event"] == "done"
+        assert st["lastSeq"] == logs[-1]["seq"]
+        # レコード 1 件につき結果ログが 1 行
+        outcomes = [e for e in logs
+                    if e["event"] in ("changed", "unchanged", "skipped", "error")]
+        assert len(outcomes) == st["report"]["recordCount"]
+        assert all(e["signId"] for e in outcomes)
+
+        # 増分取得: 先頭行の seq を afterSeq に渡すと 2 行目から返る
+        part = client.get(f"/ai/jobs/{jid}",
+                          params={"afterSeq": logs[0]["seq"]}).json()
+        assert part["logs"][0]["seq"] == logs[1]["seq"]
+        # 最終 seq 以降は空
+        empty = client.get(f"/ai/jobs/{jid}",
+                           params={"afterSeq": st["lastSeq"]}).json()
+        assert empty["logs"] == []
+    finally:
+        client.put("/config", json={"claudeApiKey": None})

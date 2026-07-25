@@ -5,7 +5,7 @@ import {
   startAiJob,
 } from '../api/client';
 import type {
-  AiJobStatus, AiPreview, AiStatus, RecordsQuery,
+  AiJobStatus, AiLogEntry, AiPreview, AiStatus, RecordsQuery,
 } from '../api/types';
 import useFilterOptions from '../hooks/useFilterOptions';
 
@@ -13,12 +13,14 @@ import useFilterOptions from '../hooks/useFilterOptions';
 const ENTRY_MODES = ['quick', 'standard', 'research'];
 const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'needs_review', 'reviewed', 'verified', 'rejected'];
 
-/** バッチ AI ジョブ 1 本の管理（導出ジョブと同じ進捗ポーリング・取消の型）。 */
+/** バッチ AI ジョブ 1 本の管理（進捗ポーリング・取消・実時ログの増分蓄積）。 */
 function useAiJob() {
   const [job, setJob] = useState<AiJobStatus | null>(null);
+  const [logs, setLogs] = useState<AiLogEntry[]>([]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSeq = useRef(-1);
 
   const stopPolling = useCallback(() => {
     if (timer.current != null) {
@@ -32,12 +34,19 @@ function useAiJob() {
     setStarting(true);
     setError(null);
     setJob(null);
+    setLogs([]);
+    lastSeq.current = -1;
     try {
       const { jobId } = await startAiJob(filters);
       timer.current = setInterval(async () => {
         try {
-          const st = await getAiJob(jobId);
+          const st = await getAiJob(jobId, lastSeq.current);
           setJob(st);
+          if (st.logs.length > 0) {
+            lastSeq.current = st.lastSeq;
+            // 表示は直近 1000 行に抑える（DOM を無限に増やさない）
+            setLogs((prev) => [...prev, ...st.logs].slice(-1000));
+          }
           if (st.status !== 'running') stopPolling();
         } catch {
           stopPolling();
@@ -54,7 +63,7 @@ function useAiJob() {
     if (job && job.status === 'running') await cancelAiJob(job.id);
   };
 
-  return { job, starting, error, start, cancel };
+  return { job, logs, starting, error, start, cancel };
 }
 
 export default function AiProcessingPage() {
@@ -134,6 +143,42 @@ export default function AiProcessingPage() {
   ];
 
   const report = jc.job?.report;
+
+  // 実時ログ: 追記のたびに末尾へ自動スクロール。
+  const logBox = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    logBox.current?.scrollTo({ top: logBox.current.scrollHeight });
+  }, [jc.logs]);
+
+  /** ログ 1 行の表示文（event は内部値 — 文言はここで i18n）。 */
+  const logLine = (e: AiLogEntry): { text: string; color?: string } => {
+    switch (e.event) {
+      case 'jobStart':
+        return { text: t('ai.log.jobStart', { model: e.data.model, total: e.data.total }) };
+      case 'changed':
+        return { text: `✓ ${e.signId} — ${t('ai.log.changed', { n: e.data.n })}`, color: '#1d7a4f' };
+      case 'unchanged':
+        return { text: `– ${e.signId} — ${t('ai.log.unchanged')}`, color: '#6f6a61' };
+      case 'skipped':
+        return { text: `⏭ ${e.signId} — ${t('ai.log.skipped')}`, color: '#6f6a61' };
+      case 'error':
+        return { text: `✗ ${e.signId} — ${e.data.message}`, color: '#b3261e' };
+      case 'abort':
+        return { text: `✗ ${t('ai.log.abort', { message: e.data.message })}`, color: '#b3261e' };
+      case 'cancelled':
+        return { text: t('ai.log.cancelled'), color: '#6f6a61' };
+      case 'done':
+        return {
+          text: t('ai.log.done', {
+            changed: e.data.changed, unchanged: e.data.unchanged,
+            skipped: e.data.skipped, errors: e.data.errors,
+          }),
+          color: '#1d7a4f',
+        };
+      default:
+        return { text: `${e.event} ${e.signId}` };
+    }
+  };
 
   return (
     <>
@@ -294,6 +339,30 @@ export default function AiProcessingPage() {
           <div className="hint">{jc.job.error}</div>
         </div>
       )}
+      {/* 実時ログ（増分ポーリング・自動スクロール） */}
+      {jc.logs.length > 0 && (
+        <div className="card" style={{ marginTop: 10, padding: 10 }}>
+          <strong style={{ fontSize: 13 }}>{t('ai.log.title')}</strong>
+          <div
+            ref={logBox}
+            style={{
+              marginTop: 6, maxHeight: 260, overflowY: 'auto',
+              fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 12,
+              lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+            }}
+          >
+            {jc.logs.map((e) => {
+              const { text, color } = logLine(e);
+              return (
+                <div key={e.seq} style={color ? { color } : undefined}>
+                  <span className="muted">[{e.time}]</span> {text}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {jc.job && jc.job.errors.length > 0 && (
         <div className="card" style={{ marginTop: 10 }}>
           <strong style={{ fontSize: 13 }}>{t('ai.errorsTitle')}</strong>

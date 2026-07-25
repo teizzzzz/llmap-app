@@ -119,6 +119,16 @@ export interface AiPreview {
   byStatus: Record<string, number>;
 }
 
+/** バッチ AI の実時ログ 1 行（文言は Console 側で i18n） */
+export interface AiLogEntry {
+  seq: number;
+  time: string;
+  event: 'jobStart' | 'changed' | 'unchanged' | 'skipped' | 'error'
+    | 'done' | 'abort' | 'cancelled';
+  signId: string;
+  data: Record<string, string | number>;
+}
+
 /** GET /ai/jobs/{id} — バッチ AI ジョブの進捗・結果 */
 export interface AiJobStatus {
   id: string;
@@ -130,6 +140,9 @@ export interface AiJobStatus {
   total: number;
   error: string;
   errors: { signId: string; message: string }[];
+  /** afterSeq より後の実時ログ（増分） */
+  logs: AiLogEntry[];
+  lastSeq: number;
   report: {
     recordCount?: number;
     changedRecords?: number;

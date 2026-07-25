@@ -120,7 +120,27 @@ class AiJob:
     error: str = ""
     report: dict = field(default_factory=dict)
     errors: list = field(default_factory=list)  # [{signId, message}] 先頭20件
+    # 実時ログ（レコードごとの結果）。seq 単調増加 — Console は afterSeq で増分取得。
+    logs: list = field(default_factory=list)
+    log_seq: int = 0
     cancel_event: threading.Event = field(default_factory=threading.Event)
+
+
+_LOG_CAP = 5000  # 超巨大バッチでもメモリを暴れさせない（古い行から捨てる）
+
+
+def _log(job: AiJob, event: str, sign_id: str = "", **data) -> None:
+    """構造化ログ 1 行。文言は持たず Console 側で i18n する。"""
+    job.log_seq += 1
+    job.logs.append({
+        "seq": job.log_seq,
+        "time": datetime.now().strftime("%H:%M:%S"),
+        "event": event,
+        "signId": sign_id,
+        "data": data,
+    })
+    if len(job.logs) > _LOG_CAP:
+        del job.logs[: len(job.logs) - _LOG_CAP]
 
 
 _JOBS: dict[str, AiJob] = {}
@@ -162,6 +182,8 @@ def _run_batch(job: AiJob, filters: dict, api_key: str) -> None:
     with Session(get_engine()) as session:
         records = _load_records(session, filters)
         job.total = len(records)
+        _log(job, "jobStart", model=job.model, provider=job.provider,
+             total=job.total)
         for rec in records:
             if job.cancel_event.is_set():
                 raise _Cancelled()
@@ -171,6 +193,7 @@ def _run_batch(job: AiJob, filters: dict, api_key: str) -> None:
                 if rec.photo_file_name else None
             if path is None or not path.is_file():
                 skipped_no_photo += 1
+                _log(job, "skipped", rec.sign_id)
                 continue
 
             try:
@@ -182,6 +205,7 @@ def _run_batch(job: AiJob, filters: dict, api_key: str) -> None:
                 if len(job.errors) < 20:
                     job.errors.append(
                         {"signId": rec.sign_id, "message": str(e)[:300]})
+                _log(job, "error", rec.sign_id, message=str(e)[:300])
                 if consecutive_errors >= _ABORT_AFTER:
                     raise RuntimeError(
                         f"連続 {_ABORT_AFTER} 件失敗のため中止しました"
@@ -194,9 +218,13 @@ def _run_batch(job: AiJob, filters: dict, api_key: str) -> None:
                 session.commit()  # 記録ごとに確定 — 取消/中断でも完了分は残る
                 changed_records += 1
                 changed_fields += n
+                _log(job, "changed", rec.sign_id, n=n)
             else:
                 unchanged += 1
+                _log(job, "unchanged", rec.sign_id)
 
+    _log(job, "done", changed=changed_records, unchanged=unchanged,
+         skipped=skipped_no_photo, errors=len(job.errors))
     job.report = {
         "recordCount": job.total,
         "changedRecords": changed_records,
@@ -234,9 +262,11 @@ def start_ai_job(payload: dict = Body(default={})):
                 job.status = "done"
         except _Cancelled:
             job.status = "cancelled"
+            _log(job, "cancelled")
         except Exception as e:  # ジョブはプロセスを巻き込まない
             job.status = "error"
             job.error = str(e)
+            _log(job, "abort", message=str(e)[:300])
 
     threading.Thread(target=run, daemon=True).start()
     return {"jobId": job.id}
@@ -250,8 +280,12 @@ def _get_job(job_id: str) -> AiJob:
 
 
 @router.get("/ai/jobs/{job_id}")
-def ai_job_status(job_id: str):
+def ai_job_status(job_id: str, afterSeq: int = -1):
+    """進捗＋実時ログ。afterSeq を渡すとそれ以降のログだけ返す（増分ポーリング。
+    既定 -1 = 全件）。list(…) でコピーしてからフィルタ — ワーカースレッドが
+    追記中でも安全に読める。"""
     job = _get_job(job_id)
+    logs = [e for e in list(job.logs) if e["seq"] > afterSeq]
     return {
         "id": job.id,
         "kind": "ai",
@@ -263,6 +297,8 @@ def ai_job_status(job_id: str):
         "error": job.error,
         "errors": job.errors,
         "report": job.report,
+        "logs": logs,
+        "lastSeq": job.log_seq,
     }
 
 
