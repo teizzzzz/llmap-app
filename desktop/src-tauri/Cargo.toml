@@ -2,7 +2,7 @@
 # Console(React) を窗口に読み込み、llmap-backend sidecar を管理する。
 [package]
 name = "llmap-desktop"
-version = "0.1.0"
+version = "1.12.5"
 edition = "2021"
 
 [build-dependencies]
