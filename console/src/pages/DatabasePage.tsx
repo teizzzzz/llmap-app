@@ -115,7 +115,7 @@ export default function DatabasePage() {
             dataset={openAlbum}
             onBack={() => setOpenAlbum(null)}
             onOpenInTable={() => {
-              patchFilters({ datasetId: openAlbum.id });
+              patchFilters({ datasetIds: [openAlbum.id] });
               setOpenAlbum(null);
               setView('table');
             }}

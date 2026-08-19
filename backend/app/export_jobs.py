@@ -82,6 +82,8 @@ def _filters_kwargs(payload: dict) -> dict:
         has_photo=b(payload.get("hasPhoto")),
         has_source_photo=b(payload.get("hasSourcePhoto")),
         dataset_id=payload.get("datasetId"),
+        # 多选（配列 or "1,3"）。単値 datasetId と併用時は datasetIds 優先。
+        dataset_ids=payload.get("datasetIds"),
     )
 
 

@@ -919,3 +919,62 @@ def test_schema_exposes_system_fields():
     for f in ("文字性", "装飾の言語", "放置位置", "時間性", "可読性",
               "重ね書き", "ディスコース類型", "製作品質", "備考"):
         assert f in research, f
+
+
+# ── データセット多选（導出の複数データセット選択） ──
+
+MSA_CAPTURE = "OOK-multiA-260702100000000"
+MSB_CAPTURE = "OOK-multiB-260702110000000"
+
+
+def _mini_package(capture: str, lang: str) -> bytes:
+    """1 記録だけの最小パッケージ（写真なし・GPS あり）。"""
+    rows = [_row(SignID=f"{capture}-a", _status="pending", CaptureID=capture,
+                 DisplayID=f"{capture}-a", 採集者ID="multi",
+                 地区コード="OOK", CropSuffix="a",
+                 緯度="35.6030", 経度="139.7020",
+                 採集日時="2026-07-02 10:00:00", 主要言語=lang,
+                 EntryMode="quick", DataStatus="raw",
+                 SchemaVersion="1.5", AppVersion="v1.12.5")]
+    return make_package(rows, {}, [])
+
+
+def test_dataset_multiselect_filters():
+    """datasetIds（"1,3" / JSON 配列）で複数データセットをまとめて筛选・導出。"""
+    ra = _import(_mini_package(MSA_CAPTURE, "日本語")).json()
+    rb = _import(_mini_package(MSB_CAPTURE, "英語")).json()
+    assert ra["status"] == "imported" and rb["status"] == "imported"
+    ida, idb = ra["datasetId"], rb["datasetId"]
+
+    # GET /records: カンマ区切りの複数値
+    assert client.get(
+        "/records", params={"datasetIds": f"{ida},{idb}"}).json()["total"] == 2
+    only_a = client.get("/records", params={"datasetIds": str(ida)}).json()
+    assert only_a["total"] == 1
+    assert only_a["items"][0]["SignID"] == f"{MSA_CAPTURE}-a"
+    # 後方互換: 単値 datasetId は従来どおり
+    assert client.get("/records", params={"datasetId": idb}).json()["total"] == 1
+    # 不正値の混入は無視される（"abc" だけなら未指定扱い）
+    assert client.get(
+        "/records", params={"datasetIds": f"{ida},abc"}).json()["total"] == 1
+
+    # CSV 導出も同じ多选筛选を通る
+    csv_text = client.get(
+        "/export/csv", params={"datasetIds": f"{ida},{idb}"}).text
+    assert f"{MSA_CAPTURE}-a" in csv_text
+    assert f"{MSB_CAPTURE}-a" in csv_text
+
+    # GeoJSON 導出
+    geo = json.loads(client.get(
+        "/export/geojson", params={"datasetIds": f"{ida},{idb}"}).text)
+    assert geo["llmap"]["featureCount"] == 2
+
+    # POST 系（導出ジョブ / AI と共通の _filters_kwargs）: JSON 配列を受ける
+    assert client.post(
+        "/ai/preview", json={"datasetIds": [ida, idb]}).json()["total"] == 2
+    assert client.post(
+        "/ai/preview", json={"datasetIds": [ida]}).json()["total"] == 1
+
+    # 地図 API も多选可
+    assert len(client.get(
+        "/map/records", params={"datasetIds": f"{ida},{idb}"}).json()) == 2

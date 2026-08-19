@@ -37,6 +37,7 @@
     "mode": "Mode",
     "status": "Status",
     "dataset": "Dataset",
+    "nSelected": "{{n}} selected",
     "gps": "GPS",
     "photo": "Photo",
     "source": "Source",

@@ -33,6 +33,22 @@ EDITABLE_FIELDS = ({f for f in CSV_HEADER} - set(SYSTEM_FIELDS)) | {
 }
 
 
+def _dataset_id_list(value) -> list[int]:
+    """datasetIds の正規化: "1,3" / [1, 3] / 3 → [1, 3]。無効な要素は無視。"""
+    if value is None or value == "":
+        return []
+    if isinstance(value, int):
+        return [value]
+    parts = value if isinstance(value, (list, tuple)) else str(value).split(",")
+    out: list[int] = []
+    for p in parts:
+        try:
+            out.append(int(str(p).strip()))
+        except ValueError:
+            continue
+    return out
+
+
 def apply_filters(
     stmt,
     *,
@@ -49,6 +65,7 @@ def apply_filters(
     has_photo: bool | None = None,
     has_source_photo: bool | None = None,
     dataset_id: int | None = None,
+    dataset_ids=None,
 ):
     """/records・/map/records・/export/csv で共用する筛选。"""
     if q:
@@ -97,8 +114,15 @@ def apply_filters(
         stmt = stmt.where(SignRecord.source_photo_file_name != "")
     elif has_source_photo is False:
         stmt = stmt.where(SignRecord.source_photo_file_name == "")
-    if dataset_id is not None:
-        stmt = stmt.where(SignRecord.dataset_id == dataset_id)
+    # データセットは複数選択可（導出の多选）。datasetIds があれば優先し、
+    # 従来の単値 datasetId は後方互換として残す。
+    ids = _dataset_id_list(dataset_ids)
+    if not ids and dataset_id is not None:
+        ids = [dataset_id]
+    if len(ids) == 1:
+        stmt = stmt.where(SignRecord.dataset_id == ids[0])
+    elif ids:
+        stmt = stmt.where(col(SignRecord.dataset_id).in_(ids))
     return stmt
 
 
@@ -143,13 +167,14 @@ def list_records(
     hasPhoto: bool | None = None,
     hasSourcePhoto: bool | None = None,
     datasetId: int | None = None,
+    datasetIds: str | None = None,
 ):
     kw = dict(
         q=q, main_language=mainLanguage, area_code=areaCode,
         collector_id=collectorId, entry_mode=entryMode, data_status=dataStatus,
         status=status, date_from=dateFrom, date_to=dateTo, has_gps=hasGps,
         has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
-        dataset_id=datasetId,
+        dataset_id=datasetId, dataset_ids=datasetIds,
     )
     total = session.exec(
         apply_filters(select(func.count()).select_from(SignRecord), **kw)).one()
@@ -283,11 +308,13 @@ def map_records(
     entryMode: str | None = None,
     dataStatus: str | None = None,
     datasetId: int | None = None,
+    datasetIds: str | None = None,
 ):
     stmt = apply_filters(
         select(SignRecord),
         main_language=mainLanguage, area_code=areaCode, entry_mode=entryMode,
-        data_status=dataStatus, dataset_id=datasetId, has_gps=True,
+        data_status=dataStatus, dataset_id=datasetId, dataset_ids=datasetIds,
+        has_gps=True,
     )
     return [
         {

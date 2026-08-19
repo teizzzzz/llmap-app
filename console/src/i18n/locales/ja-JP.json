@@ -37,6 +37,7 @@
     "mode": "モード",
     "status": "状態",
     "dataset": "データセット",
+    "nSelected": "{{n}} 件を選択中",
     "gps": "GPS",
     "photo": "写真",
     "source": "元写真",

@@ -37,6 +37,7 @@
     "mode": "模式",
     "status": "状态",
     "dataset": "数据集",
+    "nSelected": "已选 {{n}} 个",
     "gps": "GPS",
     "photo": "照片",
     "source": "原图",

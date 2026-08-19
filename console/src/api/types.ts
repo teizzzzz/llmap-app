@@ -239,6 +239,8 @@ export interface RecordsQuery {
   hasPhoto?: boolean;
   hasSourcePhoto?: boolean;
   datasetId?: number;
+  /** データセット多选（導出等）。datasetId より優先。GET では "1,3" に直列化。 */
+  datasetIds?: number[];
 }
 
 /** 導出ジョブ（Dataset Package / 写真 ZIP）の進捗（Step 16） */

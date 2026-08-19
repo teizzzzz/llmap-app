@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Dataset, RecordsQuery } from '../../api/types';
+import MultiSelect from '../MultiSelect';
 
 export interface FilterOptions {
   languages: string[];
@@ -122,9 +123,15 @@ export default function RecordsFilters({
       <Select label={t('filters.status')} value={value.dataStatus ?? ''}
         options={statusOpts(DATA_STATUSES)}
         onChange={(v) => onChange({ dataStatus: v || undefined })} />
-      <Select label={t('filters.dataset')} value={value.datasetId != null ? String(value.datasetId) : ''}
+      {/* データセットは多选（導出で複数データセットをまとめて出せる）。
+          旧単値 datasetId が残っていたら選択済みとして表示し、以後は datasetIds に統一。 */}
+      <MultiSelect label={t('filters.dataset')}
         options={options.datasets.map((d) => ({ value: String(d.id), label: `#${d.id} ${d.name}` }))}
-        onChange={(v) => onChange({ datasetId: v ? Number(v) : undefined })} />
+        selected={(value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : [])).map(String)}
+        onChange={(vs) => onChange({
+          datasetIds: vs.length ? vs.map(Number) : undefined,
+          datasetId: undefined,
+        })} />
       <TriState label={t('filters.gps')} value={value.hasGps}
         onChange={(v) => onChange({ hasGps: v })} />
       <TriState label={t('filters.photo')} value={value.hasPhoto}
