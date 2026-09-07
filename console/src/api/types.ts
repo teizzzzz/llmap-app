@@ -210,6 +210,14 @@ export interface StorageCleanupResult {
   message?: string;
 }
 
+export interface StorageResetResult {
+  ok: boolean;
+  deletedRecords: number;
+  deletedDatasets: number;
+  deletedPhotos: number;
+  freedBytes: number;
+}
+
 /** GET /schema — フォーム選択肢（enums）・複数選択字段・状態値 */
 export interface SchemaInfo {
   csv_header: string[];

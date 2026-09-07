@@ -17,6 +17,7 @@ import type {
   SchemaInfo,
   StatsSummary,
   StorageCleanupResult,
+  StorageResetResult,
   StorageSummary,
 } from './types';
 
@@ -146,6 +147,13 @@ export const storageCleanup = (dryRun: boolean) =>
   request<StorageCleanupResult>('/storage/cleanup', {
     method: 'POST',
     body: JSON.stringify({ dryRun }),
+  });
+
+/** 全データ削除（初期化）。confirm トークンは backend 側でも必須検証される。 */
+export const storageReset = () =>
+  request<StorageResetResult>('/storage/reset', {
+    method: 'POST',
+    body: JSON.stringify({ confirm: 'DELETE' }),
   });
 
 /** GeoJSON（FeatureCollection）を取得する。props: minimal | full。 */

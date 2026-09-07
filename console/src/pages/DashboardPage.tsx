@@ -5,6 +5,7 @@ import {
   API_BASE_URL, ApiError, IS_DESKTOP, getRecords, getStatsSummary,
 } from '../api/client';
 import type { StatsSummary } from '../api/types';
+import { multiEnumLabel } from '../lib/enumLabels';
 import { PENDING_STATUSES } from '../reviewStatus';
 
 /** 分布の横棒リスト（純CSS・図表ライブラリ不使用）。
@@ -142,7 +143,8 @@ export default function DashboardPage() {
               labelOf={statusLabel} />
             <BarList title={t('dashboard.byEntryMode')} counts={stats.entryModeCounts}
               labelOf={statusLabel} />
-            <BarList title={t('dashboard.byMainLanguage')} counts={stats.mainLanguageCounts} />
+            <BarList title={t('dashboard.byMainLanguage')} counts={stats.mainLanguageCounts}
+              labelOf={(k) => multiEnumLabel(t, k)} />
             <BarList title={t('dashboard.byArea')} counts={stats.areaCounts} />
             <BarList title={t('dashboard.byCollector')} counts={stats.collectorCounts} />
 

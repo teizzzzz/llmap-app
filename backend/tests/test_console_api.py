@@ -978,3 +978,35 @@ def test_dataset_multiselect_filters():
     # 地図 API も多选可
     assert len(client.get(
         "/map/records", params={"datasetIds": f"{ida},{idb}"}).json()) == 2
+
+
+def test_storage_reset_wipes_everything_but_settings():
+    """全データ削除（初期化）: confirm 必須／記録・写真・遺留を全消し／settings 保持。
+    ※ 全データを消すため、このテストは必ずファイル末尾（最後）に置くこと。"""
+    from app.database import (
+        data_dir, load_settings, photos_dir, save_settings, source_photos_dir,
+    )
+
+    before = client.get("/records").json()["total"]
+    assert before > 0
+
+    # 誤操作防止: confirm 無し / 不一致は 400 で何も起きない
+    assert client.post("/storage/reset", json={}).status_code == 400
+    assert client.post(
+        "/storage/reset", json={"confirm": "delete"}).status_code == 400
+    assert client.get("/records").json()["total"] == before
+
+    # settings.json（AI キー・導出先の置き場）は初期化後も残ること
+    save_settings({"marker": "keep-me"})
+
+    r = client.post("/storage/reset", json={"confirm": "DELETE"}).json()
+    assert r["ok"] is True
+    assert r["deletedRecords"] == before
+    assert r["freedBytes"] > 0
+
+    assert client.get("/records").json()["total"] == 0
+    assert list(photos_dir().iterdir()) == []
+    assert list(source_photos_dir().iterdir()) == []
+    assert list((data_dir() / "imports").iterdir()) == []
+    assert list((data_dir() / "archives").iterdir()) == []
+    assert load_settings().get("marker") == "keep-me"

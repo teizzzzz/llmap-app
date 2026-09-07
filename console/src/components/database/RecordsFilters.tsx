@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Dataset, RecordsQuery } from '../../api/types';
+import { enumLabel } from '../../lib/enumLabels';
 import MultiSelect from '../MultiSelect';
 
 export interface FilterOptions {
@@ -94,11 +95,14 @@ export default function RecordsFilters({
     return () => clearTimeout(timer);
   }, [q, value.q, onChange]);
 
-  // データ由来の選択肢（言語・地区・採集者）は原文のまま表示する。
+  // データ由来の選択肢（地区・採集者）は原文のまま表示する。
   const opts = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
   // 内部状態値は表示ラベルのみ翻訳する。
   const statusOpts = (xs: string[]) =>
     xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
+  // 選択肢値（言語等）は value は正準値のまま、表示ラベルのみ翻訳する。
+  const enumOpts = (xs: string[]) =>
+    xs.map((x) => ({ value: x, label: enumLabel(t, x) }));
 
   return (
     <div className="card filters-bar">
@@ -109,7 +113,7 @@ export default function RecordsFilters({
         onChange={(e) => setQ(e.target.value)}
       />
       <Select label={t('filters.language')} value={value.mainLanguage ?? ''}
-        options={opts(options.languages)}
+        options={enumOpts(options.languages)}
         onChange={(v) => onChange({ mainLanguage: v || undefined })} />
       <Select label={t('filters.area')} value={value.areaCode ?? ''}
         options={opts(options.areas)}

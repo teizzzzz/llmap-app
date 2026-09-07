@@ -80,6 +80,19 @@ export default function RecordDetailPanel({
   // 字段の表示ラベル: 翻訳があれば使い、なければ字段キーをそのまま出す。
   const fieldLabel = (f: string) => t(`fields.${f}`, { defaultValue: f });
 
+  // 字段変更。文字性を「記号/対象外」へ変えたら B 言語 3 字段を「—」に連動
+  // （v6: 文字が無ければ言語も無い）。「文字」へ戻しても自動復元はしない。
+  const applyField = (f: string, v: string) =>
+    setDraft((d) => {
+      const next = { ...d, [f]: v };
+      if (f === '文字性' && (v === '記号' || v === '対象外')) {
+        next['主要言語'] = '—';
+        next['補助言語'] = '—';
+        next['装飾の言語'] = '—';
+      }
+      return next;
+    });
+
   if (error) {
     return (
       <div className="detail-panel card">
@@ -168,7 +181,8 @@ export default function RecordDetailPanel({
                   field={f}
                   value={current(f)}
                   schema={schema}
-                  onChange={(v) => setDraft((d) => ({ ...d, [f]: v }))}
+                  textType={current('文字性')}
+                  onChange={(v) => applyField(f, v)}
                 />
               </label>
             ))}

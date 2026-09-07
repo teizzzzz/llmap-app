@@ -43,6 +43,9 @@ export default function ReviewWorkspace({
   const [busy, setBusy] = useState<string | null>(null); // 実行中のアクション key
   const [actionError, setActionError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<'crop' | 'source' | null>(null);
+  // 大画面ビューアの表示対象（裁切図/元写真）。記録が変わったら裁切図に戻す。
+  const [view, setView] = useState<'crop' | 'source'>('crop');
+  useEffect(() => setView('crop'), [recordId]);
 
   useEffect(() => {
     setDetail(null);
@@ -56,6 +59,19 @@ export default function ReviewWorkspace({
   }, [recordId]);
 
   const current = (f: string) => draft[f] ?? detail?.data[f] ?? '';
+
+  // 字段変更。文字性を「記号/対象外」へ変えたら B 言語 3 字段を「—」に連動
+  // （v6: 文字が無ければ言語も無い）。「文字」へ戻しても自動復元はしない。
+  const applyField = (f: string, v: string) =>
+    setDraft((d) => {
+      const next = { ...d, [f]: v };
+      if (f === '文字性' && (v === '記号' || v === '対象外')) {
+        next['主要言語'] = '—';
+        next['補助言語'] = '—';
+        next['装飾の言語'] = '—';
+      }
+      return next;
+    });
   const changed = useMemo(() => {
     if (!detail) return {};
     const out: Record<string, string> = {};
@@ -101,6 +117,14 @@ export default function ReviewWorkspace({
   if (!detail) return <div className="card review-workspace muted">{t('record.loading')}</div>;
 
 
+  // 存在しない側を選んでいたら自動で他方へ（写真が片方しか無い記録がある）。
+  const effView: 'crop' | 'source' =
+    view === 'crop'
+      ? (detail.photoUrl ? 'crop' : 'source')
+      : (detail.sourcePhotoUrl ? 'source' : 'crop');
+  const mainUrl = photoUrl(
+    effView === 'crop' ? detail.photoUrl : detail.sourcePhotoUrl);
+
   const actionBtn = (a: ReviewActionDef) => (
     <button
       key={a.key}
@@ -126,33 +150,37 @@ export default function ReviewWorkspace({
         </div>
       </div>
 
-      <div className="review-columns">
-        {/* ── 写真 ── */}
-        <div className="review-photos">
-          <figure
-            style={{ cursor: detail.photoUrl ? 'zoom-in' : 'default' }}
-            onClick={() => detail.photoUrl && setLightbox('crop')}
-            title={t('record.openFull')}
-          >
-            <PhotoThumb src={photoUrl(detail.photoUrl)} size={220} alt="crop" />
-            <figcaption className="muted">
-              {t('record.crop')} — {t('record.openFull')}
-            </figcaption>
-          </figure>
-          <figure
-            style={{ cursor: detail.sourcePhotoUrl ? 'zoom-in' : 'default' }}
-            onClick={() => detail.sourcePhotoUrl && setLightbox('source')}
-            title={t('record.openFull')}
-          >
-            <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={220} alt="source" />
-            <figcaption className="muted">
-              {t('record.source')} — {t('record.openFull')}
-            </figcaption>
-          </figure>
-        </div>
-
-        {/* ── 字段編集 ── */}
+      <div className="review-columns review-columns--viewer">
+        {/* ── 字段編集（画面右。row-reverse で視覚順はビューアが左）── */}
         <div className="review-fields">
+          {/* 保存・審核アクションは字段列の最上部に sticky で常時表示
+              （ユーザー要望: ボタンは右側へ。スクロールしても消えない）。 */}
+          <div className="review-actionbar">
+            {actionError && (
+              <div className="error-box" style={{ marginBottom: 6 }}>
+                <strong>{t('review.actionFailed')}</strong>
+                <div className="hint">{actionError}</div>
+              </div>
+            )}
+            <div className="review-actions">
+              <button
+                className="btn"
+                disabled={!dirty || busy != null}
+                onClick={() => patch({}, 'save', false)}
+              >
+                {busy === 'save' ? t('record.saving') : t('review.saveChanges')}
+              </button>
+              {REVIEW_ACTIONS.map(actionBtn)}
+              <button
+                className="btn"
+                disabled={busy != null}
+                onClick={() => navigate(`/database?record=${detail.id}`)}
+              >
+                {t('common.openInDatabase')}
+              </button>
+            </div>
+          </div>
+
           <h3 className="detail-section">
             {t('record.researchFields')}{' '}
             {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
@@ -172,7 +200,8 @@ export default function ReviewWorkspace({
                       field={f}
                       value={current(f)}
                       schema={schema}
-                      onChange={(v) => setDraft((d) => ({ ...d, [f]: v }))}
+                      textType={current('文字性')}
+                      onChange={(v) => applyField(f, v)}
                     />
                   </label>
                 ))}
@@ -181,42 +210,56 @@ export default function ReviewWorkspace({
           ))}
         </div>
 
-        {/* ── 元情報＋アクション ── */}
-        <div className="review-meta">
-          <h3 className="detail-section">{t('record.metadata')}</h3>
-          <div className="identity-grid">
-            {META_FIELDS.map((f) => (
-              <div key={f} className="identity-row">
-                <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
-                <span className="v mono">{detail.data[f] || '—'}</span>
-              </div>
-            ))}
+        {/* ── 大画面ビューア（画面左・sticky）＋アクション ──
+            標注効率のため詳細画面で写真を大きく出し、原寸表示を開く回数を減らす。
+            下の縮略バーで裁切図/元写真を切替。元情報は既定で折りたたみ。 */}
+        <div className="review-viewer">
+          <div
+            className="review-viewer-main"
+            style={{ cursor: mainUrl ? 'zoom-in' : 'default' }}
+            title={t('record.openFull')}
+            onClick={() => mainUrl && setLightbox(effView)}
+          >
+            {mainUrl
+              ? <img src={mainUrl} alt={effView} />
+              : <div className="muted">{t('review.noPhoto')}</div>}
+          </div>
+          <div className="review-viewer-thumbs">
+            <button
+              type="button"
+              className={`viewer-thumb${effView === 'crop' ? ' on' : ''}`}
+              disabled={!detail.photoUrl}
+              onClick={() => setView('crop')}
+            >
+              <PhotoThumb src={photoUrl(detail.photoUrl)} size={56} alt="crop" />
+              <span>{t('record.crop')}</span>
+            </button>
+            <button
+              type="button"
+              className={`viewer-thumb${effView === 'source' ? ' on' : ''}`}
+              disabled={!detail.sourcePhotoUrl}
+              onClick={() => setView('source')}
+            >
+              <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={56} alt="source" />
+              <span>{t('record.source')}</span>
+            </button>
+            <span className="spacer" />
+            <span className="muted" style={{ fontSize: 11.5, alignSelf: 'center' }}>
+              {t('record.openFull')}
+            </span>
           </div>
 
-          <h3 className="detail-section">{t('review.actionsTitle')}</h3>
-          {actionError && (
-            <div className="error-box" style={{ marginBottom: 8 }}>
-              <strong>{t('review.actionFailed')}</strong>
-              <div className="hint">{actionError}</div>
+          <details className="review-meta-details">
+            <summary>{t('record.metadata')}</summary>
+            <div className="identity-grid">
+              {META_FIELDS.map((f) => (
+                <div key={f} className="identity-row">
+                  <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
+                  <span className="v mono">{detail.data[f] || '—'}</span>
+                </div>
+              ))}
             </div>
-          )}
-          <div className="review-actions">
-            <button
-              className="btn"
-              disabled={!dirty || busy != null}
-              onClick={() => patch({}, 'save', false)}
-            >
-              {busy === 'save' ? t('record.saving') : t('review.saveChanges')}
-            </button>
-            {REVIEW_ACTIONS.map(actionBtn)}
-            <button
-              className="btn"
-              disabled={busy != null}
-              onClick={() => navigate(`/database?record=${detail.id}`)}
-            >
-              {t('common.openInDatabase')}
-            </button>
-          </div>
+          </details>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import RecordDetailPanel from '../components/database/RecordDetailPanel';
 import RecordsFilters from '../components/database/RecordsFilters';
 import RecordsTable from '../components/database/RecordsTable';
 import useFilterOptions from '../hooks/useFilterOptions';
+import { languageFilterValues } from '../lib/languageList';
 
 const PAGE_SIZES = [25, 50, 100];
 
@@ -130,7 +131,7 @@ export default function DatabasePage() {
       <RecordsFilters
         value={filters}
         options={{
-          languages: schema?.enums['主要言語'] ?? [],
+          languages: languageFilterValues(schema?.enums['主要言語']),
           areas,
           collectors,
           datasets,

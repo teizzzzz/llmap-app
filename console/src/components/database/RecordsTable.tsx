@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { photoUrl } from '../../api/client';
 import type { RecordItem } from '../../api/types';
+import { multiEnumLabel } from '../../lib/enumLabels';
 import PhotoThumb from './PhotoThumb';
 import StatusBadge from './StatusBadge';
 
@@ -45,8 +46,8 @@ export default function RecordsTable({
               <PhotoThumb src={photoUrl(r.thumbnailUrl)} size={40} alt={r.SignID} />
             </td>
             <td className="mono">{r.DisplayID || r.SignID}</td>
-            <td>{dash(r.主要言語)}</td>
-            <td>{dash(r.補助言語)}</td>
+            <td>{multiEnumLabel(t, dash(r.主要言語))}</td>
+            <td>{multiEnumLabel(t, dash(r.補助言語))}</td>
             <td>{dash(r.地区コード)}</td>
             <td className="mono">{dash(r.採集日時)}</td>
             <td><StatusBadge value={r.EntryMode} /></td>

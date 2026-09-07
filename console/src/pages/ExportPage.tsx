@@ -8,6 +8,7 @@ import {
 import type { ExportJobStatus, RecordsQuery } from '../api/types';
 import RecordsFilters from '../components/database/RecordsFilters';
 import useFilterOptions from '../hooks/useFilterOptions';
+import { languageFilterValues } from '../lib/languageList';
 
 /** 快速筛选プリセット。patch の状態値は内部値のまま（表示のみ翻訳）。 */
 const QUICK_FILTERS: { labelKey: string; patch: RecordsQuery }[] = [
@@ -236,7 +237,7 @@ export default function ExportPage() {
       <RecordsFilters
         value={filters}
         options={{
-          languages: options.schema?.enums['主要言語'] ?? [],
+          languages: languageFilterValues(options.schema?.enums['主要言語']),
           areas: options.areas,
           collectors: options.collectors,
           datasets: options.datasets,

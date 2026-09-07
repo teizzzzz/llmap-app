@@ -15,14 +15,15 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy import delete, func
 from sqlmodel import Session, select
 
 from .database import (
-    archives_dir, data_dir, exports_dir, photos_dir, source_photos_dir,
-    tmp_dir, get_session,
+    archives_dir, data_dir, exports_dir, get_engine, imports_dir,
+    photos_dir, source_photos_dir, tmp_dir, get_session,
 )
-from .db_models import Photo
+from .db_models import Dataset, Photo, SignRecord
 
 router = APIRouter(tags=["storage"])
 
@@ -136,4 +137,65 @@ def storage_cleanup(
         "freedBytes": reclaim_bytes if not dry_run else 0,
         "entries": [p.name for p in reclaim],
         "missingPhotoCount": 0,
+    }
+
+
+@router.post("/storage/reset")
+def storage_reset(
+    payload: dict = Body(default={}),
+    session: Session = Depends(get_session),
+):
+    """全データ削除（初期化）。記録 DB の全行・写真（crop/source）・導入遺留・
+    保管パッケージ・既定フォルダ内の導出物を削除し、SQLite を VACUUM で収縮する。
+
+    残すもの: settings.json（AI キー・導出先設定）と logs/。
+    settings.json の exportDir が指す**外部**フォルダには一切触れない
+    （ユーザーが選んだ場所で、他のファイルが同居し得るため）。
+
+    誤操作防止: confirm="DELETE" を必須とする（UI 側でも打鍵確認）。"""
+    if payload.get("confirm") != "DELETE":
+        raise HTTPException(
+            400, '全データ削除には confirm="DELETE" が必要です（誤操作防止）')
+
+    count = lambda model: session.exec(  # noqa: E731
+        select(func.count()).select_from(model)).one()
+    n_records = count(SignRecord)
+    n_datasets = count(Dataset)
+    n_photos = count(Photo)
+
+    # 削除対象目录（既定 exports のみ — 設定済み外部 exportDir は対象外）。
+    wipe_dirs = [
+        photos_dir(), source_photos_dir(), imports_dir(),
+        archives_dir(), data_dir() / "exports", tmp_dir(),
+    ]
+    freed = sum(_dir_size(d) for d in wipe_dirs)
+    db_file = data_dir() / "llmap.sqlite3"
+    db_before = db_file.stat().st_size if db_file.exists() else 0
+
+    # 1) DB 行（FK 順: Photo → SignRecord → Dataset）
+    session.execute(delete(Photo))
+    session.execute(delete(SignRecord))
+    session.execute(delete(Dataset))
+    session.commit()
+
+    # 2) ファイル・目录（消してから空で作り直す）
+    for d in wipe_dirs:
+        shutil.rmtree(d, ignore_errors=True)
+        d.mkdir(parents=True, exist_ok=True)
+
+    # 3) VACUUM で DB ファイルを収縮（失敗しても初期化自体は成立）
+    try:
+        with get_engine().connect() as conn:
+            conn.execution_options(
+                isolation_level="AUTOCOMMIT").exec_driver_sql("VACUUM")
+    except Exception:  # noqa: BLE001
+        pass
+    db_after = db_file.stat().st_size if db_file.exists() else 0
+
+    return {
+        "ok": True,
+        "deletedRecords": n_records,
+        "deletedDatasets": n_datasets,
+        "deletedPhotos": n_photos,
+        "freedBytes": freed + max(0, db_before - db_after),
     }

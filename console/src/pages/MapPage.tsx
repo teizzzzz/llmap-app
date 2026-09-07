@@ -10,6 +10,8 @@ import type { MapQuery, MapRecord, RecordDetail } from '../api/types';
 import PhotoThumb from '../components/database/PhotoThumb';
 import StatusBadge from '../components/database/StatusBadge';
 import useFilterOptions from '../hooks/useFilterOptions';
+import { enumLabel, multiEnumLabel } from '../lib/enumLabels';
+import { languageFilterValues } from '../lib/languageList';
 
 // 内部値（API に渡る）。表示ラベルのみ翻訳する。
 const ENTRY_MODES = ['quick', 'standard', 'research'];
@@ -53,8 +55,8 @@ function MapPopupContent({ r }: { r: MapRecord }) {
       <PhotoThumb src={photoUrl(r.photoUrl)} size={110} alt={r.signId} />
       <div className="map-popup-title mono">{r.displayId || r.signId}</div>
       <div className="map-popup-rows">
-        <div><span>{t('fields.主要言語')}</span><b>{r.mainLanguage || '—'}</b></div>
-        <div><span>{t('fields.補助言語')}</span><b>{d('補助言語')}</b></div>
+        <div><span>{t('fields.主要言語')}</span><b>{r.mainLanguage ? multiEnumLabel(t, r.mainLanguage) : '—'}</b></div>
+        <div><span>{t('fields.補助言語')}</span><b>{multiEnumLabel(t, d('補助言語'))}</b></div>
         <div><span>{t('fields.地区コード')}</span><b>{d('地区コード')}</b></div>
         <div><span>{t('fields.採集日時')}</span><b className="mono">{d('採集日時')}</b></div>
         <div className="map-popup-badges">
@@ -138,8 +140,8 @@ export default function MapPage() {
   const colorOf = (lang: string) =>
     schema?.language_colors[primaryLanguage(lang)] ?? FALLBACK_COLOR;
 
-  // 凡例: 現在表示中の記録に出てくる言語だけを出す。言語名はデータなので
-  // 原文表示、欠落時のみ翻訳した「不明」ラベルを使う。
+  // 凡例: 現在表示中の記録に出てくる言語だけを出す。色引きは正準値のまま、
+  // 表示ラベルのみ翻訳（enum.*）。欠落時は翻訳した「不明」ラベルを使う。
   const unknownLabel = t('map.unknownLanguage');
   const legend = useMemo(() => {
     const langs = new Set(valid.map((r) => primaryLanguage(r.mainLanguage) || unknownLabel));
@@ -167,6 +169,9 @@ export default function MapPage() {
   const raw = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
   const translated = (xs: string[]) =>
     xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
+  // 選択肢値（言語等）は value は正準値のまま、表示ラベルのみ翻訳する。
+  const enumOpts = (xs: string[]) =>
+    xs.map((x) => ({ value: x, label: enumLabel(t, x) }));
 
   return (
     <div className={`map-page${fullscreen ? ' map-page--full' : ''}`}>
@@ -183,7 +188,7 @@ export default function MapPage() {
       {showFilters && (
         <div className="card filters-bar">
           {sel(t('filters.language'), filters.mainLanguage ?? '',
-            raw(schema?.enums['主要言語'] ?? []),
+            enumOpts(languageFilterValues(schema?.enums['主要言語'])),
             (v) => patch({ mainLanguage: v || undefined }))}
           {sel(t('filters.area'), filters.areaCode ?? '', raw(areas),
             (v) => patch({ areaCode: v || undefined }))}
@@ -295,7 +300,7 @@ export default function MapPage() {
             {legend.map(({ lang, color }) => (
               <div key={lang} className="legend-row">
                 <span className="legend-dot" style={{ background: color }} />
-                {lang}
+                {enumLabel(t, lang)}
               </div>
             ))}
           </div>

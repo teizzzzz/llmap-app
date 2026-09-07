@@ -5,6 +5,8 @@ import type { RecordItem } from '../api/types';
 import ReviewQueue from '../components/review/ReviewQueue';
 import ReviewWorkspace from '../components/review/ReviewWorkspace';
 import useFilterOptions from '../hooks/useFilterOptions';
+import { enumLabel } from '../lib/enumLabels';
+import { languageFilterValues } from '../lib/languageList';
 import { QUEUE_TABS } from '../reviewStatus';
 
 // 内部値（API に渡る）。表示ラベルのみ翻訳する。
@@ -110,6 +112,9 @@ export default function ReviewPage() {
   const raw = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
   const translated = (xs: string[]) =>
     xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
+  // 選択肢値（言語等）は value は正準値のまま、表示ラベルのみ翻訳する。
+  const enumOpts = (xs: string[]) =>
+    xs.map((x) => ({ value: x, label: enumLabel(t, x) }));
 
   return (
     <>
@@ -139,7 +144,7 @@ export default function ReviewPage() {
         {sel(t('filters.mode'), filters.entryMode ?? '', translated(ENTRY_MODES),
           (v) => patchFilters({ entryMode: v || undefined }))}
         {sel(t('filters.language'), filters.mainLanguage ?? '',
-          raw(schema?.enums['主要言語'] ?? []),
+          enumOpts(languageFilterValues(schema?.enums['主要言語'])),
           (v) => patchFilters({ mainLanguage: v || undefined }))}
         {sel(t('filters.area'), filters.areaCode ?? '', raw(areas),
           (v) => patchFilters({ areaCode: v || undefined }))}

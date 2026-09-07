@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   API_BASE_URL, ApiError, getAiStatus, getConfig, getStorageSummary,
-  storageCleanup, updateConfig,
+  storageCleanup, storageReset, updateConfig,
 } from '../api/client';
 import type { AiStatus, AppConfig, StorageSummary } from '../api/types';
 import { SUPPORTED_LANGUAGES, setLanguage } from '../i18n';
@@ -20,6 +20,12 @@ export default function SettingsPage() {
   const [storageError, setStorageError] = useState<string | null>(null);
   const [cleaning, setCleaning] = useState(false);
   const [cleanupMsg, setCleanupMsg] = useState<string | null>(null);
+
+  // 全データ削除（初期化）。打鍵確認（DELETE 入力）でのみ実行できる。
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetInput, setResetInput] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
 
   // 導出目录設定（settings.json）。大きな zip を C 盘に置かないための設定。
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -143,6 +149,26 @@ export default function SettingsPage() {
     }
   };
 
+  /** 初期化: DELETE の打鍵確認 → backend（confirm トークン必須）→ 再集計。 */
+  const doReset = async () => {
+    if (resetInput !== 'DELETE' || resetting) return;
+    setResetting(true);
+    setResetMsg(null);
+    try {
+      const r = await storageReset();
+      setResetMsg(t('storage.resetDone', {
+        records: r.deletedRecords, size: fmtBytes(r.freedBytes),
+      }));
+      setResetOpen(false);
+      setResetInput('');
+      loadStorage();
+    } catch (e: unknown) {
+      setResetMsg(e instanceof ApiError ? e.message : String(e));
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const cat = (label: string, bytes: number) => (
     <div className="count-row" key={label}>
       <span>{label}</span>
@@ -218,6 +244,52 @@ export default function SettingsPage() {
             {cleanupMsg && (
               <div className="ok-box" style={{ marginTop: 10 }}>{cleanupMsg}</div>
             )}
+
+            {/* 危険区: 全データ削除（初期化）。settings.json とログは保持。 */}
+            <div className="danger-zone">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <b>{t('storage.resetTitle')}</b>
+                <span className="spacer" />
+                <button
+                  className="btn danger"
+                  onClick={() => {
+                    setResetOpen((v) => !v);
+                    setResetInput('');
+                    setResetMsg(null);
+                  }}
+                >
+                  {resetOpen ? t('common.cancel') : t('storage.resetOpen')}
+                </button>
+              </div>
+              {resetOpen && (
+                <>
+                  <p className="muted" style={{ margin: '8px 0 4px' }}>
+                    {t('storage.resetDesc')}
+                  </p>
+                  <p className="muted" style={{ margin: '0 0 8px' }}>
+                    {t('storage.resetKeep')}
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', maxWidth: 420 }}>
+                    <input
+                      type="text"
+                      value={resetInput}
+                      placeholder={t('storage.resetTypeToConfirm')}
+                      onChange={(e) => setResetInput(e.target.value)}
+                    />
+                    <button
+                      className="btn danger"
+                      disabled={resetInput !== 'DELETE' || resetting}
+                      onClick={doReset}
+                    >
+                      {resetting ? t('storage.resetWorking') : t('storage.resetButton')}
+                    </button>
+                  </div>
+                </>
+              )}
+              {resetMsg && (
+                <div className="ok-box" style={{ marginTop: 10 }}>{resetMsg}</div>
+              )}
+            </div>
           </>
         )}
       </div>

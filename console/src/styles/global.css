@@ -343,6 +343,43 @@ a { color: inherit; text-decoration: none; }
 }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
 
+/* ── Language role selector（B 言語 3 字段の入力器）── 既存 .chip を流用 */
+.lang-sel { display: flex; flex-direction: column; gap: 6px; }
+.lang-sel .chip:disabled { opacity: 0.5; cursor: default; }
+.lang-sel-dashed { border-style: dashed; }
+.lang-sel-x { opacity: 0.6; }
+.lang-sel-search { display: flex; flex-direction: column; gap: 4px; }
+.lang-sel-search input { width: 100%; box-sizing: border-box; }
+.lang-sel-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  max-height: 190px;
+  overflow-y: auto;
+}
+.lang-sel-list li { padding: 5px 9px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.lang-sel-list li.active { background: var(--accent-soft); color: var(--accent); }
+.lang-sel-hint { font-size: 11.5px; }
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ── 危険操作（全データ削除等）── */
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:disabled { opacity: 0.45; }
+.danger-zone {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+}
+
 .detail-actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
 
 /* ── Import dialog ── */
@@ -456,13 +493,82 @@ a { color: inherit; text-decoration: none; }
 .review-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .review-columns { display: flex; gap: 18px; align-items: flex-start; }
 
-.review-photos { width: 224px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
-.review-photos figure { margin: 0; text-align: center; cursor: zoom-in; }
-.review-photos figcaption { font-size: 11px; margin-top: 3px; }
-.review-photos .thumb, .review-photos .thumb-empty { width: 220px; height: 220px; }
-
 .review-fields { flex: 1; min-width: 240px; }
 .review-meta { width: 280px; flex-shrink: 0; }
+
+/* ── 審核の大画面ビューア配置（v1.13.3、v1.13.4 で左右入替）──
+   左=写真ビューア（sticky・残り全幅）、右=研究字段（幅を絞る）。
+   標注中に写真が常に大きく見え、原寸表示を開く回数を減らす。
+   DOM は字段→ビューアの順のまま row-reverse で視覚だけ入れ替える
+   （Tab は字段側から始まり、標注のキーボード操作を優先）。 */
+.review-columns--viewer { flex-direction: row-reverse; }
+.review-columns--viewer .review-fields { flex: 0 1 460px; min-width: 340px; }
+.review-viewer {
+  flex: 1;
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.review-viewer-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.review-viewer-main img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 300px);
+  object-fit: contain;
+}
+.review-viewer-thumbs { display: flex; gap: 8px; align-items: stretch; }
+.viewer-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.viewer-thumb.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.viewer-thumb:disabled { opacity: 0.45; cursor: default; }
+/* アクションは字段列の最上部に sticky（横並び・スクロールしても常時見える） */
+.review-actionbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface);
+  padding: 2px 0 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.review-actionbar .review-actions { flex-direction: row; flex-wrap: wrap; }
+/* 元情報（只読）は既定で折りたたみ */
+.review-meta-details summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.review-meta-details .identity-grid { margin-top: 6px; max-width: 560px; }
 
 .review-actions { display: flex; flex-direction: column; gap: 7px; }
 .review-action.positive { border-color: #1e9e6a; color: #1e9e6a; }

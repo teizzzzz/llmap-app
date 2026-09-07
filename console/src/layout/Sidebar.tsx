@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import pkg from '../../package.json';
 
 // labelKey は i18n キー。ルートパスは内部値なので翻訳しない。
 const NAV = [
@@ -33,7 +34,8 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="sidebar-footer">console v0.9.0 · local-first</div>
+      {/* 以前はここに硬编码で古い版号が残っていた — package.json を唯一の正とする */}
+      <div className="sidebar-footer">console v{pkg.version} · local-first</div>
     </aside>
   );
 }

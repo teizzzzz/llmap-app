@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { photoUrl } from '../../api/client';
 import type { RecordItem } from '../../api/types';
+import { multiEnumLabel } from '../../lib/enumLabels';
 import PhotoThumb from '../database/PhotoThumb';
 import StatusBadge from '../database/StatusBadge';
 
@@ -13,6 +15,7 @@ export default function ReviewQueue({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="review-queue">
       {items.map((r) => (
@@ -26,7 +29,7 @@ export default function ReviewQueue({
           <div className="queue-card-body">
             <div className="queue-card-title mono">{r.DisplayID || r.SignID}</div>
             <div className="queue-card-sub">
-              {r.主要言語 || '—'} · {r.地区コード || '—'}
+              {r.主要言語 ? multiEnumLabel(t, r.主要言語) : '—'} · {r.地区コード || '—'}
             </div>
             <div className="queue-card-sub mono">{r.採集日時 || '—'}</div>
             <div className="queue-card-badges">
