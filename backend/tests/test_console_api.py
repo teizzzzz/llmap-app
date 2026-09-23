@@ -98,6 +98,7 @@ def default_package() -> bytes:
              元写真ファイル名=f"{CAPTURE}-source.jpg",
              緯度="35.6021", 経度="139.7011",
              採集日時="2026-07-01 14:35:12", 主要言語="韓国語/日本語",
+             担体類型="贴纸", 時間性="常设",
              EntryMode="standard", DataStatus="submitted",
              SchemaVersion="1.5", AppVersion="v1.8.0"),
         _row(SignID=f"{CAPTURE}-b", _status="pending", CaptureID=CAPTURE,
@@ -106,6 +107,7 @@ def default_package() -> bytes:
              写真ファイル名=f"{CAPTURE}-b.jpg",
              元写真ファイル名=f"{CAPTURE}-source.jpg",
              採集日時="2026-07-01 14:35:12", 主要言語="日本語",
+             担体類型="无媒介",
              EntryMode="quick", DataStatus="raw",
              SchemaVersion="1.5", AppVersion="v1.8.0"),
         # 旧データ（規範化済み・DataStatus 空 → _status から補完される）
@@ -212,6 +214,33 @@ def test_records_filters():
     assert client.get("/records", params={"hasGps": "true"}).json()["total"] == 1
     assert client.get("/records", params={"hasSourcePhoto": "false"}).json()["total"] == 1
     assert client.get("/records", params={"q": LEGACY_CAPTURE}).json()["total"] == 1
+
+
+def test_records_field_filters():
+    """研究字段（字段表の字段）での筛选。fields は JSON で渡す。"""
+    def p(f):
+        return {"fields": json.dumps(f, ensure_ascii=False)}
+    assert client.get("/records", params=p({"担体類型": "贴纸"})).json()["total"] == 1
+    assert client.get("/records", params=p({"担体類型": "无媒介"})).json()["total"] == 1
+    # 複合条件は AND
+    assert client.get(
+        "/records", params=p({"担体類型": "贴纸", "時間性": "常设"})).json()["total"] == 1
+    assert client.get(
+        "/records", params=p({"担体類型": "无媒介", "時間性": "常设"})).json()["total"] == 0
+    # 同一字段の複数値は OR
+    assert client.get(
+        "/records", params=p({"担体類型": ["贴纸", "无媒介"]})).json()["total"] == 2
+    # 複数選択字段（主要言語 "韓国語/日本語"）は含有判定
+    assert client.get("/records", params=p({"主要言語": "韓国語"})).json()["total"] == 1
+    # 系統字段・未知字段・壊れた JSON は 400
+    # （黙って条件を落とすと「筛选したつもりで全件導出」になるため）
+    assert client.get("/records", params=p({"SignID": "x"})).status_code == 400
+    assert client.get("/records", params=p({"未知字段": "x"})).status_code == 400
+    assert client.get("/records", params={"fields": "not-json"}).status_code == 400
+    # CSV 導出にも同じ筛选が効く
+    r = client.get("/export/csv", params=p({"担体類型": "贴纸"}))
+    rows = list(csv.DictReader(io.StringIO(r.content.decode("utf-8-sig"))))
+    assert [row["SignID"] for row in rows] == [f"{CAPTURE}-a"]
 
 
 def test_legacy_data_status_fallback():

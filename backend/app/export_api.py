@@ -47,6 +47,7 @@ def export_csv(
     hasSourcePhoto: bool | None = None,
     datasetId: int | None = None,
     datasetIds: str | None = None,
+    fields: str | None = None,
 ):
     stmt = apply_filters(
         select(SignRecord),
@@ -54,7 +55,7 @@ def export_csv(
         collector_id=collectorId, entry_mode=entryMode, data_status=dataStatus,
         status=status, date_from=dateFrom, date_to=dateTo, has_gps=hasGps,
         has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
-        dataset_id=datasetId, dataset_ids=datasetIds,
+        dataset_id=datasetId, dataset_ids=datasetIds, field_filters=fields,
     ).order_by(col(SignRecord.captured_at), col(SignRecord.id))
 
     buf = io.StringIO()
@@ -94,6 +95,7 @@ def export_geojson(
     hasSourcePhoto: bool | None = None,
     datasetId: int | None = None,
     datasetIds: str | None = None,
+    fields: str | None = None,
 ):
     stmt = apply_filters(
         select(SignRecord),
@@ -101,7 +103,7 @@ def export_geojson(
         collector_id=collectorId, entry_mode=entryMode, data_status=dataStatus,
         status=status, date_from=dateFrom, date_to=dateTo, has_gps=hasGps,
         has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
-        dataset_id=datasetId, dataset_ids=datasetIds,
+        dataset_id=datasetId, dataset_ids=datasetIds, field_filters=fields,
     ).order_by(col(SignRecord.captured_at), col(SignRecord.id))
 
     features = []

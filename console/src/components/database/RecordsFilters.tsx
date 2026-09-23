@@ -15,6 +15,14 @@ export interface FilterOptions {
 const ENTRY_MODES = ['quick', 'standard', 'research'];
 const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'reviewed', 'verified', 'rejected'];
 
+// 字段筛选に出す研究字段（字段表の枚挙字段。言語3役は上の「語言」筛选があるので
+// 除外）。表示順は定義表のグループ順（B 言語·文字 → C 物質·状態 → D 社会·機能）。
+const FIELD_FILTER_KEYS = [
+  '文字性', '多言語関係',
+  '担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き',
+  '設置主体', 'ディスコース類型', '製作品質',
+];
+
 function Select({
   label,
   value,
@@ -76,6 +84,7 @@ export default function RecordsFilters({
   onChange,
   onClear,
   onRefresh,
+  schemaEnums,
 }: {
   value: RecordsQuery;
   options: FilterOptions;
@@ -83,8 +92,20 @@ export default function RecordsFilters({
   onChange: (patch: Partial<RecordsQuery>) => void;
   onClear: () => void;
   onRefresh: () => void;
+  /** 字段筛选の選択肢（/schema の enums）。渡すと「字段筛选」区が出る。 */
+  schemaEnums?: Record<string, string[]> | null;
 }) {
   const { t } = useTranslation();
+  const fieldFilters = value.fields ?? {};
+  const fieldCount = Object.keys(fieldFilters).length;
+  // 既に字段筛选が効いている状態で開き直したら展開したままにする。
+  const [showFields, setShowFields] = useState(fieldCount > 0);
+  const setField = (key: string, v: string) => {
+    const next = { ...fieldFilters };
+    if (v) next[key] = v;
+    else delete next[key];
+    onChange({ fields: Object.keys(next).length ? next : undefined });
+  };
   // q は打鍵のたびに叩かないよう 400ms デバウンス。
   const [q, setQ] = useState(value.q ?? '');
   useEffect(() => setQ(value.q ?? ''), [value.q]);
@@ -152,12 +173,41 @@ export default function RecordsFilters({
         <input type="date" value={value.dateTo ?? ''}
           onChange={(e) => onChange({ dateTo: e.target.value || undefined })} />
       </label>
+      {schemaEnums && (
+        <button
+          className="btn"
+          aria-expanded={showFields}
+          onClick={() => setShowFields((s) => !s)}
+        >
+          {t('filters.fieldsToggle')}
+          {fieldCount ? ` (${fieldCount})` : ''} {showFields ? '▴' : '▾'}
+        </button>
+      )}
       <span className="spacer" />
       <span className="muted total">
         {total != null ? t('common.records', { n: total }) : ''}
       </span>
       <button className="btn" onClick={onClear}>{t('common.clearFilters')}</button>
       <button className="btn" onClick={onRefresh}>{t('common.refresh')}</button>
+      {schemaEnums && showFields && (
+        <div
+          style={{
+            flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: 10,
+            alignItems: 'flex-end', paddingTop: 8,
+            borderTop: '1px solid var(--border, #e5e0d8)',
+          }}
+        >
+          {FIELD_FILTER_KEYS.filter((k) => schemaEnums[k]?.length).map((k) => (
+            <Select
+              key={k}
+              label={t(`fields.${k}`, { defaultValue: k })}
+              value={fieldFilters[k] ?? ''}
+              options={enumOpts(schemaEnums[k])}
+              onChange={(v) => setField(k, v)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -19,8 +19,8 @@ from sqlmodel import Session, col, func, select
 from .database import get_session, photos_dir, source_photos_dir
 from .db_models import Dataset, SignRecord
 from .schema import (
-    CSV_HEADER, DATA_STATUS_MAP, DATA_STATUS_VALUES, STATUS_VALUES,
-    SYSTEM_FIELDS,
+    CSV_HEADER, DATA_STATUS_MAP, DATA_STATUS_VALUES, MULTI_FIELDS,
+    STATUS_VALUES, SYSTEM_FIELDS,
 )
 
 router = APIRouter(tags=["records"])
@@ -31,6 +31,40 @@ router = APIRouter(tags=["records"])
 EDITABLE_FIELDS = ({f for f in CSV_HEADER} - set(SYSTEM_FIELDS)) | {
     "_status", "DataStatus",
 }
+
+
+# 字段筛选で使える字段 = 研究字段（系統字段以外の CSV 表頭）。
+# 値は data_json にのみ持つため json_extract で照合する。
+FILTERABLE_FIELDS = {f for f in CSV_HEADER} - set(SYSTEM_FIELDS)
+
+
+def _field_filters(value) -> dict[str, list[str]]:
+    """fields パラメータの正規化。
+
+    GET では JSON 文字列（例 '{"担体類型":"无媒介"}'）、POST（導出ジョブ・AI）
+    では dict がそのまま来る。値は文字列 or 文字列配列を許容する。
+    未知の字段名は 400（黙って条件を落とすと「筛选したつもりで全件導出」
+    という事故になるため、明示的に拒否する）。
+    """
+    if value is None or value == "":
+        return {}
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            raise HTTPException(400, f"fields が JSON として読めません: {value!r}")
+    if not isinstance(value, dict):
+        raise HTTPException(400, "fields はオブジェクトで指定してください")
+    out: dict[str, list[str]] = {}
+    for field, v in value.items():
+        if field not in FILTERABLE_FIELDS:
+            raise HTTPException(
+                400, f"筛选できない字段です（研究字段のみ可）: {field}")
+        vals = [str(x) for x in (v if isinstance(v, (list, tuple)) else [v])
+                if str(x).strip() != ""]
+        if vals:
+            out[field] = vals
+    return out
 
 
 def _dataset_id_list(value) -> list[int]:
@@ -66,6 +100,7 @@ def apply_filters(
     has_source_photo: bool | None = None,
     dataset_id: int | None = None,
     dataset_ids=None,
+    field_filters=None,
 ):
     """/records・/map/records・/export/csv で共用する筛选。"""
     if q:
@@ -123,6 +158,21 @@ def apply_filters(
         stmt = stmt.where(SignRecord.dataset_id == ids[0])
     elif ids:
         stmt = stmt.where(col(SignRecord.dataset_id).in_(ids))
+    # 研究字段（字段表の字段）での筛选。値は data_json にのみあるため
+    # SQLite JSON1 の json_extract で照合する。複数選択字段（"日本語/英語"）
+    # は含有判定、それ以外は完全一致（複数値は OR）。
+    for field, vals in _field_filters(field_filters).items():
+        extracted = func.json_extract(SignRecord.data_json, f'$."{field}"')
+        if field in MULTI_FIELDS:
+            cond = None
+            for v in vals:
+                c = extracted.like(f"%{v}%")
+                cond = c if cond is None else (cond | c)
+            stmt = stmt.where(cond)
+        elif len(vals) == 1:
+            stmt = stmt.where(extracted == vals[0])
+        else:
+            stmt = stmt.where(extracted.in_(vals))
     return stmt
 
 
@@ -168,13 +218,14 @@ def list_records(
     hasSourcePhoto: bool | None = None,
     datasetId: int | None = None,
     datasetIds: str | None = None,
+    fields: str | None = None,
 ):
     kw = dict(
         q=q, main_language=mainLanguage, area_code=areaCode,
         collector_id=collectorId, entry_mode=entryMode, data_status=dataStatus,
         status=status, date_from=dateFrom, date_to=dateTo, has_gps=hasGps,
         has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
-        dataset_id=datasetId, dataset_ids=datasetIds,
+        dataset_id=datasetId, dataset_ids=datasetIds, field_filters=fields,
     )
     total = session.exec(
         apply_filters(select(func.count()).select_from(SignRecord), **kw)).one()

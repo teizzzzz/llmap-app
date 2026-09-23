@@ -136,6 +136,7 @@ export default function DatabasePage() {
           collectors,
           datasets,
         }}
+        schemaEnums={schema?.enums}
         total={total}
         onChange={patchFilters}
         onClear={() => {

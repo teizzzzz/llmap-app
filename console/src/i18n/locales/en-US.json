@@ -42,7 +42,8 @@
     "photo": "Photo",
     "source": "Source",
     "from": "From",
-    "to": "To"
+    "to": "To",
+    "fieldsToggle": "Field filters"
   },
   "status": {
     "quick": "Quick",
@@ -180,7 +181,8 @@
       "C": "Material & state",
       "D": "Social & function",
       "other": "Other"
-    }
+    },
+    "空間階層": "Spatial layer"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -84,6 +84,8 @@ def _filters_kwargs(payload: dict) -> dict:
         dataset_id=payload.get("datasetId"),
         # 多选（配列 or "1,3"）。単値 datasetId と併用時は datasetIds 優先。
         dataset_ids=payload.get("datasetIds"),
+        # 研究字段（字段表）での筛选。POST では dict がそのまま来る。
+        field_filters=payload.get("fields"),
     )
 
 

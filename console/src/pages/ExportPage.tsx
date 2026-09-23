@@ -242,6 +242,7 @@ export default function ExportPage() {
           collectors: options.collectors,
           datasets: options.datasets,
         }}
+        schemaEnums={options.schema?.enums}
         total={total}
         onChange={patchFilters}
         onClear={() => {

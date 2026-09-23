@@ -79,7 +79,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 function query(params: Record<string, unknown>): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== '') search.set(k, String(v));
+    if (v === undefined || v === null || v === '') continue;
+    // プレーンオブジェクト（fields 等）は JSON で直列化する
+    // （配列は従来どおり String(v) → "1,3"）。空オブジェクトは省略。
+    if (typeof v === 'object' && !Array.isArray(v)) {
+      if (Object.keys(v).length) search.set(k, JSON.stringify(v));
+      continue;
+    }
+    search.set(k, String(v));
   }
   const s = search.toString();
   return s ? `?${s}` : '';

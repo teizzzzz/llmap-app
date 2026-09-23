@@ -249,6 +249,8 @@ export interface RecordsQuery {
   datasetId?: number;
   /** データセット多选（導出等）。datasetId より優先。GET では "1,3" に直列化。 */
   datasetIds?: number[];
+  /** 研究字段（字段表）での筛选: 字段名 → 値。GET では JSON 文字列に直列化。 */
+  fields?: Record<string, string>;
 }
 
 /** 導出ジョブ（Dataset Package / 写真 ZIP）の進捗（Step 16） */

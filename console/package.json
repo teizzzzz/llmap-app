@@ -1,7 +1,7 @@
 {
   "name": "llmap-console",
   "private": true,
-  "version": "0.11.5",
+  "version": "0.11.6",
   "description": "LLMap Research Console — PC/Web management UI for linguistic landscape datasets",
   "type": "module",
   "scripts": {
