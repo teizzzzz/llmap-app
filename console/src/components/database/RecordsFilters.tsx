@@ -15,12 +15,14 @@ export interface FilterOptions {
 const ENTRY_MODES = ['quick', 'standard', 'research'];
 const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'reviewed', 'verified', 'rejected'];
 
-// 字段筛选に出す研究字段（字段表の枚挙字段。言語3役は上の「語言」筛选があるので
-// 除外）。表示順は定義表のグループ順（B 言語·文字 → C 物質·状態 → D 社会·機能）。
-const FIELD_FILTER_KEYS = [
-  '文字性', '多言語関係',
-  '担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き',
-  '設置主体', 'ディスコース類型', '製作品質',
+// 字段筛选に出す研究字段（字段表の枚挙字段すべて）。定義表のグループ順に
+// 3 行で表示する。言語3役・文字体系は複数選択字段のため含有判定
+// （backend の MULTI_FIELDS と同じ規則）。主要言語は上の「語言」筛选と
+// 同じ条件になるが、字段一覧の完全性を優先して両方に出す。
+const FIELD_FILTER_GROUPS: { group: string; keys: string[] }[] = [
+  { group: 'B', keys: ['文字性', '主要言語', '補助言語', '装飾の言語', '文字体系', '多言語関係'] },
+  { group: 'C', keys: ['担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き'] },
+  { group: 'D', keys: ['設置主体', 'ディスコース類型', '製作品質'] },
 ];
 
 function Select({
@@ -192,20 +194,40 @@ export default function RecordsFilters({
       {schemaEnums && showFields && (
         <div
           style={{
-            flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: 10,
-            alignItems: 'flex-end', paddingTop: 8,
+            flexBasis: '100%', display: 'flex', flexDirection: 'column',
+            gap: 8, paddingTop: 8,
             borderTop: '1px solid var(--border, #e5e0d8)',
           }}
         >
-          {FIELD_FILTER_KEYS.filter((k) => schemaEnums[k]?.length).map((k) => (
-            <Select
-              key={k}
-              label={t(`fields.${k}`, { defaultValue: k })}
-              value={fieldFilters[k] ?? ''}
-              options={enumOpts(schemaEnums[k])}
-              onChange={(v) => setField(k, v)}
-            />
-          ))}
+          {FIELD_FILTER_GROUPS.map(({ group, keys }) => {
+            const present = keys.filter((k) => schemaEnums[k]?.length);
+            if (!present.length) return null;
+            return (
+              <div
+                key={group}
+                style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 10,
+                  alignItems: 'flex-end',
+                }}
+              >
+                <span
+                  className="muted"
+                  style={{ fontSize: 12, minWidth: 72, paddingBottom: 8 }}
+                >
+                  {t(`fields.group.${group}`)}
+                </span>
+                {present.map((k) => (
+                  <Select
+                    key={k}
+                    label={t(`fields.${k}`, { defaultValue: k })}
+                    value={fieldFilters[k] ?? ''}
+                    options={enumOpts(schemaEnums[k])}
+                    onChange={(v) => setField(k, v)}
+                  />
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

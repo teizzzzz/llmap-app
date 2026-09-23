@@ -388,7 +388,10 @@
     "namingSignId": "SignID.jpg",
     "namingDisplayId": "DisplayID.jpg",
     "dedupNote": "内容相同的照片只放入一次（内容去重）。缺失照片会记录在 MISSING.txt。",
-    "geojsonNote": "坐标顺序为 [经度, 纬度]（WGS84）。无 GPS 的记录不进入 Feature，跳过数量记录在文件中。"
+    "geojsonNote": "坐标顺序为 [经度, 纬度]（WGS84）。无 GPS 的记录不进入 Feature，跳过数量记录在文件中。",
+    "activeFilters": "当前筛选条件",
+    "removeFilter": "点击移除该条件",
+    "chipKeyword": "关键词"
   },
   "ai": {
     "title": "AI 处理",

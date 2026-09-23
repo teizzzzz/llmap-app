@@ -388,7 +388,10 @@
     "namingSignId": "SignID.jpg",
     "namingDisplayId": "DisplayID.jpg",
     "dedupNote": "Identical photos are included once (content dedup). Missing files are listed in MISSING.txt.",
-    "geojsonNote": "Coordinates are [lng, lat], WGS84. Records without GPS are excluded and the skipped count is recorded in the file."
+    "geojsonNote": "Coordinates are [lng, lat], WGS84. Records without GPS are excluded and the skipped count is recorded in the file.",
+    "activeFilters": "Active filters",
+    "removeFilter": "Click to remove",
+    "chipKeyword": "Keyword"
   },
   "ai": {
     "title": "AI Processing",

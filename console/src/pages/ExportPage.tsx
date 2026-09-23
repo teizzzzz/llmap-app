@@ -8,6 +8,7 @@ import {
 import type { ExportJobStatus, RecordsQuery } from '../api/types';
 import RecordsFilters from '../components/database/RecordsFilters';
 import useFilterOptions from '../hooks/useFilterOptions';
+import { enumLabel } from '../lib/enumLabels';
 import { languageFilterValues } from '../lib/languageList';
 
 /** 快速筛选プリセット。patch の状態値は内部値のまま（表示のみ翻訳）。 */
@@ -121,6 +122,79 @@ export default function ExportPage() {
     setDone(null);
     setFilters((f) => ({ ...f, ...patch }));
   }, []);
+
+  /** 適用中の筛选条件を chip 化する（クリックでその条件だけ解除）。
+      導出前に「何を筛选して出すのか」を一覧で確認できるようにする。 */
+  const filterChips = (): { key: string; label: string; remove: Partial<RecordsQuery> }[] => {
+    const chips: { key: string; label: string; remove: Partial<RecordsQuery> }[] = [];
+    const yn = (v: boolean) => t(v ? 'common.yes' : 'common.no');
+    if (filters.q) {
+      chips.push({ key: 'q', label: `${t('export.chipKeyword')}: ${filters.q}`,
+        remove: { q: undefined } });
+    }
+    if (filters.mainLanguage) {
+      chips.push({ key: 'lang',
+        label: `${t('filters.language')}: ${enumLabel(t, filters.mainLanguage)}`,
+        remove: { mainLanguage: undefined } });
+    }
+    if (filters.areaCode) {
+      chips.push({ key: 'area', label: `${t('filters.area')}: ${filters.areaCode}`,
+        remove: { areaCode: undefined } });
+    }
+    if (filters.collectorId) {
+      chips.push({ key: 'collector',
+        label: `${t('filters.collector')}: ${filters.collectorId}`,
+        remove: { collectorId: undefined } });
+    }
+    if (filters.entryMode) {
+      chips.push({ key: 'mode',
+        label: `${t('filters.mode')}: ${t(`status.${filters.entryMode}`, { defaultValue: filters.entryMode })}`,
+        remove: { entryMode: undefined } });
+    }
+    if (filters.dataStatus) {
+      chips.push({ key: 'status',
+        label: `${t('filters.status')}: ${t(`status.${filters.dataStatus}`, { defaultValue: filters.dataStatus })}`,
+        remove: { dataStatus: undefined } });
+    }
+    const dsIds = filters.datasetIds
+      ?? (filters.datasetId != null ? [filters.datasetId] : []);
+    for (const id of dsIds) {
+      const ds = options.datasets.find((d) => d.id === id);
+      const rest = dsIds.filter((x) => x !== id);
+      chips.push({ key: `ds-${id}`,
+        label: `${t('filters.dataset')}: #${id}${ds ? ` ${ds.name}` : ''}`,
+        remove: { datasetIds: rest.length ? rest : undefined, datasetId: undefined } });
+    }
+    if (filters.hasGps !== undefined) {
+      chips.push({ key: 'gps', label: `${t('filters.gps')}: ${yn(filters.hasGps)}`,
+        remove: { hasGps: undefined } });
+    }
+    if (filters.hasPhoto !== undefined) {
+      chips.push({ key: 'photo', label: `${t('filters.photo')}: ${yn(filters.hasPhoto)}`,
+        remove: { hasPhoto: undefined } });
+    }
+    if (filters.hasSourcePhoto !== undefined) {
+      chips.push({ key: 'source',
+        label: `${t('filters.source')}: ${yn(filters.hasSourcePhoto)}`,
+        remove: { hasSourcePhoto: undefined } });
+    }
+    if (filters.dateFrom) {
+      chips.push({ key: 'from', label: `${t('filters.from')}: ${filters.dateFrom}`,
+        remove: { dateFrom: undefined } });
+    }
+    if (filters.dateTo) {
+      chips.push({ key: 'to', label: `${t('filters.to')}: ${filters.dateTo}`,
+        remove: { dateTo: undefined } });
+    }
+    for (const [k, v] of Object.entries(filters.fields ?? {})) {
+      const rest = { ...(filters.fields ?? {}) };
+      delete rest[k];
+      chips.push({ key: `f-${k}`,
+        label: `${t(`fields.${k}`, { defaultValue: k })}: ${enumLabel(t, v)}`,
+        remove: { fields: Object.keys(rest).length ? rest : undefined } });
+    }
+    return chips;
+  };
 
   const doExportCsv = async () => {
     setExporting(true);
@@ -256,6 +330,31 @@ export default function ExportPage() {
         <div className="error-box" style={{ marginBottom: 14 }}>
           <strong>{t('export.countError')}</strong>
           <div className="hint">{countError}</div>
+        </div>
+      )}
+
+      {/* 適用中の筛选条件（chip 化。クリックでその条件だけ解除） */}
+      {filterChips().length > 0 && (
+        <div
+          className="card"
+          style={{
+            display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+            marginBottom: 14, paddingTop: 10, paddingBottom: 10,
+          }}
+        >
+          <span className="muted" style={{ fontSize: 12 }}>
+            {t('export.activeFilters')}
+          </span>
+          {filterChips().map((c) => (
+            <button
+              key={c.key}
+              className="chip"
+              title={t('export.removeFilter')}
+              onClick={() => patchFilters(c.remove)}
+            >
+              {c.label} ×
+            </button>
+          ))}
         </div>
       )}
 

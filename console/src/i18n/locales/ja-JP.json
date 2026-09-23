@@ -388,7 +388,10 @@
     "namingSignId": "SignID.jpg",
     "namingDisplayId": "DisplayID.jpg",
     "dedupNote": "同一内容の写真は 1 回だけ入ります（内容去重）。欠落は MISSING.txt に記録されます。",
-    "geojsonNote": "座標は [経度, 緯度]・WGS84。GPS 無し記録は含まれず、件数がファイル内に記録されます。"
+    "geojsonNote": "座標は [経度, 緯度]・WGS84。GPS 無し記録は含まれず、件数がファイル内に記録されます。",
+    "activeFilters": "適用中のフィルター",
+    "removeFilter": "クリックで解除",
+    "chipKeyword": "キーワード"
   },
   "ai": {
     "title": "AI処理",
