@@ -87,6 +87,8 @@ export default function RecordsFilters({
   onClear,
   onRefresh,
   schemaEnums,
+  fieldPresence,
+  hideDatasets,
 }: {
   value: RecordsQuery;
   options: FilterOptions;
@@ -96,6 +98,11 @@ export default function RecordsFilters({
   onRefresh: () => void;
   /** 字段筛选の選択肢（/schema の enums）。渡すと「字段筛选」区が出る。 */
   schemaEnums?: Record<string, string[]> | null;
+  /** 字段ごとの非空記録数（/stats/fields）。0 の字段は隠す
+      （実データに無い字段 — 例: v6 廃止の空間階層 — を出さない）。 */
+  fieldPresence?: Record<string, number> | null;
+  /** データセット筛选を隠す（相册内など対象が固定の文脈用）。 */
+  hideDatasets?: boolean;
 }) {
   const { t } = useTranslation();
   const fieldFilters = value.fields ?? {};
@@ -152,13 +159,13 @@ export default function RecordsFilters({
         onChange={(v) => onChange({ dataStatus: v || undefined })} />
       {/* データセットは多选（導出で複数データセットをまとめて出せる）。
           旧単値 datasetId が残っていたら選択済みとして表示し、以後は datasetIds に統一。 */}
-      <MultiSelect label={t('filters.dataset')}
+      {!hideDatasets && <MultiSelect label={t('filters.dataset')}
         options={options.datasets.map((d) => ({ value: String(d.id), label: `#${d.id} ${d.name}` }))}
         selected={(value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : [])).map(String)}
         onChange={(vs) => onChange({
           datasetIds: vs.length ? vs.map(Number) : undefined,
           datasetId: undefined,
-        })} />
+        })} />}
       <TriState label={t('filters.gps')} value={value.hasGps}
         onChange={(v) => onChange({ hasGps: v })} />
       <TriState label={t('filters.photo')} value={value.hasPhoto}
@@ -200,7 +207,12 @@ export default function RecordsFilters({
           }}
         >
           {FIELD_FILTER_GROUPS.map(({ group, keys }) => {
-            const present = keys.filter((k) => schemaEnums[k]?.length);
+            // 選択肢が定義されていて、かつ実データに値がある字段だけ出す
+            // （fieldPresence 未取得＝旧 backend の間はすべて表示）。
+            // ただし現に筛选中の字段は隠さない（解除できなくなるため）。
+            const present = keys.filter((k) =>
+              schemaEnums[k]?.length
+              && ((fieldPresence?.[k] ?? 1) > 0 || fieldFilters[k]));
             if (!present.length) return null;
             return (
               <div

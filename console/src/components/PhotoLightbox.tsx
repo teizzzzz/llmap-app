@@ -5,6 +5,7 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { copyImageToClipboard } from '../lib/copyImage';
 
 export interface LightboxItem {
   title: string; // DisplayID / SignID
@@ -30,6 +31,8 @@ export default function PhotoLightbox({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  // 复制状態（✓/✗ を短時間表示）。レイアウトソフトへの直接粘贴用。
+  const [copied, setCopied] = useState<'ok' | 'err' | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
@@ -140,6 +143,22 @@ export default function PhotoLightbox({
         <button className="btn" title={t('lightbox.rotate')}
           onClick={() => setRotation((r) => (r + 90) % 360)}>
           ⟳
+        </button>
+        <button
+          className="btn"
+          disabled={!url}
+          onClick={async () => {
+            if (!url) return;
+            try {
+              await copyImageToClipboard(url);
+              setCopied('ok');
+            } catch {
+              setCopied('err');
+            }
+            setTimeout(() => setCopied(null), 1500);
+          }}
+        >
+          {copied === 'ok' ? '✓' : copied === 'err' ? '✗' : t('lightbox.copy')}
         </button>
         <a className="btn" href={url} download>{t('export.download')}</a>
         <button className="btn" onClick={onClose} title="Esc">✕</button>

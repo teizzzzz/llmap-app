@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ApiError, cancelExportJob, exportGeoJson, exportJobDownloadUrl,
-  exportRecordsCsv, getExportJob, getRecords, startPackageExport,
-  startPhotosExport,
+  exportRecordsCsv, getConfig, getExportJob, getRecords,
+  previewPhotosExport, startPackageExport, startPhotosExport,
+  startPhotosSplitExport,
 } from '../api/client';
-import type { ExportJobStatus, RecordsQuery } from '../api/types';
+import type {
+  AppConfig, ExportJobStatus, PhotosExportPreview, RecordsQuery,
+} from '../api/types';
 import RecordsFilters from '../components/database/RecordsFilters';
 import useFilterOptions from '../hooks/useFilterOptions';
 import { enumLabel } from '../lib/enumLabels';
@@ -18,6 +21,13 @@ const QUICK_FILTERS: { labelKey: string; patch: RecordsQuery }[] = [
   { labelKey: 'export.quickVerified', patch: { dataStatus: 'verified' } },
   { labelKey: 'export.quickGps', patch: { hasGps: true } },
   { labelKey: 'export.quickPhotos', patch: { hasPhoto: true } },
+];
+
+// 写真 ZIP の字段別分包に出す枚挙字段（定義表のグループ順）。
+const SPLIT_FIELDS = [
+  '文字性', '主要言語', '補助言語', '装飾の言語', '文字体系', '多言語関係',
+  '担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き',
+  '設置主体', 'ディスコース類型', '製作品質',
 ];
 
 // 导出ファイル名（データ側の規約なので言語によらず固定）。
@@ -102,9 +112,31 @@ export default function ExportPage() {
     useState<'crop' | 'source' | 'both'>('both');
   const [photosNaming, setPhotosNaming] =
     useState<'signid' | 'displayid' | 'original'>('original');
+  // 字段別分包（'' = 分包しない = 1 本の zip）。
+  const [photosSplitField, setPhotosSplitField] = useState('');
+  // 導出先の一時指定（空 = 設定の既定目录）。設定自体は変更しない。
+  const [outputDir, setOutputDir] = useState('');
+  const [cfg, setCfg] = useState<AppConfig | null>(null);
+  const [photosPreview, setPhotosPreview] =
+    useState<PhotosExportPreview | null>(null);
   const options = useFilterOptions();
   const packageJob = useExportJob();
   const photosJob = useExportJob();
+
+  useEffect(() => {
+    getConfig().then(setCfg).catch(() => {});
+  }, []);
+
+  // 写真 ZIP の事前集計（筛选条件・内容選択に追従）。
+  // 「筛选したのに全部出ている？」の誤解を防ぐため、内訳を常時表示する。
+  useEffect(() => {
+    let stale = false;
+    setPhotosPreview(null);
+    previewPhotosExport(filters, photosContent)
+      .then((p) => { if (!stale) setPhotosPreview(p); })
+      .catch(() => { if (!stale) setPhotosPreview(null); });
+    return () => { stale = true; };
+  }, [filters, photosContent]);
 
   // 筛选後の件数（导出摘要）。pageSize=1 で total だけ取得する。
   const fetchTotal = useCallback(() => {
@@ -240,10 +272,18 @@ export default function ExportPage() {
         <div className="ok-box" style={{ marginTop: 8 }}>
           {t('export.jobDone', {
             name: jc.job.fileName, size: fmtSize(jc.job.sizeBytes),
-          })}{' '}
-          <a className="btn" href={exportJobDownloadUrl(jc.job.id)}>
-            {t('export.download')}
-          </a>
+          })}
+          {/* 分包ジョブは目录に複数 zip を生成 → 単一下载リンクは出さない */}
+          {jc.job.kind === 'photos_split' ? (
+            <> {t('export.splitZips', { n: jc.job.report?.zipCount ?? 0 })}</>
+          ) : (
+            <>
+              {' '}
+              <a className="btn" href={exportJobDownloadUrl(jc.job.id)}>
+                {t('export.download')}
+              </a>
+            </>
+          )}
           {/* zip はこのパスに既に生成済み（導出目录設定の可視化）。
               桌面版なら再ダウンロード不要でそのまま開ける。 */}
           {jc.job.path && (
@@ -317,6 +357,7 @@ export default function ExportPage() {
           datasets: options.datasets,
         }}
         schemaEnums={options.schema?.enums}
+        fieldPresence={options.fieldStats}
         total={total}
         onChange={patchFilters}
         onClear={() => {
@@ -388,6 +429,30 @@ export default function ExportPage() {
 
       {/* フォーマット別の導出カード */}
       <h3 className="detail-section" style={{ marginTop: 22 }}>{t('export.formats')}</h3>
+
+      {/* 導出先（Dataset Package / 写真 ZIP 共通の一時指定。設定は変更しない） */}
+      <div
+        className="card"
+        style={{
+          display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
+          marginBottom: 14, paddingTop: 10, paddingBottom: 10,
+        }}
+      >
+        <label className="filter-field" style={{ flex: '1 1 340px' }}>
+          <span>{t('export.outputDir')}</span>
+          <input
+            type="text"
+            value={outputDir}
+            placeholder={cfg?.effectiveExportDir ?? ''}
+            onChange={(e) => setOutputDir(e.target.value)}
+            style={{ width: '100%' }}
+          />
+        </label>
+        <span className="muted" style={{ fontSize: 12, paddingBottom: 8 }}>
+          {t('export.outputDirHint')}
+        </span>
+      </div>
+
       <div className="format-grid">
         {/* Dataset Package（ジョブ式・進捗つき） */}
         <div className="card format-card">
@@ -403,7 +468,8 @@ export default function ExportPage() {
           <button
             className="btn primary"
             disabled={packageJob.starting || packageJob.job?.status === 'running' || !total}
-            onClick={() => packageJob.start(() => startPackageExport(filters))}
+            onClick={() => packageJob.start(
+              () => startPackageExport(filters, outputDir.trim() || undefined))}
           >
             {t('export.start')}
           </button>
@@ -443,6 +509,18 @@ export default function ExportPage() {
           <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
             {t('export.formatPhotosDesc')} {t('export.dedupNote')}
           </p>
+          {/* 事前集計: 現在の筛选で実際に何枚出るか（誤解防止） */}
+          {photosPreview && (
+            <p style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 600 }}>
+              {t('export.photosPreview', {
+                records: photosPreview.recordCount,
+                total: photosPreview.totalFiles,
+                crop: photosPreview.cropFiles,
+                source: photosPreview.sourceFiles,
+                missing: photosPreview.missingCount,
+              })}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             {sel(t('export.contentLabel'), photosContent, [
               { value: 'both', label: t('export.contentBoth') },
@@ -454,15 +532,39 @@ export default function ExportPage() {
               { value: 'signid', label: t('export.namingSignId') },
               { value: 'displayid', label: t('export.namingDisplayId') },
             ], (v) => setPhotosNaming(v as typeof photosNaming))}
+            {/* 字段別分包: 値ごとに <字段slug>_<値slug>.zip を生成 */}
+            {sel(t('export.splitLabel'), photosSplitField, [
+              { value: '', label: t('export.splitNone') },
+              ...SPLIT_FIELDS
+                .filter((k) => options.schema?.enums[k]?.length
+                  && (options.fieldStats?.[k] ?? 1) > 0)
+                .map((k) => ({
+                  value: k, label: t(`fields.${k}`, { defaultValue: k }),
+                })),
+            ], setPhotosSplitField)}
             <button
               className="btn primary"
               disabled={photosJob.starting || photosJob.job?.status === 'running' || !total}
               onClick={() => photosJob.start(
-                () => startPhotosExport(filters, photosContent, photosNaming))}
+                () => photosSplitField
+                  ? startPhotosSplitExport(
+                      filters, photosContent, photosNaming, photosSplitField,
+                      outputDir.trim() || undefined)
+                  : startPhotosExport(
+                      filters, photosContent, photosNaming,
+                      outputDir.trim() || undefined))}
             >
               {t('export.start')}
             </button>
           </div>
+          {photosSplitField && (
+            <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+              {t('export.splitHint', {
+                field: t(`fields.${photosSplitField}`,
+                  { defaultValue: photosSplitField }),
+              })}
+            </p>
+          )}
           {jobStatus(photosJob)}
         </div>
 

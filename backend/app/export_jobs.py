@@ -18,6 +18,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import re
 import json
 import os
 import threading
@@ -36,6 +37,7 @@ from .db_models import SignRecord
 from .records_api import apply_filters
 from .schema import (
     AI_FIELDS, CSV_HEADER, ENUMS, LANGUAGE_COLORS, MULTI_FIELDS, STATUS_VALUES,
+    split_multi,
 )
 
 router = APIRouter(tags=["export-jobs"])
@@ -144,11 +146,13 @@ def _check_cancel(job: ExportJob, tmp: Path) -> None:
 # ── Dataset Package（完全再導出。mobile の包構造と互換） ──────────────
 
 
-def _build_package(job: ExportJob, filters: dict) -> None:
+def _build_package(job: ExportJob, filters: dict,
+                   out_dir: Path | None = None) -> None:
     stamp = datetime.now()
     name = f"llmap_dataset_{stamp:%Y%m%d_%H%M%S}.zip"
-    tmp = exports_dir() / f".{name}.part"
-    final = exports_dir() / name
+    base = out_dir or exports_dir()
+    tmp = base / f".{name}.part"
+    final = base / name
 
     with Session(get_engine()) as session:
         records = _load_records(session, filters)
@@ -280,21 +284,14 @@ def _readme() -> str:
 # ── 写真 ZIP ─────────────────────────────────────────────────────────
 
 
-def _build_photos_zip(job: ExportJob, filters: dict,
-                      content: str, naming: str) -> None:
-    stamp = datetime.now()
-    name = f"llmap_photos_{stamp:%Y%m%d_%H%M%S}.zip"
-    tmp = exports_dir() / f".{name}.part"
-    final = exports_dir() / name
+def _photos_plan(records: list[SignRecord], content: str, naming: str):
+    """追加予定ファイルの計画を作る（書き込みなし）。
 
-    with Session(get_engine()) as session:
-        records = _load_records(session, filters)
-
+    返り値: (plan, missing)。plan は (rec, type, src, zipname)。
+    内容去重は書き込み時に sha256 で行う。"""
     want_crop = content in ("crop", "both")
     want_source = content in ("source", "both")
-
-    # 追加予定ファイル（記録ごと）。内容去重は書き込み時に sha256 で行う。
-    plan: list[tuple[SignRecord, str, Path, str]] = []  # (rec, type, src, zipname)
+    plan: list[tuple[SignRecord, str, Path, str]] = []
     used_names: set[str] = set()
     missing: list[str] = []
 
@@ -335,9 +332,14 @@ def _build_photos_zip(job: ExportJob, filters: dict,
             seen_zip.add(zname)
             used_names.add(zname)
             plan.append((rec, ptype, src, zname))
+    return plan, missing
 
-    job.total = len(plan)
 
+def _write_photos_zip(job: ExportJob, records: list[SignRecord],
+                      plan, missing: list[str],
+                      tmp: Path, final: Path) -> dict:
+    """計画どおり 1 本の zip を書く（sha256 内容去重・photo_mapping.csv・
+    MISSING.txt）。job.done を進め、レポート dict を返す。"""
     # photo_mapping.csv（記録 → zip 内ファイルの対応表）
     mapping: dict[str, dict] = {}
     for rec in records:
@@ -385,10 +387,7 @@ def _build_photos_zip(job: ExportJob, filters: dict,
         tmp.unlink(missing_ok=True)
         raise
     os.replace(tmp, final)
-    job.file_name = name
-    job.path = final
-    job.size_bytes = final.stat().st_size
-    job.report = {
+    return {
         "recordCount": len(records),
         "filesAdded": added,
         "dedupedFiles": deduped,
@@ -396,13 +395,180 @@ def _build_photos_zip(job: ExportJob, filters: dict,
     }
 
 
+def _build_photos_zip(job: ExportJob, filters: dict,
+                      content: str, naming: str,
+                      out_dir: Path | None = None) -> None:
+    stamp = datetime.now()
+    name = f"llmap_photos_{stamp:%Y%m%d_%H%M%S}.zip"
+    base = out_dir or exports_dir()
+
+    with Session(get_engine()) as session:
+        records = _load_records(session, filters)
+
+    plan, missing = _photos_plan(records, content, naming)
+    job.total = len(plan)
+    report = _write_photos_zip(
+        job, records, plan, missing, base / f".{name}.part", base / name)
+    final = base / name
+    job.file_name = name
+    job.path = final
+    job.size_bytes = final.stat().st_size
+    job.report = report
+
+
+# ── 写真 ZIP の字段別分包（字段の各値 → <字段slug>_<値slug>.zip） ──────
+
+_LANG_SLUGS = {
+    "日本語": "jp", "韓国語": "kr", "中国語": "cn", "ベトナム語": "ve",
+    "ネパール語": "ne", "英語": "en", "その他": "other",
+}
+
+# zip ファイル名用の英語 slug（字段名）。
+SPLIT_FIELD_SLUGS = {
+    "文字性": "texttype", "主要言語": "main", "補助言語": "sub",
+    "装飾の言語": "decor", "文字体系": "script", "多言語関係": "relation",
+    "担体類型": "carrier", "放置位置": "position", "空間階層": "layer",
+    "時間性": "time", "可読性": "readability", "重ね書き": "overwrite",
+    "設置主体": "actor", "ディスコース類型": "discourse", "製作品質": "quality",
+}
+
+# zip ファイル名用の英語 slug（値）。多言語関係は Reh (2004) の用語。
+SPLIT_VALUE_SLUGS: dict[str, dict[str, str]] = {
+    "主要言語": _LANG_SLUGS, "補助言語": _LANG_SLUGS, "装飾の言語": _LANG_SLUGS,
+    "文字性": {"文字": "text", "記号": "symbol", "対象外": "excluded"},
+    "文字体系": {
+        "漢字": "kanji", "平仮名": "hiragana", "片仮名": "katakana",
+        "ローマ字": "roman", "ハングル(한글)": "hangul",
+        "デーヴァナーガリー": "devanagari", "ビルマ文字": "burmese",
+        "タイ文字": "thai", "ベンガル文字": "bengali", "アラビア": "arabic",
+        "キリル": "cyrillic", "その他": "other", "無": "none",
+    },
+    "多言語関係": {
+        "单语型": "mono", "复制型": "duplicating", "重复型": "overlapping",
+        "部分翻译型": "fragmentary", "互补型": "complementary",
+    },
+    "担体類型": {
+        "无媒介": "nomedium", "产品": "product", "贴纸": "sticker",
+        "旗帜": "flag", "海报": "poster", "宣传册": "brochure",
+        "夹心板": "sandwich", "车辆": "vehicle", "便签": "note", "其他": "other",
+    },
+    "放置位置": {
+        "建筑物上": "building", "柱子": "pillar", "公告板": "board",
+        "屏幕": "screen", "道路": "road", "市政设施设备": "utility",
+        "半可移动物体": "semimobile", "其他": "other",
+    },
+    "空間階層": {"低位・接近可能層": "low", "中位・視線層": "mid",
+                 "高位・天際層": "high"},
+    "時間性": {"常设": "permanent", "临时·季节性": "seasonal",
+               "一过性": "transient"},
+    "可読性": {"完全可读": "full", "部分可读": "partial", "判读困难": "hard"},
+    "重ね書き": {"无": "none", "有（新覆旧）": "overlaid",
+                 "有（多层堆叠）": "stacked"},
+    "設置主体": {"行政・公共機関": "public", "商業・チェーン": "chain",
+                 "商業・個人店": "shop", "個人": "personal", "団体": "group",
+                 "不明": "unknown"},
+    "ディスコース類型": {
+        "规约性话语": "regulatory", "基础设施话语": "infrastructure",
+        "商业话语": "commercial", "交际性话语": "interpersonal",
+        "判读不能": "unreadable", "其他": "other",
+    },
+    "製作品質": {"专业印刷": "professional", "半专门": "semipro",
+                 "手作": "handmade"},
+}
+
+
+def _value_slug(field: str, value: str) -> str:
+    slug = SPLIT_VALUE_SLUGS.get(field, {}).get(value)
+    if slug:
+        return slug
+    # 未知値（複数選択字段の自由追加等）: ASCII 化できなければ短縮ハッシュ。
+    ascii_ = re.sub(r"[^A-Za-z0-9]+", "", value).lower()
+    return ascii_ or hashlib.sha256(value.encode()).hexdigest()[:6]
+
+
+def _build_photos_split(job: ExportJob, filters: dict,
+                        content: str, naming: str, field: str,
+                        out_dir: Path | None = None) -> None:
+    """字段の各値ごとに 1 本ずつ zip を作る。出力名は <字段slug>_<値slug>.zip
+    固定 —— 再実行で同名を上書きする（手作業の再整理を不要に）。
+
+    値の判定はトークン単位（複数選択字段は分割して各値の zip に入る）。
+    枚挙に無い値（言語の自由追加・タイ語等の小語種・不明 など）は
+    「その他/其他」の桶に集める —— other = 主要枚挙以外のすべて、が
+    研究上の期待語義のため（字面の「その他」だけだとほぼ空になる）。"""
+    base = out_dir or exports_dir()
+    fslug = SPLIT_FIELD_SLUGS.get(field, _value_slug(field, field))
+
+    with Session(get_engine()) as session:
+        records = _load_records(session, filters)
+
+    enum_vals = ENUMS[field]
+    other = next((v for v in ("その他", "其他") if v in enum_vals), None)
+    is_multi = field in MULTI_FIELDS
+    buckets: dict[str, list[SignRecord]] = {v: [] for v in enum_vals}
+    for rec in records:
+        raw = (json.loads(rec.data_json).get(field) or "").strip()
+        tokens = split_multi(raw) if is_multi else \
+            ([raw] if raw and raw != "—" else [])
+        hit: set[str] = set()
+        for tok in tokens:
+            if tok in buckets:
+                hit.add(tok)
+            elif other:
+                hit.add(other)  # 枚挙外の値 → その他/其他 へ
+        for v in hit:
+            buckets[v].append(rec)
+    batches = [(v, buckets[v]) for v in enum_vals if buckets[v]]
+
+    plans = []
+    for value, recs in batches:
+        plan, missing = _photos_plan(recs, content, naming)
+        plans.append((value, recs, plan, missing))
+        job.total += len(plan)
+
+    added = deduped = missing_total = 0
+    zip_names: list[str] = []
+    for value, recs, plan, missing in plans:
+        name = f"{fslug}_{_value_slug(field, value)}.zip"
+        rep = _write_photos_zip(
+            job, recs, plan, missing, base / f".{name}.part", base / name)
+        zip_names.append(name)
+        added += rep["filesAdded"]
+        deduped += rep["dedupedFiles"]
+        missing_total += rep["missingCount"]
+
+    job.file_name = f"{fslug}_*.zip"
+    job.path = base  # 個別 zip の生成先目录（単一ファイルの下载は不可）
+    job.size_bytes = sum((base / n).stat().st_size for n in zip_names)
+    job.report = {
+        "zipCount": len(zip_names),
+        "filesAdded": added,
+        "dedupedFiles": deduped,
+        "missingCount": missing_total,
+    }
+
+
 # ── エンドポイント ───────────────────────────────────────────────────
+
+
+def _output_dir(payload: dict) -> Path | None:
+    """導出先の一時指定（outputDir）。空なら None = 既定（設定の exportDir）。
+    検証は設定ページと同一規則（絶対パス・作成/書き込み可能）— ジョブ開始前に
+    400 で弾き、走り出してから失敗しないようにする。"""
+    raw = payload.get("outputDir")
+    if not raw:
+        return None
+    if not isinstance(raw, str):
+        raise HTTPException(400, "outputDir は文字列で指定してください")
+    from .config_api import _validate_export_dir
+    return _validate_export_dir(raw)
 
 
 @router.post("/export/package")
 def start_package_export(payload: dict = Body(default={})):
     filters = _filters_kwargs(payload)
-    return _start("package", lambda job: _build_package(job, filters))
+    out_dir = _output_dir(payload)
+    return _start("package", lambda job: _build_package(job, filters, out_dir))
 
 
 @router.post("/export/photos")
@@ -414,9 +580,70 @@ def start_photos_export(payload: dict = Body(default={})):
         raise HTTPException(400, f"不正な content: {content}")
     if naming not in ("signid", "displayid", "original"):
         raise HTTPException(400, f"不正な naming: {naming}")
+    out_dir = _output_dir(payload)
     return _start(
         "photos",
-        lambda job: _build_photos_zip(job, filters, content, naming))
+        lambda job: _build_photos_zip(job, filters, content, naming, out_dir))
+
+
+@router.post("/export/photos/split")
+def start_photos_split_export(payload: dict = Body(default={})):
+    """字段別分包: 指定字段の各値ごとに <字段slug>_<値slug>.zip を生成。"""
+    filters = _filters_kwargs(payload)
+    content = payload.get("content", "both")
+    naming = payload.get("naming", "original")
+    field = payload.get("field", "")
+    if content not in ("crop", "source", "both"):
+        raise HTTPException(400, f"不正な content: {content}")
+    if naming not in ("signid", "displayid", "original"):
+        raise HTTPException(400, f"不正な naming: {naming}")
+    if field not in ENUMS:
+        raise HTTPException(
+            400, f"分包できない字段です（枚挙字段のみ可）: {field!r}")
+    out_dir = _output_dir(payload)
+    return _start(
+        "photos_split",
+        lambda job: _build_photos_split(
+            job, filters, content, naming, field, out_dir))
+
+
+@router.post("/export/photos/preview")
+def photos_export_preview(payload: dict = Body(default={})):
+    """写真 ZIP の事前集計（AI 呼び出し・書き込みなし）。
+
+    「筛选したのに全部の写真が出ている？」という誤解を防ぐため、
+    現在の筛选条件で何枚出るか（裁剪/元写真の内訳・欠落数）を返す。
+    元写真は CaptureID 単位で共有されるため名前で去重して数える
+    —— naming=original のジョブ total と一致する。"""
+    filters = _filters_kwargs(payload)
+    content = payload.get("content", "both")
+    if content not in ("crop", "source", "both"):
+        raise HTTPException(400, f"不正な content: {content}")
+    want_crop = content in ("crop", "both")
+    want_source = content in ("source", "both")
+    with Session(get_engine()) as session:
+        records = _load_records(session, filters)
+    crop_names: set[str] = set()
+    source_names: set[str] = set()
+    missing = 0
+    for rec in records:
+        if want_crop and rec.photo_file_name:
+            if (photos_dir() / rec.photo_file_name).is_file():
+                crop_names.add(rec.photo_file_name)
+            else:
+                missing += 1
+        if want_source and rec.source_photo_file_name:
+            if (source_photos_dir() / rec.source_photo_file_name).is_file():
+                source_names.add(rec.source_photo_file_name)
+            else:
+                missing += 1
+    return {
+        "recordCount": len(records),
+        "cropFiles": len(crop_names),
+        "sourceFiles": len(source_names),
+        "totalFiles": len(crop_names) + len(source_names),
+        "missingCount": missing,
+    }
 
 
 def _get_job(job_id: str) -> ExportJob:

@@ -253,10 +253,19 @@ export interface RecordsQuery {
   fields?: Record<string, string>;
 }
 
+/** POST /export/photos/preview — 写真 ZIP の事前集計 */
+export interface PhotosExportPreview {
+  recordCount: number;
+  cropFiles: number;
+  sourceFiles: number;
+  totalFiles: number;
+  missingCount: number;
+}
+
 /** 導出ジョブ（Dataset Package / 写真 ZIP）の進捗（Step 16） */
 export interface ExportJobStatus {
   id: string;
-  kind: 'package' | 'photos';
+  kind: 'package' | 'photos' | 'photos_split';
   status: 'running' | 'done' | 'error' | 'cancelled';
   done: number;
   total: number;

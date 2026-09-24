@@ -241,7 +241,13 @@
     "openInTable": "在表格中查看",
     "loadMore": "加载更多",
     "albumNoPhotos": "该数据集没有照片。",
-    "noAlbums": "还没有数据集。导入后会以相册形式显示。"
+    "noAlbums": "还没有数据集。导入后会以相册形式显示。",
+    "copyImage": "复制图片到剪贴板（可直接粘贴到 InDesign / Illustrator）",
+    "copyId": "复制 ID",
+    "thumbSize": "缩略图大小",
+    "sizeS": "小",
+    "sizeM": "中",
+    "sizeL": "大"
   },
   "table": {
     "area": "地区",
@@ -391,7 +397,14 @@
     "geojsonNote": "坐标顺序为 [经度, 纬度]（WGS84）。无 GPS 的记录不进入 Feature，跳过数量记录在文件中。",
     "activeFilters": "当前筛选条件",
     "removeFilter": "点击移除该条件",
-    "chipKeyword": "关键词"
+    "chipKeyword": "关键词",
+    "outputDir": "导出目录（本次）",
+    "outputDirHint": "留空使用默认目录（可在设置页修改默认值）",
+    "photosPreview": "当前筛选将导出 {{records}} 条记录的 {{total}} 个文件：裁剪图 {{crop}} + 原图 {{source}}（原图按拍摄事件去重），缺失 {{missing}}",
+    "splitLabel": "按字段分包",
+    "splitNone": "不分包（单个 zip）",
+    "splitZips": "（共 {{n}} 个 zip，已生成到导出目录）",
+    "splitHint": "将按「{{field}}」的每个取值分别生成 zip，命名为 字段_取值.zip（如 main_jp.zip）。记录同时属于多个取值时会进入各自的 zip。"
   },
   "ai": {
     "title": "AI 处理",
@@ -499,6 +512,7 @@
   },
   "lightbox": {
     "fit": "适应窗口",
-    "rotate": "旋转"
+    "rotate": "旋转",
+    "copy": "复制图片"
   }
 }

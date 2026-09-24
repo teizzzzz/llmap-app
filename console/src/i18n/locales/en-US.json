@@ -241,7 +241,13 @@
     "openInTable": "View in table",
     "loadMore": "Load more",
     "albumNoPhotos": "No photos in this dataset.",
-    "noAlbums": "No datasets yet. Imported packages appear here as albums."
+    "noAlbums": "No datasets yet. Imported packages appear here as albums.",
+    "copyImage": "Copy image to clipboard (paste into InDesign / Illustrator)",
+    "copyId": "Copy ID",
+    "thumbSize": "Thumbnail size",
+    "sizeS": "S",
+    "sizeM": "M",
+    "sizeL": "L"
   },
   "table": {
     "area": "Area",
@@ -391,7 +397,14 @@
     "geojsonNote": "Coordinates are [lng, lat], WGS84. Records without GPS are excluded and the skipped count is recorded in the file.",
     "activeFilters": "Active filters",
     "removeFilter": "Click to remove",
-    "chipKeyword": "Keyword"
+    "chipKeyword": "Keyword",
+    "outputDir": "Output folder (this export)",
+    "outputDirHint": "Leave empty to use the default (change it in Settings)",
+    "photosPreview": "Current filter exports {{total}} files from {{records}} records: {{crop}} crops + {{source}} sources (sources deduped per capture), {{missing}} missing",
+    "splitLabel": "Split by field",
+    "splitNone": "No split (single zip)",
+    "splitZips": "({{n}} zips written to the output folder)",
+    "splitHint": "One zip per value of \"{{field}}\", named field_value.zip (e.g. main_jp.zip). Records with multiple values go into each matching zip."
   },
   "ai": {
     "title": "AI Processing",
@@ -499,6 +512,7 @@
   },
   "lightbox": {
     "fit": "Fit",
-    "rotate": "Rotate"
+    "rotate": "Rotate",
+    "copy": "Copy image"
   }
 }

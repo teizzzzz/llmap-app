@@ -241,7 +241,13 @@
     "openInTable": "テーブルで表示",
     "loadMore": "さらに読み込む",
     "albumNoPhotos": "このデータセットに写真はありません。",
-    "noAlbums": "まだデータセットがありません。導入すると相册として表示されます。"
+    "noAlbums": "まだデータセットがありません。導入すると相册として表示されます。",
+    "copyImage": "画像をクリップボードへ（InDesign / Illustrator に直接貼り付け可）",
+    "copyId": "ID をコピー",
+    "thumbSize": "サムネイルサイズ",
+    "sizeS": "小",
+    "sizeM": "中",
+    "sizeL": "大"
   },
   "table": {
     "area": "地区",
@@ -391,7 +397,14 @@
     "geojsonNote": "座標は [経度, 緯度]・WGS84。GPS 無し記録は含まれず、件数がファイル内に記録されます。",
     "activeFilters": "適用中のフィルター",
     "removeFilter": "クリックで解除",
-    "chipKeyword": "キーワード"
+    "chipKeyword": "キーワード",
+    "outputDir": "エクスポート先（今回のみ）",
+    "outputDirHint": "空欄で既定のエクスポート先を使用（既定は設定ページで変更）",
+    "photosPreview": "現在のフィルターで {{records}} 記録の {{total}} ファイルをエクスポート: 裁剪 {{crop}} + 元写真 {{source}}（元写真は撮影単位で去重）、欠落 {{missing}}",
+    "splitLabel": "字段で分割",
+    "splitNone": "分割しない（1 本の zip）",
+    "splitZips": "（{{n}} 本の zip をエクスポート先に生成）",
+    "splitHint": "「{{field}}」の値ごとに zip を生成します（例 main_jp.zip）。複数値を持つ記録はそれぞれの zip に入ります。"
   },
   "ai": {
     "title": "AI処理",
@@ -499,6 +512,7 @@
   },
   "lightbox": {
     "fit": "全体表示",
-    "rotate": "回転"
+    "rotate": "回転",
+    "copy": "画像をコピー"
   }
 }

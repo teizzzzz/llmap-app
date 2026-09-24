@@ -98,7 +98,7 @@ def default_package() -> bytes:
              元写真ファイル名=f"{CAPTURE}-source.jpg",
              緯度="35.6021", 経度="139.7011",
              採集日時="2026-07-01 14:35:12", 主要言語="韓国語/日本語",
-             担体類型="贴纸", 時間性="常设",
+             補助言語="英語/タイ語", 担体類型="贴纸", 時間性="常设",
              EntryMode="standard", DataStatus="submitted",
              SchemaVersion="1.5", AppVersion="v1.8.0"),
         _row(SignID=f"{CAPTURE}-b", _status="pending", CaptureID=CAPTURE,
@@ -634,6 +634,99 @@ def test_export_photos_zip_dedup_and_mapping():
     assert by_id[f"{CAPTURE}-b"]["照片文件"] == shared  # 同内容 → 同一実体
     assert by_id[f"{CAPTURE}-a"]["原图文件"] == shared  # source も同内容
     assert "MISSING.txt" in names
+
+
+def test_stats_fields_presence():
+    """研究字段の非空記録数（筛选 UI が空字段を隠すために使う）。"""
+    r = client.get("/stats/fields")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["担体類型"] == 2       # seed の a/b に値あり
+    assert body["主要言語"] >= 3       # ほぼ全記録に値あり（他テストの追加分に依存しない）
+    assert body["空間階層"] == 0       # 全記録空 → UI で隠れる
+    assert "SignID" not in body        # 系統字段は対象外
+
+
+def test_export_photos_preview_respects_filters():
+    """写真 ZIP の事前集計は筛选条件に従う（全件になっていないこと）。"""
+    # 全件 = /records の total と一致（他テストが追加した記録も含む）
+    total = client.get(
+        "/records", params={"page": 1, "pageSize": 1}).json()["total"]
+    all_ = client.post("/export/photos/preview", json={}).json()
+    assert all_["recordCount"] == total
+    assert all_["missingCount"] >= 1   # LEGACY crop 欠落
+    # 字段筛选（担体類型=贴纸 → 記録 a のみ）
+    one = client.post(
+        "/export/photos/preview",
+        json={"fields": {"担体類型": "贴纸"}, "content": "both"}).json()
+    assert one["recordCount"] == 1
+    assert one["cropFiles"] == 1
+    assert one["sourceFiles"] == 1
+    assert one["totalFiles"] == 2
+    # crop のみ
+    crop = client.post(
+        "/export/photos/preview",
+        json={"fields": {"担体類型": "贴纸"}, "content": "crop"}).json()
+    assert crop["totalFiles"] == 1 and crop["sourceFiles"] == 0
+    assert client.post("/export/photos/preview",
+                       json={"content": "bogus"}).status_code == 400
+
+
+def test_export_photos_output_dir():
+    """outputDir 指定: zip がその目录に生成される（設定は変更しない）。"""
+    from pathlib import Path
+
+    custom = Path(os.environ["LLMAP_DATA_DIR"]) / "oneshot_exports"
+    r = client.post("/export/photos", json={
+        "content": "crop", "naming": "original", "outputDir": str(custom)})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    assert Path(job["path"]).parent == custom
+    assert Path(job["path"]).is_file()
+    # 相対パスは 400（ジョブ開始前に弾く）
+    assert client.post("/export/photos", json={
+        "content": "crop", "outputDir": "relative/dir"}).status_code == 400
+    # 設定の exportDir は変わっていない
+    assert client.get("/config").json()["exportDir"] is None
+
+
+def test_export_photos_split_by_field():
+    """字段別分包: 各値ごとに <字段slug>_<値slug>.zip、筛选にも従う。"""
+    from pathlib import Path
+
+    custom = Path(os.environ["LLMAP_DATA_DIR"]) / "split_exports"
+    r = client.post("/export/photos/split", json={
+        "field": "担体類型", "content": "crop", "naming": "original",
+        "outputDir": str(custom)})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    # seed: 貼紙(a)・无媒介(b) の 2 値のみ値あり → carrier_sticker / carrier_nomedium
+    assert job["report"]["zipCount"] == 2
+    assert (custom / "carrier_sticker.zip").is_file()
+    assert (custom / "carrier_nomedium.zip").is_file()
+    zf = zipfile.ZipFile(custom / "carrier_sticker.zip")
+    rows = list(csv.DictReader(
+        io.StringIO(zf.read("photo_mapping.csv").decode("utf-8-sig"))))
+    assert [row["SignID"] for row in rows] == [f"{CAPTURE}-a"]
+    # 分包ジョブの単一下载は不可（個別 zip は目录に生成済み）
+    assert client.get(f"/export/jobs/{job['id']}/download").status_code == 409
+    # 枚挙字段以外は 400
+    assert client.post("/export/photos/split",
+                       json={"field": "備考"}).status_code == 400
+    assert client.post("/export/photos/split",
+                       json={"field": ""}).status_code == 400
+
+    # 言語字段: 枚挙外の小語種（タイ語）は「その他」桶 = sub_other へ。
+    # 複数選択（英語/タイ語）は両方の zip に入る。
+    custom2 = Path(os.environ["LLMAP_DATA_DIR"]) / "split_exports_sub"
+    r = client.post("/export/photos/split", json={
+        "field": "補助言語", "content": "crop", "naming": "original",
+        "outputDir": str(custom2)})
+    job = _wait_job(r.json()["jobId"])
+    assert job["status"] == "done", job
+    assert (custom2 / "sub_en.zip").is_file()
+    assert (custom2 / "sub_other.zip").is_file()
+    assert not (custom2 / "sub_jp.zip").exists()  # 補助言語に日本語は無い
 
 
 def test_export_job_not_found_and_cancel():

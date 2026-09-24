@@ -11,6 +11,7 @@ import type {
   ImportDatasetResult,
   MapQuery,
   MapRecord,
+  PhotosExportPreview,
   RecordDetail,
   RecordsQuery,
   RecordsResponse,
@@ -181,21 +182,58 @@ export const exportGeoJson = async (
   return res.blob();
 };
 
-export const startPackageExport = (filters: RecordsQuery = {}) =>
+export const startPackageExport = (
+  filters: RecordsQuery = {},
+  outputDir?: string,
+) =>
   request<{ jobId: string }>('/export/package', {
     method: 'POST',
-    body: JSON.stringify(filters),
+    body: JSON.stringify(outputDir ? { ...filters, outputDir } : filters),
   });
 
 export const startPhotosExport = (
   filters: RecordsQuery = {},
   content: 'crop' | 'source' | 'both' = 'both',
   naming: 'signid' | 'displayid' | 'original' = 'original',
+  outputDir?: string,
 ) =>
   request<{ jobId: string }>('/export/photos', {
     method: 'POST',
-    body: JSON.stringify({ ...filters, content, naming }),
+    body: JSON.stringify({
+      ...filters, content, naming,
+      ...(outputDir ? { outputDir } : {}),
+    }),
   });
+
+/** 写真 ZIP の字段別分包（字段の各値 → <字段slug>_<値slug>.zip）。 */
+export const startPhotosSplitExport = (
+  filters: RecordsQuery = {},
+  content: 'crop' | 'source' | 'both' = 'both',
+  naming: 'signid' | 'displayid' | 'original' = 'original',
+  field: string,
+  outputDir?: string,
+) =>
+  request<{ jobId: string }>('/export/photos/split', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...filters, content, naming, field,
+      ...(outputDir ? { outputDir } : {}),
+    }),
+  });
+
+/** 写真 ZIP の事前集計（何枚出るか。導出はしない）。 */
+export const previewPhotosExport = (
+  filters: RecordsQuery = {},
+  content: 'crop' | 'source' | 'both' = 'both',
+) =>
+  request<PhotosExportPreview>('/export/photos/preview', {
+    method: 'POST',
+    body: JSON.stringify({ ...filters, content }),
+  });
+
+/** 研究字段ごとの非空記録数（筛选 UI が空字段を隠すため）。 */
+export const getFieldStats = () =>
+  request<Record<string, number>>('/stats/fields');
 
 export const getExportJob = (id: string) =>
   request<ExportJobStatus>(`/export/jobs/${id}`);

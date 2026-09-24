@@ -31,8 +31,8 @@ export default function DatabasePage() {
   const [openAlbum, setOpenAlbum] = useState<Dataset | null>(null);
 
   // 筛选肢の元データ（Map ページと共用の hook）。
-  const { schema, datasets, areas, collectors, refresh: fetchOptions } =
-    useFilterOptions();
+  const { schema, datasets, areas, collectors, fieldStats,
+    refresh: fetchOptions } = useFilterOptions();
 
   // Map の popup「Open in Database」からの遷移: ?record=<id> を選択状態に反映。
   const [searchParams, setSearchParams] = useSearchParams();
@@ -137,6 +137,7 @@ export default function DatabasePage() {
           datasets,
         }}
         schemaEnums={schema?.enums}
+        fieldPresence={fieldStats}
         total={total}
         onChange={patchFilters}
         onClear={() => {

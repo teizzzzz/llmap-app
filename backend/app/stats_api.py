@@ -52,3 +52,22 @@ def stats_summary(session: Session = Depends(get_session)):
         "areaCounts": _tally(session, SignRecord.area_code),
         "collectorCounts": _tally(session, SignRecord.collector_id),
     }
+
+
+@router.get("/stats/fields")
+def stats_fields(session: Session = Depends(get_session)):
+    """研究字段ごとの「値が入っている記録数」。
+
+    筛选 UI が実データに存在しない字段（例: v6 で廃止された空間階層が
+    全記録空のケース）を隠すために使う。"—"（無し标记）は空として扱う。
+    """
+    from .records_api import FILTERABLE_FIELDS
+
+    out: dict[str, int] = {}
+    for field in sorted(FILTERABLE_FIELDS):
+        expr = func.json_extract(SignRecord.data_json, f'$."{field}"')
+        out[field] = session.exec(
+            select(func.count()).select_from(SignRecord)
+            .where(expr.is_not(None), expr != "", expr != "—")
+        ).one()
+    return out

@@ -30,7 +30,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="LLMap backend", version="0.6.8", lifespan=lifespan)
+app = FastAPI(title="LLMap backend", version="0.6.11", lifespan=lifespan)
 
 app.include_router(import_dataset.router)
 app.include_router(records_api.router)
@@ -52,7 +52,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "llmap-backend", "version": "0.6.8"}
+    return {"ok": True, "service": "llmap-backend", "version": "0.6.11"}
 
 
 @app.get("/schema")
