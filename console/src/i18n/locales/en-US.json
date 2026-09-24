@@ -245,9 +245,7 @@
     "copyImage": "Copy image to clipboard (paste into InDesign / Illustrator)",
     "copyId": "Copy ID",
     "thumbSize": "Thumbnail size",
-    "sizeS": "S",
-    "sizeM": "M",
-    "sizeL": "L"
+    "zoomHint": "Zoom: Ctrl/Alt + wheel"
   },
   "table": {
     "area": "Area",

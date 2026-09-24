@@ -32,6 +32,13 @@ def source_photos_dir() -> Path:
     return p
 
 
+def thumbs_dir() -> Path:
+    """縮略図キャッシュ（原図から生成。消しても再生成される）。"""
+    p = data_dir() / "thumbs"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
 def imports_dir() -> Path:
     p = data_dir() / "imports"
     p.mkdir(parents=True, exist_ok=True)

@@ -245,9 +245,7 @@
     "copyImage": "画像をクリップボードへ（InDesign / Illustrator に直接貼り付け可）",
     "copyId": "ID をコピー",
     "thumbSize": "サムネイルサイズ",
-    "sizeS": "小",
-    "sizeM": "中",
-    "sizeL": "大"
+    "zoomHint": "拡縮: Ctrl/Alt + ホイール"
   },
   "table": {
     "area": "地区",

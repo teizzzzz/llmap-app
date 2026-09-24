@@ -636,6 +636,37 @@ def test_export_photos_zip_dedup_and_mapping():
     assert "MISSING.txt" in names
 
 
+def test_photo_thumbnails():
+    """縮略図: 実 JPEG は長辺 512px に縮小、開けないファイルは原図へ
+    フォールバック。一覧の thumbnailUrl は /thumb を指す。"""
+    from pathlib import Path
+
+    from PIL import Image
+
+    # 一覧の thumbnailUrl が縮略図端点になっている
+    item = client.get("/records", params={"q": f"{CAPTURE}-a"}).json()["items"][0]
+    assert item["thumbnailUrl"] == f"/records/{item['id']}/thumb"
+
+    # フォールバック: テストの偽 JPEG は Pillow で開けない → 原図をそのまま返す
+    r = client.get(f"/records/{item['id']}/thumb")
+    assert r.status_code == 200
+    assert r.content == JPEG
+
+    # 実 JPEG: 2000px の画像を photos/ に置くと 512px に縮小される
+    photos = Path(os.environ["LLMAP_DATA_DIR"]) / "photos"
+    big = photos / "thumbtest-big.jpg"
+    Image.new("RGB", (2000, 1000), (200, 50, 50)).save(big, "JPEG")
+    r = client.get("/thumbs/thumbtest-big.jpg")
+    assert r.status_code == 200
+    with Image.open(io.BytesIO(r.content)) as im:
+        assert max(im.size) == 512
+    # キャッシュが生成されている
+    assert (Path(os.environ["LLMAP_DATA_DIR"]) / "thumbs"
+            / "512_thumbtest-big.jpg").is_file()
+    # 目录穿越は拒否
+    assert client.get("/thumbs/..%2Fsecret.jpg").status_code in (400, 404)
+
+
 def test_stats_fields_presence():
     """研究字段の非空記録数（筛选 UI が空字段を隠すために使う）。"""
     r = client.get("/stats/fields")

@@ -13,9 +13,12 @@ import RecordsFilters from './RecordsFilters';
 
 const PAGE = 60;
 
-// 縮略図の目安幅（px）。排版作業では大きめで内容確認 → 小さめで俯瞰、を
-// 行き来するため 3 段階で切り替えられるようにする。
-const THUMB_SIZES = [100, 132, 210] as const;
+// 縮略図幅（px）の範囲。Ctrl/Alt + ホイールで連続的に拡縮する
+// （Pinterest / Apple 写真の操作感）。前回値は localStorage に保持。
+const THUMB_MIN = 80;
+const THUMB_MAX = 400;
+const THUMB_DEFAULT = 148;
+const THUMB_STORE_KEY = 'llmap.albumThumbPx';
 
 const fmtSize = (n: number) =>
   n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB`
@@ -41,9 +44,10 @@ export function DatasetAlbumGrid({
           {d.coverPhoto ? (
             <img
               className="album-cover"
-              src={`${API_BASE_URL}/photos/${encodeURIComponent(d.coverPhoto)}`}
+              src={`${API_BASE_URL}/thumbs/${encodeURIComponent(d.coverPhoto)}`}
               alt={d.name}
               loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className="album-cover-empty">▦</div>
@@ -85,7 +89,14 @@ export function DatasetPhotoGrid({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   // 相册内の快速筛选（datasetId / hasPhoto は固定でマージする）。
   const [filters, setFilters] = useState<RecordsQuery>({});
-  const [thumb, setThumb] = useState<number>(THUMB_SIZES[1]);
+  const [thumb, setThumb] = useState<number>(() => {
+    const saved = Number(localStorage.getItem(THUMB_STORE_KEY));
+    return Number.isFinite(saved) && saved >= THUMB_MIN && saved <= THUMB_MAX
+      ? saved : THUMB_DEFAULT;
+  });
+  useEffect(() => {
+    localStorage.setItem(THUMB_STORE_KEY, String(thumb));
+  }, [thumb]);
   // 复制フィードバック: "<recordId>:img|id|err" を短時間 ✓/✗ 表示。
   const [copied, setCopied] = useState<string | null>(null);
   const options = useFilterOptions();
@@ -107,6 +118,21 @@ export function DatasetPhotoGrid({
       .finally(() => setLoading(false));
   }, [dataset.id, filters]);
   useEffect(() => loadPage(1), [loadPage]);
+
+  // Ctrl / Alt + ホイールで縮略図を連続拡縮（ビューア表示中は無効 —
+  // ビューア自身のホイールズームと衝突させない）。
+  useEffect(() => {
+    if (lightboxIndex != null) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.altKey) return;
+      e.preventDefault();  // ブラウザのページズームを抑止
+      const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      setThumb((v) => Math.round(
+        Math.min(THUMB_MAX, Math.max(THUMB_MIN, v * factor))));
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => window.removeEventListener('wheel', onWheel);
+  }, [lightboxIndex]);
 
   // 無限スクロール: 末尾の哨兵が視界に近づいたら（600px 手前で先読み）
   // 次页を自動ロードする。「加载更多」ボタンは廃止。
@@ -132,7 +158,8 @@ export function DatasetPhotoGrid({
     setTimeout(() => setCopied((c) => (c === key ? null : c)), 1400);
   };
   const doCopyImage = async (r: RecordItem) => {
-    const url = photoUrl(r.thumbnailUrl);
+    // 复制は原図（縮略図ではなく）— 排版に使える解像度で剪贴板へ。
+    const url = photoUrl(r.thumbnailUrl ? `/records/${r.id}/photo` : null);
     if (!url) return;
     try {
       await copyImageToClipboard(url);
@@ -152,7 +179,8 @@ export function DatasetPhotoGrid({
 
   const lightboxItems: LightboxItem[] = items.map((r) => ({
     title: r.DisplayID || r.SignID,
-    cropUrl: photoUrl(r.thumbnailUrl),
+    // ビューアは原図解像度で開く（グリッドは縮略図）。
+    cropUrl: photoUrl(r.thumbnailUrl ? `/records/${r.id}/photo` : null),
     sourceUrl: r.元写真ファイル名
       ? photoUrl(`/records/${r.id}/source-photo`)
       : null,
@@ -170,18 +198,20 @@ export function DatasetPhotoGrid({
           })}
         </span>
         <span className="spacer" />
-        {/* 縮略図サイズ（小/中/大） */}
-        {THUMB_SIZES.map((s, i) => (
-          <button
-            key={s}
-            className="btn"
-            style={thumb === s ? { fontWeight: 700 } : undefined}
-            title={t('database.thumbSize')}
-            onClick={() => setThumb(s)}
-          >
-            {[t('database.sizeS'), t('database.sizeM'), t('database.sizeL')][i]}
-          </button>
-        ))}
+        {/* 縮略図サイズ: スライダー + Ctrl/Alt+ホイール（連続拡縮） */}
+        <input
+          type="range"
+          min={THUMB_MIN}
+          max={THUMB_MAX}
+          step={4}
+          value={thumb}
+          title={t('database.thumbSize')}
+          onChange={(e) => setThumb(Number(e.target.value))}
+          style={{ width: 120 }}
+        />
+        <span className="muted" style={{ fontSize: 12 }}>
+          {t('database.zoomHint')}
+        </span>
         <button className="btn" onClick={onOpenInTable}>
           {t('database.openInTable')}
         </button>
@@ -218,7 +248,9 @@ export function DatasetPhotoGrid({
         className="photo-grid"
         style={{
           gridTemplateColumns: `repeat(auto-fill, minmax(${thumb}px, 1fr))`,
-        }}
+          // content-visibility の占位寸法（画面外セルの描画スキップ用）
+          '--thumb': `${thumb}px`,
+        } as React.CSSProperties}
       >
         {items.map((r, i) => (
           <div key={r.id} className="cell-wrap">
@@ -232,6 +264,7 @@ export function DatasetPhotoGrid({
                 src={photoUrl(r.thumbnailUrl) ?? undefined}
                 alt={r.SignID}
                 loading="lazy"
+                decoding="async"
               />
             </button>
             {/* 悬停操作: 画像を剪贴板へ（InDesign/Illustrator に直接粘贴）・ID 复制 */}

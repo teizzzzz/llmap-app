@@ -775,7 +775,12 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* 相册グリッドの悬停操作（画像/ID 复制。排版作業用） */
-.photo-grid .cell-wrap { position: relative; }
+.photo-grid .cell-wrap {
+  position: relative;
+  /* 画面外セルの描画・レイアウトをスキップ（最大化・リサイズ時の卡顿対策） */
+  content-visibility: auto;
+  contain-intrinsic-size: var(--thumb, 148px) var(--thumb, 148px);
+}
 .photo-grid .cell-wrap .cell { width: 100%; }
 .cell-actions {
   position: absolute; top: 6px; right: 6px;

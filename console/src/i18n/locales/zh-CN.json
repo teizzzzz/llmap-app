@@ -245,9 +245,7 @@
     "copyImage": "复制图片到剪贴板（可直接粘贴到 InDesign / Illustrator）",
     "copyId": "复制 ID",
     "thumbSize": "缩略图大小",
-    "sizeS": "小",
-    "sizeM": "中",
-    "sizeL": "大"
+    "zoomHint": "缩放：Ctrl/Alt + 滚轮"
   },
   "table": {
     "area": "地区",

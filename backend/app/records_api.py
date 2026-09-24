@@ -10,13 +10,14 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlmodel import Session, col, func, select
 
-from .database import get_session, photos_dir, source_photos_dir
+from .database import get_session, photos_dir, source_photos_dir, thumbs_dir
 from .db_models import Dataset, SignRecord
 from .schema import (
     CSV_HEADER, DATA_STATUS_MAP, DATA_STATUS_VALUES, MULTI_FIELDS,
@@ -195,7 +196,9 @@ def _item(rec: SignRecord) -> dict:
         "経度": rec.longitude,
         "写真ファイル名": rec.photo_file_name,
         "元写真ファイル名": rec.source_photo_file_name,
-        "thumbnailUrl": f"/records/{rec.id}/photo" if rec.photo_file_name else None,
+        # 一覧・相册グリッドは縮略図を使う（原図は数 MB/枚で一覧表示が
+        # 重くなるため）。原図は /records/{id}/photo のまま。
+        "thumbnailUrl": f"/records/{rec.id}/thumb" if rec.photo_file_name else None,
     }
 
 
@@ -310,15 +313,51 @@ def patch_record(
 
 # ── 写真配信 ──
 
+# 縮略図の長辺（px）。相册グリッド・表格・審核队列で使う。
+THUMB_MAX = 512
+
+
+def _check_name(name: str) -> None:
+    if not name or "/" in name or "\\" in name or ".." in name:
+        raise HTTPException(400, f"不正なファイル名です: {name}")
+
+
 def _serve(base_dir, name: str):
     """写真ファイルを配信する。名前は必ず検証する（DB の値も導入 CSV 由来で
     信頼できないため、`../` 等での目录穿越をここで一律拒否する）。"""
-    if not name or "/" in name or "\\" in name or ".." in name:
-        raise HTTPException(400, f"不正なファイル名です: {name}")
+    _check_name(name)
     path = base_dir / name
     if not path.is_file():
         raise HTTPException(404, f"写真が見つかりません: {name}")
-    return FileResponse(path, media_type="image/jpeg")
+    # 同名ファイルの内容はほぼ不変 → 1 日キャッシュで再取得を抑える。
+    return FileResponse(path, media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
+def _serve_thumb(base_dir, name: str):
+    """縮略図を配信する（初回に生成して thumbs/ にキャッシュ）。
+
+    原図（数 MB/枚）を一覧に流すと読込・デコードで UI が卡顿するため、
+    長辺 THUMB_MAX px の JPEG に縮小して返す。Pillow で開けないファイル
+    （壊れた JPEG 等）は原図配信へフォールバックし、白屏にはしない。"""
+    _check_name(name)
+    src = base_dir / name
+    if not src.is_file():
+        raise HTTPException(404, f"写真が見つかりません: {name}")
+    cache = thumbs_dir() / f"{THUMB_MAX}_{name}"
+    if not cache.is_file() or cache.stat().st_mtime < src.stat().st_mtime:
+        try:
+            from PIL import Image
+            with Image.open(src) as im:
+                im = im.convert("RGB")
+                im.thumbnail((THUMB_MAX, THUMB_MAX))
+                tmp = cache.with_name(cache.name + ".part")
+                im.save(tmp, "JPEG", quality=80)
+            os.replace(tmp, cache)
+        except Exception:
+            return _serve(base_dir, name)  # 生成不能 → 原図で代替
+    return FileResponse(cache, media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=604800"})
 
 
 @router.get("/records/{record_id}/photo")
@@ -335,6 +374,24 @@ def record_source_photo(record_id: int, session: Session = Depends(get_session))
     if not rec.source_photo_file_name:
         raise HTTPException(404, "この記録に元写真がありません")
     return _serve(source_photos_dir(), rec.source_photo_file_name)
+
+
+@router.get("/records/{record_id}/thumb")
+def record_thumb(record_id: int, session: Session = Depends(get_session)):
+    rec = _get_record(session, record_id)
+    if not rec.photo_file_name:
+        raise HTTPException(404, "この記録に写真がありません")
+    return _serve_thumb(photos_dir(), rec.photo_file_name)
+
+
+@router.get("/thumbs/{filename}")
+def thumb_by_name(filename: str):
+    """ファイル名指定の縮略図（相册封面等）。crop → source の順で探す。"""
+    _check_name(filename)
+    for base in (photos_dir(), source_photos_dir()):
+        if (base / filename).is_file():
+            return _serve_thumb(base, filename)
+    raise HTTPException(404, f"写真が見つかりません: {filename}")
 
 
 @router.get("/photos/{filename}")
