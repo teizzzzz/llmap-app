@@ -428,13 +428,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lime); outl
 .thumb-slider input { width: 110px; accent-color: var(--ink); }
 
 /* ── 仪表盘 ── */
-.dash-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 440px;
-  gap: 24px;
-  align-items: start;
-  margin-bottom: 28px;
-}
+.dash-hero { margin-bottom: 28px; }
 .dash-num {
   font-family: var(--font-display);
   font-weight: 800;
@@ -445,21 +439,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lime); outl
 }
 .dash-title { margin: 0; font-size: clamp(32px, 3.6vw, 52px); font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; }
 .dash-rule { display: block; width: 28px; height: 1.5px; background: var(--ink); margin-top: 28px; }
-.dash-art { position: relative; height: 420px; margin: 0; }
-.dash-art img { position: absolute; left: 64px; top: 36px; width: 282px; }
-.art-block { position: absolute; background: var(--halftone); }
-.art-block.a { left: 36px; top: 22px; width: 150px; height: 318px; opacity: 0.45; }
-.art-block.b { left: 220px; top: 170px; width: 120px; height: 176px; opacity: 0.3; }
-.art-circle { position: absolute; left: 142px; top: 4px; width: 250px; height: 250px; border: 1px dashed var(--ink); border-radius: 50%; }
-.art-lime { position: absolute; background: var(--lime); mix-blend-mode: multiply; }
-.art-lime.a { left: 8px; top: 100px; width: 34px; height: 150px; }
-.art-lime.b { left: 292px; top: 234px; width: 40px; height: 168px; }
-.art-guide { position: absolute; background: var(--ink); }
-.art-guide.v { left: 205px; top: 0; width: 1px; height: 410px; }
-.art-guide.h { left: -16px; top: 268px; width: 420px; height: 1px; }
-.dash-art .c1 { left: 342px; top: 22px; }
-.dash-art .c2 { left: 2px; top: 396px; }
-.dash-art .c3 { left: 382px; top: 396px; }
 
 .kpi-row {
   display: grid;
@@ -836,8 +815,6 @@ a.kpi:hover:not(.accent) { background: var(--paper-deep); }
 
 /* 狭い画面: 多列を落とす */
 @media (max-width: 1280px) {
-  .dash-hero { grid-template-columns: minmax(0, 1fr); }
-  .dash-art { display: none; }
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rv-main { grid-template-columns: 240px minmax(0, 1fr) 360px; }
 }

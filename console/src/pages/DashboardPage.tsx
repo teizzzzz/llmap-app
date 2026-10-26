@@ -5,7 +5,6 @@ import {
   API_BASE_URL, ApiError, IS_DESKTOP, getRecords, getStatsSummary,
 } from '../api/client';
 import type { StatsSummary } from '../api/types';
-import hero from '../assets/hero-halftone.png';
 import StatusBadge from '../components/database/StatusBadge';
 import { enumLabel } from '../lib/enumLabels';
 import { CANONICAL_BY_CODE, LANG_COLOR, MAIN_LANGS, langCode } from '../lib/langColors';
@@ -111,17 +110,6 @@ export default function DashboardPage() {
           <h1 className="dash-title">{t('dashboard.headline')}</h1>
           <i className="dash-rule" />
         </div>
-        <figure className="dash-art" aria-hidden="true">
-          <span className="art-block a" />
-          <span className="art-block b" />
-          <span className="art-circle" />
-          <img src={hero} alt="" />
-          <span className="art-lime a" />
-          <span className="art-lime b" />
-          <span className="art-guide v" />
-          <span className="art-guide h" />
-          <span className="crop c1" /><span className="crop c2" /><span className="crop c3" />
-        </figure>
       </section>
 
       <div className="kpi-row">
