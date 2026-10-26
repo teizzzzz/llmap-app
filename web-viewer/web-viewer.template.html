@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLMap 新大久保 · 言語景観ビューア</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+  :root {
+    --paper: #f5f2eb; --card: #fffdf8; --ink: #273831; --muted: #687269;
+    --line: #e0dbd0; --accent: #a8552f;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 13.5px/1.55 "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
+      "Noto Sans JP", sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  /* ── ヘッダー ── */
+  header {
+    padding: 8px 14px 6px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex: none; z-index: 5;
+  }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  h1 { font-size: 15px; margin: 0 8px 0 0; letter-spacing: .02em; }
+  .count { color: var(--muted); font-size: 12px; }
+  .spacer { flex: 1; }
+  input[type=search] {
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px;
+    background: #fff; font: inherit; width: 220px;
+  }
+  .chip {
+    border: 1.4px solid var(--line); border-radius: 999px; padding: 3px 10px;
+    background: #fff; cursor: pointer; font: inherit; font-size: 12.5px;
+    display: inline-flex; align-items: center; gap: 6px; user-select: none;
+  }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .chip.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+  .btn {
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
+    background: #fff; cursor: pointer; font: inherit;
+  }
+  .btn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .filters2 { display: none; flex-wrap: wrap; gap: 8px; padding-top: 7px; }
+  .filters2.open { display: flex; }
+  .filters2 label { display: flex; flex-direction: column; gap: 2px;
+    font-size: 11px; color: var(--muted); }
+  .filters2 select { border: 1px solid var(--line); border-radius: 7px;
+    padding: 4px 6px; background: #fff; font: inherit; font-size: 12.5px;
+    max-width: 150px; }
+  /* ── 本体 ── */
+  #stage { flex: 1; display: flex; min-height: 0; }
+  #mapwrap { flex: 1; position: relative; min-width: 0; }
+  #map { width: 100%; height: 100%; background: #e8e6df; }
+  .leaflet-container { font: inherit; }
+  /* 一覧 */
+  #list { flex: 1; overflow-y: auto; padding: 12px 14px; display: none; }
+  #list.show { display: block; }
+  #mapwrap.hide { display: none; }
+  .grid { display: grid; gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .gcell { border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    background: var(--card); cursor: pointer; padding: 0; text-align: left; }
+  .gcell img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+    background: #ece7df; }
+  .gcell .cap { padding: 4px 7px 6px; font-size: 10.5px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gcell.nophoto .ph { width: 100%; aspect-ratio: 1; display: flex;
+    align-items: center; justify-content: center; color: var(--line);
+    font-size: 22px; background: #ece7df; }
+  /* ── 詳細パネル ── */
+  #panel { width: 330px; flex: none; border-left: 1px solid var(--line);
+    background: var(--card); overflow-y: auto; display: none; }
+  #panel.show { display: block; }
+  .pnl-head { display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--card); z-index: 2; }
+  .pnl-head strong { flex: 1; font-size: 13px; word-break: break-all; }
+  .pnl-x { border: none; background: none; font-size: 16px; cursor: pointer;
+    color: var(--muted); }
+  .pnl-body { padding: 12px; }
+  .pnl-photo { width: 100%; border-radius: 10px; display: block;
+    cursor: zoom-in; background: #ece7df; }
+  .roles { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 4px; }
+  .role { font-size: 11.5px; border-radius: 999px; padding: 2px 9px;
+    color: #fff; }
+  .role.aux { opacity: .75; } .role.decor { opacity: .5; }
+  table.fields { width: 100%; border-collapse: collapse; margin-top: 8px;
+    font-size: 12.5px; }
+  table.fields th { text-align: left; color: var(--muted); font-weight: 500;
+    padding: 4px 8px 4px 0; vertical-align: top; white-space: nowrap; }
+  table.fields td { padding: 4px 0; word-break: break-all; }
+  table.fields tr { border-top: 1px solid #eee9df; }
+  .minicard { display: flex; gap: 9px; width: 100%; text-align: left;
+    border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    padding: 7px; cursor: pointer; margin-bottom: 8px; font: inherit; }
+  .minicard img { width: 64px; height: 64px; object-fit: cover;
+    border-radius: 7px; background: #ece7df; flex: none; }
+  .minicard .t { font-size: 11.5px; color: var(--muted); overflow: hidden; }
+  .minicard .t b { display: block; color: var(--ink); font-size: 12px;
+    margin-bottom: 2px; word-break: break-all; }
+  /* 写真オーバーレイ */
+  #overlay { position: fixed; inset: 0; background: rgba(20,20,16,.86);
+    display: none; align-items: center; justify-content: center; z-index: 50;
+    cursor: zoom-out; }
+  #overlay.show { display: flex; }
+  #overlay img { max-width: 94vw; max-height: 92vh; border-radius: 6px; }
+  #overlay .cap { position: fixed; bottom: 10px; left: 0; right: 0;
+    text-align: center; color: #ddd; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>LLMap 新大久保 · 言語景観ビューア</h1>
+    <span class="count" id="count"></span>
+    <span class="spacer"></span>
+    <input type="search" id="q" placeholder="ID / 名称 / 備考 を検索…">
+    <span id="langchips"></span>
+    <button class="btn" id="morebtn">絞り込み ▾</button>
+    <button class="btn on" id="viewmap">地図</button>
+    <button class="btn" id="viewlist">一覧</button>
+  </div>
+  <div class="filters2" id="filters2"></div>
+</header>
+
+<div id="stage">
+  <div id="mapwrap">
+    <div id="map"></div>
+  </div>
+  <div id="list"><div class="grid" id="grid"></div><div id="sentinel"></div></div>
+  <aside id="panel"></aside>
+</div>
+
+<div id="overlay"><img id="ovimg" alt=""><div class="cap" id="ovcap"></div></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="basemap.js"></script>
+<script>
+(() => {
+  const D = window.LLMAP_DATA;
+  const recs = D.records;
+  const langs = D.langs;
+  const MAIN6 = ['ja', 'en', 'zh', 'ko', 'vi', 'ne'];
+  const EMPTYV = new Set(['', '—', '-', '–']);
+  const $ = (id) => document.getElementById(id);
+
+  // ── フィルタ状態 ──
+  const state = { q: '', langs: new Set(), fields: {}, view: 'map' };
+
+  const allLangsOf = (r) => [...r.main, ...r.aux, ...r.decor];
+  const hasOther = (r) => allLangsOf(r).some((l) => !MAIN6.includes(l));
+
+  function matches(r) {
+    if (state.q) {
+      const q = state.q.toLowerCase();
+      const hay = (r.id + ' ' + r.d + ' ' + (r.raw['名称'] || '') + ' '
+        + (r.raw['備考'] || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (state.langs.size) {
+      const ls = allLangsOf(r);
+      let ok = false;
+      for (const sel of state.langs) {
+        if (sel === 'other' ? hasOther(r) : ls.includes(sel)) { ok = true; break; }
+      }
+      if (!ok) return false;
+    }
+    for (const [f, v] of Object.entries(state.fields)) {
+      if (v && (r.raw[f] || '') !== v) return false;
+    }
+    return true;
+  }
+
+  // ── 言語チップ ──
+  const chipbox = $('langchips');
+  const chipDefs = [...MAIN6.map((id) => ({ id, name: langs[id].name,
+    color: langs[id].color })), { id: 'other', name: 'その他', color: '#92968b' }];
+  for (const c of chipDefs) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.innerHTML = `<span class="dot" style="background:${c.color}"></span>${c.name}`;
+    b.onclick = () => {
+      state.langs.has(c.id) ? state.langs.delete(c.id) : state.langs.add(c.id);
+      b.classList.toggle('on');
+      apply();
+    };
+    chipbox.appendChild(b);
+  }
+
+  // ── 字段絞り込み（実データの値から選択肢を生成） ──
+  const FILTER_FIELDS = ['文字性', '多言語関係', '担体類型', '放置位置',
+    '時間性', '可読性', '重ね書き', 'ディスコース類型', '製作品質'];
+  const f2 = $('filters2');
+  for (const f of FILTER_FIELDS) {
+    const vals = [...new Set(recs.map((r) => r.raw[f] || '')
+      .filter((v) => !EMPTYV.has(v)))];
+    if (!vals.length) continue;
+    const lab = document.createElement('label');
+    lab.textContent = f;
+    const sel = document.createElement('select');
+    sel.innerHTML = '<option value="">すべて</option>'
+      + vals.map((v) => `<option>${v}</option>`).join('');
+    sel.onchange = () => { state.fields[f] = sel.value; apply(); };
+    lab.appendChild(sel);
+    f2.appendChild(lab);
+  }
+  $('morebtn').onclick = () => {
+    f2.classList.toggle('open');
+    $('morebtn').textContent = f2.classList.contains('open')
+      ? '絞り込み ▴' : '絞り込み ▾';
+  };
+  let qTimer;
+  $('q').oninput = (e) => {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(() => { state.q = e.target.value.trim(); apply(); }, 250);
+  };
+
+  // ── 地図（Leaflet + OSM タイル。世界のどこへでもパン/ズーム可能） ──
+  const map = L.map('map', { preferCanvas: true });
+  map.zoomControl.setPosition('bottomright');
+  // タイルは Esri World Street Map（キー不要・帰属表記で利用可）。
+  // openstreetmap.org 直配信はアプリ利用を遮断（403 Access blocked、
+  // file:// や NAS 内網では Referer が無く弾かれる）、CARTO は要 API キー
+  // になったため、どちらも使わない。
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 21, maxNativeZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, '
+        + '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+  // 調査エリアの自前ベクター底図（印刷版と同スタイル）。既定オフの
+  // オーバーレイ —— オフライン閲覧やスタイル確認のときにオンにする。
+  const bmSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  bmSvg.setAttribute('viewBox', '0 0 1100 350');
+  bmSvg.innerHTML = window.LLMAP_BASEMAP;
+  const bmOverlay = L.svgOverlay(bmSvg, D.meta.basemapBounds);
+  L.control.layers(null, { '調査エリア底図（オフライン用）': bmOverlay },
+    { position: 'topright', collapsed: true }).addTo(map);
+
+  const DATA_BOUNDS = L.latLngBounds(
+    [D.meta.latRange[0], D.meta.lonRange[0]],
+    [D.meta.latRange[1], D.meta.lonRange[1]]).pad(0.18);
+  map.fitBounds(DATA_BOUNDS);
+
+  const pinOf = new Map();
+  const pinsLayer = L.layerGroup().addTo(map);
+  for (const r of recs) {
+    if (r.lat == null) continue;
+    const lang = r.main[0] || allLangsOf(r)[0];
+    const m = L.circleMarker([r.lat, r.lon], {
+      radius: 4.5, stroke: false, fillOpacity: 0.85,
+      fillColor: lang && langs[lang] ? langs[lang].color : '#92968b',
+      interactive: false, // クリックは地図側で近傍一括判定（密集対応）
+    });
+    pinOf.set(r, m);
+    m.addTo(pinsLayer);
+  }
+  map.on('click', (e) => {
+    const p = map.latLngToContainerPoint(e.latlng);
+    const hits = filtered.filter((r) => {
+      if (r.lat == null) return false;
+      const q = map.latLngToContainerPoint([r.lat, r.lon]);
+      return Math.hypot(q.x - p.x, q.y - p.y) <= 14;
+    });
+    if (hits.length) showPanel(hits);
+    else hidePanel();
+  });
+  function flyToRecord(r) {
+    if (r.lat == null) return;
+    setView('map');
+    map.setView([r.lat, r.lon], Math.max(map.getZoom(), 19));
+    markSelected(r);
+  }
+
+  // ── 詳細パネル ──
+  const panel = $('panel');
+  let selected = null;
+  function markSelected(r) {
+    if (selected && pinOf.get(selected)) {
+      pinOf.get(selected).setStyle({ radius: 4.5, stroke: false });
+    }
+    selected = r;
+    const m = r && pinOf.get(r);
+    if (m) {
+      m.setStyle({ radius: 7.5, stroke: true, color: '#273831', weight: 2.2 });
+      m.bringToFront();
+    }
+  }
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function roleChips(r) {
+    const mk = (ids, cls) => ids.map((l) => langs[l]
+      ? `<span class="role ${cls}" style="background:${langs[l].color}">${langs[l].name}</span>`
+      : '').join('');
+    return `<div class="roles">${mk(r.main, '')}${mk(r.aux, 'aux')}${mk(r.decor, 'decor')}</div>`;
+  }
+  function detailHtml(r, backable) {
+    const rows = D.fields
+      .filter((f) => !EMPTYV.has(r.raw[f] || ''))
+      .map((f) => `<tr><th>${f}</th><td>${esc(r.raw[f])}</td></tr>`).join('');
+    const gps = r.lat != null
+      ? `<tr><th>座標</th><td>${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}</td></tr>`
+      : '<tr><th>座標</th><td>GPS なし</td></tr>';
+    const img = r.ph
+      ? `<img class="pnl-photo" src="thumbs/${encodeURIComponent(r.ph)}" alt="" data-full="1">`
+      : '<div class="pnl-photo" style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:var(--line)">写真なし</div>';
+    return `
+      <div class="pnl-head">
+        ${backable ? '<button class="pnl-x" data-back="1" title="戻る">←</button>' : ''}
+        <strong>${esc(r.d)}</strong>
+        <button class="pnl-x" data-close="1" title="閉じる">✕</button>
+      </div>
+      <div class="pnl-body">
+        ${img}
+        ${roleChips(r)}
+        <table class="fields">${gps}${rows}</table>
+        ${r.lat != null
+          ? '<button class="btn" data-fly style="margin-top:10px">地図で表示</button>'
+          : ''}
+      </div>`;
+  }
+  let groupCache = null;
+  function showPanel(hits) {
+    panel.classList.add('show');
+    if (hits.length === 1) {
+      groupCache = null;
+      markSelected(hits[0]);
+      panel.innerHTML = detailHtml(hits[0], false);
+      wire(hits[0]);
+      return;
+    }
+    groupCache = hits;
+    markSelected(null);
+    panel.innerHTML = `
+      <div class="pnl-head"><strong>${hits.length} 件の記録</strong>
+        <button class="pnl-x" data-close="1">✕</button></div>
+      <div class="pnl-body">` + hits.map((r, i) => `
+        <button class="minicard" data-i="${i}">
+          ${r.ph ? `<img src="thumbs/${encodeURIComponent(r.ph)}" loading="lazy" alt="">`
+                 : '<span style="width:64px"></span>'}
+          <span class="t"><b>${esc(r.d)}</b>${allLangsOf(r)
+            .filter((l, j, a) => a.indexOf(l) === j)
+            .map((l) => langs[l] ? langs[l].name : l).join(' / ')}</span>
+        </button>`).join('') + '</div>';
+    panel.querySelectorAll('.minicard').forEach((b) => {
+      b.onclick = () => {
+        const r = hits[Number(b.dataset.i)];
+        markSelected(r);
+        panel.innerHTML = detailHtml(r, true);
+        wire(r);
+      };
+    });
+    panel.querySelector('[data-close]').onclick = hidePanel;
+  }
+  function wire(r) {
+    const back = panel.querySelector('[data-back]');
+    if (back) back.onclick = () => showPanel(groupCache || [r]);
+    panel.querySelector('[data-close]').onclick = hidePanel;
+    const img = panel.querySelector('img[data-full]');
+    if (img) img.onclick = () => {
+      $('ovimg').src = img.src;
+      $('ovcap').textContent = r.d;
+      $('overlay').classList.add('show');
+    };
+    const fly = panel.querySelector('[data-fly]');
+    if (fly) fly.onclick = () => flyToRecord(r);
+  }
+  function hidePanel() {
+    panel.classList.remove('show');
+    markSelected(null);
+    groupCache = null;
+  }
+  $('overlay').onclick = () => $('overlay').classList.remove('show');
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      $('overlay').classList.remove('show');
+      hidePanel();
+    }
+  });
+
+  // ── 一覧（無限スクロール） ──
+  const grid = $('grid');
+  let listPos = 0;
+  function renderMore() {
+    const chunk = filtered.slice(listPos, listPos + 120);
+    listPos += chunk.length;
+    const frag = document.createDocumentFragment();
+    for (const r of chunk) {
+      const b = document.createElement('button');
+      b.className = 'gcell' + (r.ph ? '' : ' nophoto');
+      b.innerHTML = (r.ph
+        ? `<img src="thumbs/${encodeURIComponent(r.ph)}" loading="lazy" decoding="async" alt="">`
+        : '<div class="ph">✕</div>')
+        + `<div class="cap">${esc(r.d)}</div>`;
+      b.onclick = () => { showPanel([r]); };
+      frag.appendChild(b);
+    }
+    grid.appendChild(frag);
+  }
+  new IntersectionObserver((es) => {
+    if (es.some((x) => x.isIntersecting) && state.view === 'list'
+        && listPos < filtered.length) renderMore();
+  }, { root: $('list'), rootMargin: '900px 0px' }).observe($('sentinel'));
+
+  // ── ビュー切替 ──
+  function setView(v) {
+    state.view = v;
+    $('viewmap').classList.toggle('on', v === 'map');
+    $('viewlist').classList.toggle('on', v === 'list');
+    $('mapwrap').classList.toggle('hide', v !== 'map');
+    $('list').classList.toggle('show', v === 'list');
+    if (v === 'list' && !grid.childElementCount) renderMore();
+    if (v === 'map') setTimeout(() => map.invalidateSize(), 0);
+  }
+  $('viewmap').onclick = () => setView('map');
+  $('viewlist').onclick = () => setView('list');
+
+  // ── フィルタ適用 ──
+  let filtered = recs;
+  function apply() {
+    filtered = recs.filter(matches);
+    const set = new Set(filtered);
+    for (const [r, m] of pinOf) {
+      const vis = set.has(r);
+      if (vis && !pinsLayer.hasLayer(m)) pinsLayer.addLayer(m);
+      else if (!vis && pinsLayer.hasLayer(m)) pinsLayer.removeLayer(m);
+    }
+    $('count').textContent =
+      `${filtered.length} / ${D.meta.total} 件（写真 ${D.meta.withPhoto}）`;
+    grid.innerHTML = '';
+    listPos = 0;
+    if (state.view === 'list') renderMore();
+    if (selected && !set.has(selected)) hidePanel();
+  }
+
+  apply();
+  if (location.hash === '#list') setView('list');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# 生成物（build_web_viewer.py で再生成できる。写真データは入库しない）
+index.html
+data.js
+basemap.js
+thumbs/
