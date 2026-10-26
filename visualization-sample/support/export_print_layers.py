@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""印刷分层版（UV 分版用）→ scratchpad/figprint/ 分块 SVG
+"""印刷分层版（UV 分版用）→ $LLMAP_FIGMA_OUT/figprint/ 分块 SVG（默认系统临时目录）
 
 三块画板全部使用地图图层的几何（viewBox 1100x350、等距投影、PAD 55），
 印刷宽 290 mm 时画板 = 290 x 92.27 mm（1 unit = 0.2636 mm）。
@@ -15,17 +15,35 @@
 from collections import Counter, defaultdict
 from pathlib import Path
 import json
+import os
+import tempfile
 import math
 
 import build_abstract_studies as B
 import export_svg_layers as ex
 import export_studies_figma as ef
 
-OUTDIR = Path(r'C:/Users/gyoza/AppData/Local/Temp/claude/f--1-work-projects-LLmap-Win-llmap-app/4a93f2b6-6948-4736-a669-05822ccbcba9/scratchpad/figprint')
+OUTDIR = Path(os.environ.get('LLMAP_FIGMA_OUT', tempfile.gettempdir())) / 'figprint'
 ef.OUTDIR = OUTDIR  # 复用 ef.write_chunks 的分块写出
 W, H = ex.W, ex.H
 INK = '#273831'
 SHORT = {'ja': '日', 'en': '英', 'zh': '中', 'ko': '韩', 'vi': '越', 'ne': '尼'}
+
+# UV 印刷用の CMY 配色（Figma 側で確定した体系をここでも正とする）。
+# 一次色=強勢言語（M/C/Y）、二次色=弱勢言語（2 原色の重なり色）。
+# 全色重なると黒に収斂する減法混色 —— 透明板の重ね刷りが前提。
+CMY_COLORS = {
+    'ja': '#e4007f',  # Magenta
+    'en': '#00a0e9',  # Cyan
+    'zh': '#ffc800',  # Yellow
+    'ko': '#7a2e9d',  # C+M 紫
+    'vi': '#009944',  # C+Y 緑
+    'ne': '#ea5504',  # M+Y 朱
+}
+
+
+def _color(lang: str) -> str:
+    return CMY_COLORS.get(lang, B.BY_ID[lang][2])
 
 
 def study_a_layers(recs, geo):
@@ -39,20 +57,22 @@ def study_a_layers(recs, geo):
                 bins[(int(r['x'] // g), int(r['y'] // g))][lang] += 1
         maxn = max(sum(c.values()) for c in bins.values())
         buckets, seen = defaultdict(list), set()
+        # 格子は裁切せず**完整に描く**（ユーザー要望）: 数据边界の端の格子が
+        # 半块になるのを避ける。境界を数 m 越えるが画板 PAD 内に収まり、
+        # 六層の套准（原点・比例尺共有）には影響しない。
         for (bx, by), counter in bins.items():
             lang, _ = counter.most_common(1)[0]
             seen.add(lang)
             total = sum(counter.values())
             op = 0.25 + 0.75 * math.log1p(total) / math.log1p(maxn)
             ob = round(op * 5) / 5
-            x0m, x1m = bx * g, min((bx + 1) * g, span_x)
-            y0m, y1m = by * g, min((by + 1) * g, span_y)
-            w = max(0.8, (x1m - x0m) * s - 0.6)
-            hh = max(0.8, (y1m - y0m) * s - 0.6)
-            buckets[(lang, ob)].append(ef.rect_sub(px(x0m) + 0.3, py(y1m) + 0.3, w, hh))
+            w = max(0.8, g * s - 0.6)
+            hh = max(0.8, g * s - 0.6)
+            buckets[(lang, ob)].append(
+                ef.rect_sub(px(bx * g) + 0.3, py((by + 1) * g) + 0.3, w, hh))
         els = []
         for (lang, ob), subs in sorted(buckets.items()):
-            els += ef.paths(f'fill="{B.BY_ID[lang][2]}" fill-opacity="{ob:.2f}"', subs)
+            els += ef.paths(f'fill="{_color(lang)}" fill-opacity="{ob:.2f}"', subs)
         names = ''.join(SHORT.get(l, B.BY_ID[l][1][0])
                         for l in sorted(seen, key=lambda l: list(B.BY_ID).index(l)))
         cx = 55 + gi * 165  # 六层各占一格底注位，叠放时并排成一行图例
@@ -75,7 +95,8 @@ def study_b_layers(recs, geo):
     order = ['ja', 'en', 'zh', 'ko', 'vi', 'ne']
     layers = []
     for i, lang in enumerate(order):
-        _, zh_name, color = B.BY_ID[lang]
+        _, zh_name, _c = B.BY_ID[lang]
+        color = _color(lang)
         els = []
         density = Counter()
         for r in recs:

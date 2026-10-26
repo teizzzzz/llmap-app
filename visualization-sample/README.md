@@ -3,6 +3,8 @@
 双击 `index.html` 即可使用，无需安装依赖或联网。HTML 已内嵌数据和匹配照片，可以单独复制给他人。
 
 - `index.html`：可直接打开的样本。
+- `print-boards-spec.zh-CN.md`：三联印刷板（地图/解像度/六声部）的设计原理、
+  共同标准、图面规则与印刷装配规则。
 - `support/`：HTML 模板、生成与检查脚本，以及桌面和窄屏预览图。仅修改、重建样本时需要。
 - `svg-layers/`：Illustrator 用矢量分层导出（`support/export_svg_layers.py` 生成）。
   所有文件同一画板（550×175 mm）、同一坐标框架，叠放自动对齐：图框 / 底图 /

@@ -3,17 +3,19 @@
 
 与 build_abstract_studies.py 同数据、同映射、同布局，但把同样式的标记
 合并为少量大 <path>（Figma 里一个样式桶=一个矢量节点，可整体改色、不卡文件）。
-输出: scratchpad/figstudies/ 下的分块文件（ASCII 实体化、每元素一行、≤17KB）
+输出: $LLMAP_FIGMA_OUT/figstudies/（默认系统临时目录）下的分块文件（ASCII 实体化、每元素一行、≤17KB）
 以及 manifest.json（框名/尺寸/块清单）。Run: python export_studies_figma.py
 """
 from pathlib import Path
 from collections import Counter, defaultdict
 import json
+import os
+import tempfile
 import math
 
 import build_abstract_studies as B
 
-OUTDIR = Path(r'C:/Users/gyoza/AppData/Local/Temp/claude/f--1-work-projects-LLmap-Win-llmap-app/4a93f2b6-6948-4736-a669-05822ccbcba9/scratchpad/figstudies')
+OUTDIR = Path(os.environ.get('LLMAP_FIGMA_OUT', tempfile.gettempdir())) / 'figstudies'
 W = 1100
 INK = '#273831'
 R = lambda v: round(v, 1)  # noqa: E731
