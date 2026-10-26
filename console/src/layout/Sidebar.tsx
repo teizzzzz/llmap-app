@@ -37,14 +37,13 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-brand">LLMAP</div>
       <nav>
-        {NAV.map((item, i) => (
+        {NAV.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
-            <span className="nav-no">{String(i + 1).padStart(2, '0')}</span>
             {t(item.labelKey)}
           </NavLink>
         ))}

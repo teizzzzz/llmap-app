@@ -89,16 +89,14 @@ kbd {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 9px 12px;
   color: var(--ink-2);
   font-size: 14px;
   text-decoration: none;
 }
-.nav-item .nav-no { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
 .nav-item:hover { color: var(--ink); background: var(--paper-deep); }
 .nav-item.active { background: var(--lime); color: var(--ink); font-weight: 700; }
-.nav-item.active .nav-no { color: var(--ink); }
 .sidebar-footer {
   margin-top: auto;
   padding: 16px 18px 20px;
