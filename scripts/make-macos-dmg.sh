@@ -7,7 +7,8 @@
 # シンボリックリンク入りの圧縮 dmg）を作る。
 #
 # 前提: npx tauri build --bundles app 済み（desktop/ で）。
-# 生成物: desktop/src-tauri/target/release/bundle/dmg/LLMap_<version>_aarch64.dmg
+# 生成物: dist/LLMap-Desktop-v<version>-macos-<arch>.dmg
+#         （Windows の LLMap-Desktop-v*-win11-x64-setup.exe と同じ置き場・命名）
 set -eu
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,9 +17,9 @@ APP="$BUNDLE/macos/LLMap.app"
 [ -d "$APP" ] || { echo "ERROR: $APP がありません。先に desktop/ で npx tauri build --bundles app を実行してください。" >&2; exit 1; }
 
 VERSION="$(plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")"
-ARCH="$(uname -m)"; [ "$ARCH" = "arm64" ] && ARCH=aarch64
-OUT_DIR="$BUNDLE/dmg"
-OUT="$OUT_DIR/LLMap_${VERSION}_${ARCH}.dmg"
+ARCH="$(uname -m)"; [ "$ARCH" = "x86_64" ] && ARCH=x64
+OUT_DIR="$REPO_ROOT/dist"
+OUT="$OUT_DIR/LLMap-Desktop-v${VERSION}-macos-${ARCH}.dmg"
 mkdir -p "$OUT_DIR"
 
 STAGING="$(mktemp -d /tmp/llmap-dmg.XXXXXX)"

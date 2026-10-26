@@ -10,6 +10,7 @@
     "prepare:sidecar": "cd .. && ./scripts/prepare-tauri-sidecar.sh",
     "prepare:sidecar:win": "powershell -ExecutionPolicy Bypass -File ..\\scripts\\prepare-tauri-sidecar.ps1",
     "make:dmg": "cd .. && ./scripts/make-macos-dmg.sh",
+    "release:mac": "cd .. && bash scripts/sign-and-notarize-macos.sh",
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri"
