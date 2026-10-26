@@ -15,7 +15,10 @@
   "topbar": {
     "checking": "backend 確認中…",
     "online": "backend {{version}} · {{url}}",
-    "offline": "backend オフライン · {{url}}"
+    "offline": "backend オフライン · {{url}}",
+    "search": "検索",
+    "connected": "接続中",
+    "disconnected": "未接続"
   },
   "common": {
     "all": "すべて",
@@ -30,7 +33,7 @@
     "comingSoon": "近日対応"
   },
   "filters": {
-    "search": "SignID / CaptureID / DisplayID / テキストで検索…",
+    "search": "ID / テキストを検索…",
     "language": "言語",
     "area": "地区",
     "collector": "採集者",
@@ -43,7 +46,12 @@
     "source": "元写真",
     "from": "開始日",
     "to": "終了日",
-    "fieldsToggle": "字段で絞り込み"
+    "fieldsToggle": "字段で絞り込み",
+    "chip": "{{k}}：{{v}}",
+    "keyword": "キーワード",
+    "date": "日付",
+    "more": "その他の絞り込み",
+    "clearAll": "すべて解除"
   },
   "status": {
     "quick": "クイック",
@@ -194,17 +202,17 @@
     "configurableVia": "変更用の変数",
     "totalRecords": "総記録数",
     "datasets": "データセット",
-    "withGps": "GPS ありの記録",
+    "withGps": "GPS あり",
     "waitingReview": "レビュー待ち",
     "reviewed": "レビュー済み",
-    "verified": "確定済み（研究利用可）",
+    "verified": "確認済み",
     "photos": "写真",
     "sourcePhotos": "元写真",
-    "byDataStatus": "データ状態別",
-    "byEntryMode": "採集モード別",
-    "byMainLanguage": "主要言語別",
+    "byDataStatus": "データ状態",
+    "byEntryMode": "採集モード",
+    "byMainLanguage": "主要言語の構成",
     "byArea": "地区別",
-    "byCollector": "採集者別",
+    "byCollector": "採集者",
     "dataQuality": "データ品質",
     "noData": "まだデータがありません。",
     "missingPhotos": "写真ファイル欠落",
@@ -219,12 +227,17 @@
     "openReview": "レビューキューを開く",
     "openMap": "地図を開く",
     "exportData": "データをエクスポート",
-    "importDataset": "データセットを取り込む"
+    "importDataset": "データセットを取り込む",
+    "headline": "件の街なかのことば",
+    "otherLanguages": "その他・不明",
+    "unrecorded": "未記録",
+    "legacy": "旧データ",
+    "missingFiles": "欠損ファイル {{n}}"
   },
   "database": {
     "title": "データベース",
     "subtitle": "取り込んだ言語景観記録を管理します。",
-    "import": "Dataset Package を取り込む",
+    "import": "データパッケージを読み込む",
     "loading": "記録を読み込み中…",
     "loadError": "記録を読み込めませんでした。",
     "noMatch": "現在の絞り込みに一致する記録はありません。",
@@ -240,18 +253,22 @@
     "backToAlbums": "← アルバム一覧",
     "openInTable": "テーブルで表示",
     "loadMore": "さらに読み込む",
-    "albumNoPhotos": "このデータセットに写真はありません。",
+    "albumNoPhotos": "条件に合う写真がありません。",
     "noAlbums": "まだデータセットがありません。導入すると相册として表示されます。",
     "copyImage": "画像をクリップボードへ（InDesign / Illustrator に直接貼り付け可）",
     "copyId": "ID をコピー",
     "thumbSize": "サムネイルサイズ",
-    "zoomHint": "拡縮: Ctrl/Alt + ホイール"
+    "zoomHint": "拡縮: Ctrl/Alt + ホイール",
+    "viewAlbum": "アルバム",
+    "exportFiltered": "絞り込み結果を書き出す",
+    "copy": "コピー"
   },
   "table": {
     "area": "地区",
     "mode": "モード",
     "status": "状態",
-    "collector": "採集者"
+    "collector": "採集者",
+    "photo": "写真"
   },
   "record": {
     "loading": "記録を読み込み中…",
@@ -312,8 +329,10 @@
     "noGps": "GPS 付きの記録がまだありません。座標を含む Dataset Package を取り込んでください。",
     "unknownLanguage": "不明",
     "fullscreen": "全画面",
-    "exitFull": "全画面を終了（Esc）",
-    "toggleFilters": "絞り込みバーの表示/非表示"
+    "exitFull": "全画面を終了",
+    "toggleFilters": "絞り込みバーの表示/非表示",
+    "otherLanguages": "その他",
+    "layers": "言語レイヤー"
   },
   "review": {
     "title": "レビュー",
@@ -345,8 +364,10 @@
       "reviewed": "レビュー済みにする",
       "verified": "確定済みにする",
       "needs_review": "要再確認にする",
-      "rejected": "却下する"
-    }
+      "rejected": "却下する",
+      "reviewedNext": "審核済みにして次へ"
+    },
+    "openInDatabase": "データベースで開く"
   },
   "export": {
     "title": "エクスポート",
@@ -396,13 +417,27 @@
     "activeFilters": "適用中のフィルター",
     "removeFilter": "クリックで解除",
     "chipKeyword": "キーワード",
-    "outputDir": "エクスポート先（今回のみ）",
+    "outputDir": "出力先",
     "outputDirHint": "空欄で既定のエクスポート先を使用（既定は設定ページで変更）",
     "photosPreview": "現在のフィルターで {{records}} 記録の {{total}} ファイルをエクスポート: 裁剪 {{crop}} + 元写真 {{source}}（元写真は撮影単位で去重）、欠落 {{missing}}",
     "splitLabel": "字段で分割",
     "splitNone": "分割しない（1 本の zip）",
     "splitZips": "（{{n}} 本の zip をエクスポート先に生成）",
-    "splitHint": "「{{field}}」の値ごとに zip を生成します（例 main_jp.zip）。複数値を持つ記録はそれぞれの zip に入ります。"
+    "splitHint": "「{{field}}」の値ごとに zip を生成します（例 main_jp.zip）。複数値を持つ記録はそれぞれの zip に入ります。",
+    "stepScope": "範囲",
+    "stepFormat": "形式",
+    "stepOptions": "オプション",
+    "stepOutput": "出力",
+    "cropFiles": "切り抜き",
+    "sourceFiles": "元写真（重複除去後）",
+    "missingFiles": "欠損ファイル",
+    "filesUnit": "ファイル",
+    "format": {
+      "photos": "写真 ZIP",
+      "package": "Dataset Package",
+      "csv": "CSV",
+      "geojson": "GeoJSON"
+    }
   },
   "ai": {
     "title": "AI処理",

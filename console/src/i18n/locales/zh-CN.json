@@ -15,7 +15,10 @@
   "topbar": {
     "checking": "正在检查 backend…",
     "online": "backend {{version}} · {{url}}",
-    "offline": "backend 离线 · {{url}}"
+    "offline": "backend 离线 · {{url}}",
+    "search": "搜索",
+    "connected": "已连接",
+    "disconnected": "未连接"
   },
   "common": {
     "all": "全部",
@@ -30,7 +33,7 @@
     "comingSoon": "即将推出"
   },
   "filters": {
-    "search": "搜索 SignID / CaptureID / DisplayID / 文本…",
+    "search": "搜索 ID / 文本…",
     "language": "语言",
     "area": "地区",
     "collector": "采集者",
@@ -43,7 +46,12 @@
     "source": "原图",
     "from": "开始",
     "to": "结束",
-    "fieldsToggle": "字段筛选"
+    "fieldsToggle": "字段筛选",
+    "chip": "{{k}}：{{v}}",
+    "keyword": "关键词",
+    "date": "日期",
+    "more": "更多筛选",
+    "clearAll": "清除全部"
   },
   "status": {
     "quick": "快速",
@@ -194,17 +202,17 @@
     "configurableVia": "配置变量",
     "totalRecords": "记录总数",
     "datasets": "数据集",
-    "withGps": "含 GPS 的记录",
+    "withGps": "含 GPS",
     "waitingReview": "待审核",
     "reviewed": "已审核",
-    "verified": "已确认（可用于研究）",
+    "verified": "已确认",
     "photos": "照片",
     "sourcePhotos": "原始照片",
-    "byDataStatus": "按数据状态",
-    "byEntryMode": "按采集模式",
-    "byMainLanguage": "按主要语言",
+    "byDataStatus": "数据状态",
+    "byEntryMode": "采集模式",
+    "byMainLanguage": "主要语言构成",
     "byArea": "按地区",
-    "byCollector": "按采集者",
+    "byCollector": "采集者",
     "dataQuality": "数据质量",
     "noData": "暂无数据。",
     "missingPhotos": "缺失照片文件",
@@ -219,12 +227,17 @@
     "openReview": "打开审核队列",
     "openMap": "打开地图",
     "exportData": "导出数据",
-    "importDataset": "导入数据集"
+    "importDataset": "导入数据集",
+    "headline": "条街道上的文字",
+    "otherLanguages": "其他 · 不明",
+    "unrecorded": "未记录",
+    "legacy": "旧版数据",
+    "missingFiles": "缺失文件 {{n}}"
   },
   "database": {
     "title": "数据库",
     "subtitle": "管理已导入的语言景观记录。",
-    "import": "导入 Dataset Package",
+    "import": "导入数据包",
     "loading": "正在加载记录…",
     "loadError": "无法加载记录。",
     "noMatch": "没有符合当前筛选条件的记录。",
@@ -240,18 +253,22 @@
     "backToAlbums": "← 返回相册",
     "openInTable": "在表格中查看",
     "loadMore": "加载更多",
-    "albumNoPhotos": "该数据集没有照片。",
+    "albumNoPhotos": "没有符合条件的照片。",
     "noAlbums": "还没有数据集。导入后会以相册形式显示。",
     "copyImage": "复制图片到剪贴板（可直接粘贴到 InDesign / Illustrator）",
     "copyId": "复制 ID",
     "thumbSize": "缩略图大小",
-    "zoomHint": "缩放：Ctrl/Alt + 滚轮"
+    "zoomHint": "缩放：Ctrl/Alt + 滚轮",
+    "viewAlbum": "相册",
+    "exportFiltered": "导出当前筛选",
+    "copy": "复制"
   },
   "table": {
     "area": "地区",
     "mode": "模式",
     "status": "状态",
-    "collector": "采集者"
+    "collector": "采集者",
+    "photo": "照片"
   },
   "record": {
     "loading": "正在加载记录…",
@@ -312,8 +329,10 @@
     "noGps": "还没有带 GPS 的记录。请导入包含坐标的 Dataset Package。",
     "unknownLanguage": "未知",
     "fullscreen": "全屏",
-    "exitFull": "退出全屏（Esc）",
-    "toggleFilters": "显示/隐藏筛选栏"
+    "exitFull": "退出全屏",
+    "toggleFilters": "显示/隐藏筛选栏",
+    "otherLanguages": "其他",
+    "layers": "语言分层"
   },
   "review": {
     "title": "审核",
@@ -345,8 +364,10 @@
       "reviewed": "标记为已审核",
       "verified": "标记为已确认",
       "needs_review": "标记为需复核",
-      "rejected": "拒绝"
-    }
+      "rejected": "拒绝",
+      "reviewedNext": "标记为已审核，下一条"
+    },
+    "openInDatabase": "在数据库中打开"
   },
   "export": {
     "title": "导出",
@@ -396,13 +417,27 @@
     "activeFilters": "当前筛选条件",
     "removeFilter": "点击移除该条件",
     "chipKeyword": "关键词",
-    "outputDir": "导出目录（本次）",
+    "outputDir": "导出目录",
     "outputDirHint": "留空使用默认目录（可在设置页修改默认值）",
     "photosPreview": "当前筛选将导出 {{records}} 条记录的 {{total}} 个文件：裁剪图 {{crop}} + 原图 {{source}}（原图按拍摄事件去重），缺失 {{missing}}",
     "splitLabel": "按字段分包",
     "splitNone": "不分包（单个 zip）",
     "splitZips": "（共 {{n}} 个 zip，已生成到导出目录）",
-    "splitHint": "将按「{{field}}」的每个取值分别生成 zip，命名为 字段_取值.zip（如 main_jp.zip）。记录同时属于多个取值时会进入各自的 zip。"
+    "splitHint": "将按「{{field}}」的每个取值分别生成 zip，命名为 字段_取值.zip（如 main_jp.zip）。记录同时属于多个取值时会进入各自的 zip。",
+    "stepScope": "范围",
+    "stepFormat": "格式",
+    "stepOptions": "选项",
+    "stepOutput": "输出",
+    "cropFiles": "裁剪图",
+    "sourceFiles": "原图（去重后）",
+    "missingFiles": "缺失文件",
+    "filesUnit": "个文件",
+    "format": {
+      "photos": "照片 ZIP",
+      "package": "Dataset Package",
+      "csv": "CSV",
+      "geojson": "GeoJSON"
+    }
   },
   "ai": {
     "title": "AI 处理",

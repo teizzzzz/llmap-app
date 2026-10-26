@@ -15,7 +15,10 @@
   "topbar": {
     "checking": "checking backend…",
     "online": "backend {{version}} · {{url}}",
-    "offline": "backend offline · {{url}}"
+    "offline": "backend offline · {{url}}",
+    "search": "Search",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
   },
   "common": {
     "all": "All",
@@ -30,7 +33,7 @@
     "comingSoon": "Coming soon"
   },
   "filters": {
-    "search": "Search SignID / CaptureID / DisplayID / text…",
+    "search": "Search ID / text…",
     "language": "Language",
     "area": "Area",
     "collector": "Collector",
@@ -43,7 +46,12 @@
     "source": "Source",
     "from": "From",
     "to": "To",
-    "fieldsToggle": "Field filters"
+    "fieldsToggle": "Field filters",
+    "chip": "{{k}}: {{v}}",
+    "keyword": "Keyword",
+    "date": "Date",
+    "more": "More filters",
+    "clearAll": "Clear all"
   },
   "status": {
     "quick": "Quick",
@@ -194,17 +202,17 @@
     "configurableVia": "configurable via",
     "totalRecords": "Total records",
     "datasets": "Datasets",
-    "withGps": "Records with GPS",
+    "withGps": "With GPS",
     "waitingReview": "Waiting for review",
     "reviewed": "Reviewed",
-    "verified": "Verified (research-ready)",
+    "verified": "Confirmed",
     "photos": "Photos",
     "sourcePhotos": "Source photos",
-    "byDataStatus": "By data status",
-    "byEntryMode": "By entry mode",
-    "byMainLanguage": "By main language",
+    "byDataStatus": "Status",
+    "byEntryMode": "Entry mode",
+    "byMainLanguage": "Main languages",
     "byArea": "By area",
-    "byCollector": "By collector",
+    "byCollector": "Collectors",
     "dataQuality": "Data quality",
     "noData": "No data yet.",
     "missingPhotos": "Missing photos",
@@ -219,12 +227,17 @@
     "openReview": "Open Review Queue",
     "openMap": "Open Map",
     "exportData": "Export Data",
-    "importDataset": "Import Dataset"
+    "importDataset": "Import Dataset",
+    "headline": "texts on the street",
+    "otherLanguages": "Other · unknown",
+    "unrecorded": "Not recorded",
+    "legacy": "Legacy data",
+    "missingFiles": "Missing files {{n}}"
   },
   "database": {
     "title": "Database",
     "subtitle": "Manage imported linguistic landscape records.",
-    "import": "Import Dataset Package",
+    "import": "Import package",
     "loading": "Loading records…",
     "loadError": "Could not load records.",
     "noMatch": "No records match the current filters.",
@@ -240,18 +253,22 @@
     "backToAlbums": "← Back to albums",
     "openInTable": "View in table",
     "loadMore": "Load more",
-    "albumNoPhotos": "No photos in this dataset.",
+    "albumNoPhotos": "No photos match.",
     "noAlbums": "No datasets yet. Imported packages appear here as albums.",
     "copyImage": "Copy image to clipboard (paste into InDesign / Illustrator)",
     "copyId": "Copy ID",
     "thumbSize": "Thumbnail size",
-    "zoomHint": "Zoom: Ctrl/Alt + wheel"
+    "zoomHint": "Zoom: Ctrl/Alt + wheel",
+    "viewAlbum": "Album",
+    "exportFiltered": "Export filtered",
+    "copy": "Copy"
   },
   "table": {
     "area": "Area",
     "mode": "Mode",
     "status": "Status",
-    "collector": "Collector"
+    "collector": "Collector",
+    "photo": "Photo"
   },
   "record": {
     "loading": "Loading record…",
@@ -312,8 +329,10 @@
     "noGps": "No records with GPS yet. Import a Dataset Package that contains coordinates.",
     "unknownLanguage": "unknown",
     "fullscreen": "Fullscreen",
-    "exitFull": "Exit fullscreen (Esc)",
-    "toggleFilters": "Show/hide filters"
+    "exitFull": "Exit full screen",
+    "toggleFilters": "Show/hide filters",
+    "otherLanguages": "Other",
+    "layers": "Language layers"
   },
   "review": {
     "title": "Review",
@@ -345,8 +364,10 @@
       "reviewed": "Mark as reviewed",
       "verified": "Mark as verified",
       "needs_review": "Needs review",
-      "rejected": "Reject"
-    }
+      "rejected": "Reject",
+      "reviewedNext": "Mark reviewed, next"
+    },
+    "openInDatabase": "Open in database"
   },
   "export": {
     "title": "Export",
@@ -396,13 +417,27 @@
     "activeFilters": "Active filters",
     "removeFilter": "Click to remove",
     "chipKeyword": "Keyword",
-    "outputDir": "Output folder (this export)",
+    "outputDir": "Output folder",
     "outputDirHint": "Leave empty to use the default (change it in Settings)",
     "photosPreview": "Current filter exports {{total}} files from {{records}} records: {{crop}} crops + {{source}} sources (sources deduped per capture), {{missing}} missing",
     "splitLabel": "Split by field",
     "splitNone": "No split (single zip)",
     "splitZips": "({{n}} zips written to the output folder)",
-    "splitHint": "One zip per value of \"{{field}}\", named field_value.zip (e.g. main_jp.zip). Records with multiple values go into each matching zip."
+    "splitHint": "One zip per value of \"{{field}}\", named field_value.zip (e.g. main_jp.zip). Records with multiple values go into each matching zip.",
+    "stepScope": "Scope",
+    "stepFormat": "Format",
+    "stepOptions": "Options",
+    "stepOutput": "Output",
+    "cropFiles": "Crops",
+    "sourceFiles": "Originals (deduplicated)",
+    "missingFiles": "Missing files",
+    "filesUnit": "files",
+    "format": {
+      "photos": "Photo ZIP",
+      "package": "Dataset Package",
+      "csv": "CSV",
+      "geojson": "GeoJSON"
+    }
   },
   "ai": {
     "title": "AI Processing",

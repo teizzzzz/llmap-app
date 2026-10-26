@@ -178,9 +178,8 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="page-header">
+      <div className="page-head">
         <h1>{t('settings.title')}</h1>
-        <p>{t('settings.subtitle')}</p>
       </div>
 
       {/* 言語切替: 即時反映・localStorage 保存（Web / Desktop 共通）。 */}

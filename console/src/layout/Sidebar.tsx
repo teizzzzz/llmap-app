@@ -1,41 +1,58 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import pkg from '../../package.json';
+import { API_BASE_URL, getHealth } from '../api/client';
 
 // labelKey は i18n キー。ルートパスは内部値なので翻訳しない。
 const NAV = [
-  { to: '/', labelKey: 'nav.dashboard', icon: '▦', end: true },
-  { to: '/database', labelKey: 'nav.database', icon: '☰' },
-  { to: '/map', labelKey: 'nav.map', icon: '◎' },
-  { to: '/review', labelKey: 'nav.review', icon: '✓' },
-  { to: '/ai', labelKey: 'nav.ai', icon: '✦' },
-  { to: '/export', labelKey: 'nav.export', icon: '⇩' },
-  { to: '/settings', labelKey: 'nav.settings', icon: '⚙' },
+  { to: '/', labelKey: 'nav.dashboard', end: true },
+  { to: '/database', labelKey: 'nav.database' },
+  { to: '/map', labelKey: 'nav.map' },
+  { to: '/review', labelKey: 'nav.review' },
+  { to: '/ai', labelKey: 'nav.ai' },
+  { to: '/export', labelKey: 'nav.export' },
+  { to: '/settings', labelKey: 'nav.settings' },
 ];
 
 export default function Sidebar() {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const [status, setStatus] = useState<'checking' | 'ok' | 'down'>('checking');
+  const [version, setVersion] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    getHealth()
+      .then((h) => {
+        if (!cancelled) { setStatus('ok'); setVersion(h.version); }
+      })
+      .catch(() => { if (!cancelled) setStatus('down'); });
+    return () => { cancelled = true; };
+  }, [pathname]); // ページ切替のたびに軽く再確認
+
+  // 版本・URL は画面に出さず tooltip にだけ残す（問い合わせ時に確認できるように）。
+  const detail = `backend ${version || '—'} · ${API_BASE_URL} · console v${pkg.version}`;
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="title">LLMap</div>
-        <div className="subtitle">{t('app.subtitle')}</div>
-      </div>
+      <div className="sidebar-brand">LLMAP</div>
       <nav>
-        {NAV.map((item) => (
+        {NAV.map((item, i) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
-            <span className="icon">{item.icon}</span>
+            <span className="nav-no">{String(i + 1).padStart(2, '0')}</span>
             {t(item.labelKey)}
           </NavLink>
         ))}
       </nav>
-      {/* 以前はここに硬编码で古い版号が残っていた — package.json を唯一の正とする */}
-      <div className="sidebar-footer">console v{pkg.version} · local-first</div>
+      <div className={`sidebar-footer ${status}`} title={detail}>
+        <span className="dot" />
+        {t(`topbar.${status === 'ok' ? 'connected' : status === 'down' ? 'disconnected' : 'checking'}`)}
+      </div>
     </aside>
   );
 }

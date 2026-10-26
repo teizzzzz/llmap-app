@@ -1,222 +1,154 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, getRecords } from '../api/client';
-import type { Dataset, RecordsQuery, RecordsResponse } from '../api/types';
-import {
-  DatasetAlbumGrid, DatasetPhotoGrid,
-} from '../components/database/DatasetAlbums';
+import type { RecordsQuery, RecordsResponse } from '../api/types';
 import ImportDatasetDialog from '../components/database/ImportDatasetDialog';
 import RecordDetailPanel from '../components/database/RecordDetailPanel';
 import RecordsFilters from '../components/database/RecordsFilters';
+import RecordsMasonry, { ThumbSlider, useThumbSize } from '../components/database/RecordsMasonry';
 import RecordsTable from '../components/database/RecordsTable';
 import useFilterOptions from '../hooks/useFilterOptions';
+import useSharedFilters, { hasAnyFilter } from '../hooks/useSharedFilters';
 import { languageFilterValues } from '../lib/languageList';
 
-const PAGE_SIZES = [25, 50, 100];
+const PAGE_SIZE = 50;
 
 export default function DatabasePage() {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<RecordsQuery>({});
+  const navigate = useNavigate();
+  const { filters, patch, clear } = useSharedFilters();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
   const [data, setData] = useState<RecordsResponse | null>(null);
+  const [albumTotal, setAlbumTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-
   const [importing, setImporting] = useState(false);
-  // 表示モード: 表格 / データセット相册（Step 17）。
-  const [view, setView] = useState<'table' | 'albums'>('table');
-  const [openAlbum, setOpenAlbum] = useState<Dataset | null>(null);
+  const [view, setView] = useState<'table' | 'album'>(() => {
+    try { return localStorage.getItem('llmap.dbView') === 'album' ? 'album' : 'table'; } catch { return 'table'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('llmap.dbView', view); } catch { /* 保存できなくても表示は切替わる */ }
+  }, [view]);
+  const [thumb, setThumb] = useThumbSize();
 
-  // 筛选肢の元データ（Map ページと共用の hook）。
   const { schema, datasets, areas, collectors, fieldStats,
     refresh: fetchOptions } = useFilterOptions();
 
-  // Map の popup「Open in Database」からの遷移: ?record=<id> を選択状態に反映。
+  // Map の popup「在数据库中打开」からの遷移: ?record=<id> を選択状態に反映。
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const rid = searchParams.get('record');
+    const v = searchParams.get('view');
+    if (v === 'table' || v === 'album') setView(v);
     if (rid) {
       setSelectedId(Number(rid));
-      setSearchParams({}, { replace: true }); // 一度反映したら URL を掃除
+      setView('table');
     }
+    if (rid || v) setSearchParams({}, { replace: true }); // 一度反映したら URL を掃除
   }, [searchParams, setSearchParams]);
 
   const fetchRecords = useCallback(() => {
+    if (view !== 'table') return;
     setLoading(true);
     setError(null);
-    getRecords({ ...filters, page, pageSize })
+    getRecords({ ...filters, page, pageSize: PAGE_SIZE })
       .then(setData)
-      .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.message : String(e)))
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
       .finally(() => setLoading(false));
-  }, [filters, page, pageSize]);
-
+  }, [filters, page, view]);
   useEffect(fetchRecords, [fetchRecords]);
 
   // 筛选変更は必ず 1 ページ目へ戻す。
-  const patchFilters = useCallback((patch: Partial<RecordsQuery>) => {
-    setFilters((f) => ({ ...f, ...patch }));
+  const patchFilters = useCallback((p: Partial<RecordsQuery>) => {
+    patch(p);
     setPage(1);
-  }, []);
+  }, [patch]);
 
-  const hasFilters = useMemo(
-    () => Object.values(filters).some((v) => v !== undefined && v !== ''),
-    [filters],
-  );
-
-  const total = data?.total ?? null;
-  const from = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0;
-  const to = data ? Math.min(data.page * data.pageSize, data.total) : 0;
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const total = view === 'table' ? data?.total ?? null : albumTotal;
 
   return (
     <>
-      <div className="page-header page-header-row">
-        <div>
-          <h1>{t('database.title')}</h1>
-          <p>{t('database.subtitle')}</p>
+      <div className="page-head">
+        <h1>{t('database.title')}<span className="page-count">{total ?? ''}</span></h1>
+        <div className="page-actions">
+          <div className="seg">
+            <button type="button" className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}>
+              {t('database.viewTable')}
+            </button>
+            <button type="button" className={view === 'album' ? 'on' : ''} onClick={() => setView('album')}>
+              {t('database.viewAlbum')}
+            </button>
+          </div>
+          <button className="btn" onClick={() => setImporting(true)}>{t('database.import')}</button>
+          <button className="btn primary" onClick={() => navigate('/export')}>
+            {t('database.exportFiltered')} <span aria-hidden="true">→</span>
+          </button>
         </div>
-        <button className="btn primary" onClick={() => setImporting(true)}>
-          ⇪ {t('database.import')}
-        </button>
-      </div>
-
-      {/* 視図切替（表格 / 相册） */}
-      <div className="review-tabs">
-        <button
-          className={`chip${view === 'table' ? ' on' : ''}`}
-          onClick={() => { setView('table'); setOpenAlbum(null); }}
-        >
-          {t('database.viewTable')}
-        </button>
-        <button
-          className={`chip${view === 'albums' ? ' on' : ''}`}
-          onClick={() => setView('albums')}
-        >
-          {t('database.viewAlbums')}
-        </button>
       </div>
 
       {importing && (
         <ImportDatasetDialog
           onClose={() => setImporting(false)}
-          onImported={() => {
-            fetchRecords(); // 表格
-            fetchOptions(); // datasets / 地区・採集者の筛选肢（Dashboard は次回表示時に反映）
-          }}
+          onImported={() => { fetchRecords(); fetchOptions(); }}
         />
       )}
 
-      {view === 'albums' && (
-        openAlbum ? (
-          <DatasetPhotoGrid
-            dataset={openAlbum}
-            onBack={() => setOpenAlbum(null)}
-            onOpenInTable={() => {
-              patchFilters({ datasetIds: [openAlbum.id] });
-              setOpenAlbum(null);
-              setView('table');
-            }}
-          />
-        ) : (
-          <DatasetAlbumGrid datasets={datasets} onOpen={setOpenAlbum} />
-        )
-      )}
-
-      {view === 'table' && (
-      <>
       <RecordsFilters
         value={filters}
         options={{
           languages: languageFilterValues(schema?.enums['主要言語']),
-          areas,
-          collectors,
-          datasets,
+          areas, collectors, datasets,
         }}
         schemaEnums={schema?.enums}
         fieldPresence={fieldStats}
         total={total}
         onChange={patchFilters}
-        onClear={() => {
-          setFilters({});
-          setPage(1);
-        }}
-        onRefresh={fetchRecords}
+        onClear={() => { clear(); setPage(1); }}
+        trailing={view === 'album' ? <ThumbSlider value={thumb} onChange={setThumb} /> : null}
       />
 
-      <div className="db-main">
-        <div className="table-wrap">
-          {error && (
-            <div className="error-box">
-              <strong>{t('database.loadError')}</strong>
-              <div className="hint">{error}</div>
-            </div>
-          )}
-          {!error && loading && <div className="card muted">{t('database.loading')}</div>}
-          {!error && !loading && data && data.items.length === 0 && (
-            <div className="placeholder">
-              {hasFilters ? (
-                <p>{t('database.noMatch')}</p>
-              ) : (
-                <p>{t('database.empty', { button: t('database.import') })}</p>
-              )}
-            </div>
-          )}
-          {!error && data && data.items.length > 0 && (
-            <>
-              <div className="card table-card">
-                <RecordsTable
-                  items={data.items}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
+      {view === 'album' && (
+        <RecordsMasonry filters={filters} thumb={thumb} onThumb={setThumb} onTotal={setAlbumTotal} />
+      )}
+
+      {view === 'table' && (
+        <div className="db-main">
+          <div className="table-wrap">
+            {error && (
+              <div className="error-box">
+                <strong>{t('database.loadError')}</strong>
+                <div className="hint">{error}</div>
               </div>
-              <div className="pagination">
-                <button className="btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                  {t('database.prev')}
-                </button>
-                <span className="muted">
-                  {t('database.range', { from, to, total: data.total })}
-                </span>
-                <button
-                  className="btn"
-                  disabled={page >= lastPage}
-                  onClick={() => setPage(page + 1)}
-                >
-                  {t('database.next')}
-                </button>
-                <span className="spacer" />
-                <label className="filter-field">
-                  <span>{t('database.pageSize')}</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setPage(1);
-                    }}
-                  >
-                    {PAGE_SIZES.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </label>
+            )}
+            {!error && loading && !data && <div className="muted">{t('database.loading')}</div>}
+            {!error && !loading && data && data.items.length === 0 && (
+              <div className="placeholder">
+                <p>{hasAnyFilter(filters)
+                  ? t('database.noMatch')
+                  : t('database.empty', { button: t('database.import') })}</p>
               </div>
-            </>
+            )}
+            {!error && data && data.items.length > 0 && (
+              <>
+                <RecordsTable items={data.items} selectedId={selectedId} onSelect={setSelectedId} />
+                {lastPage > 1 && (
+                  <div className="pagination">
+                    <button className="btn ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>←</button>
+                    <span className="mono">{page} / {lastPage}</span>
+                    <button className="btn ghost" disabled={page >= lastPage} onClick={() => setPage(page + 1)}>→</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {selectedId != null && (
+            <RecordDetailPanel recordId={selectedId} schema={schema} onSaved={fetchRecords} />
           )}
         </div>
-
-        {selectedId != null && (
-          <RecordDetailPanel
-            recordId={selectedId}
-            schema={schema}
-            onSaved={fetchRecords}
-          />
-        )}
-      </div>
-      </>
       )}
     </>
   );

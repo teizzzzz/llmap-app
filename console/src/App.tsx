@@ -1,4 +1,5 @@
 import { HashRouter, Route, Routes } from 'react-router-dom';
+import { SharedFiltersProvider } from './hooks/useSharedFilters';
 import AppLayout from './layout/AppLayout';
 import AiProcessingPage from './pages/AiProcessingPage';
 import DashboardPage from './pages/DashboardPage';
@@ -12,6 +13,7 @@ import SettingsPage from './pages/SettingsPage';
 export default function App() {
   return (
     <HashRouter>
+      <SharedFiltersProvider>
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
@@ -23,6 +25,7 @@ export default function App() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
+      </SharedFiltersProvider>
     </HashRouter>
   );
 }

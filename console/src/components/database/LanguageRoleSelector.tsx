@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { enumLabel } from '../../lib/enumLabels';
+import { langCode, langColor } from '../../lib/langColors';
 import {
   displayName, searchLanguages, UNKNOWN_LANGUAGE,
   type LanguageEntry,
@@ -112,7 +113,7 @@ export default function LanguageRoleSelector({
     label: string,
     on: boolean,
     onClick: () => void,
-    extra?: { title?: string; removable?: boolean; dashed?: boolean },
+    extra?: { title?: string; removable?: boolean; dashed?: boolean; color?: string },
   ) => (
     <button
       key={key}
@@ -124,7 +125,7 @@ export default function LanguageRoleSelector({
       title={extra?.title}
       onClick={onClick}
     >
-      {on && <span aria-hidden="true">✓ </span>}
+      {extra?.color && <i className="sw" style={{ background: extra.color }} />}
       {label}
       {extra?.removable && <span className="lang-sel-x" aria-hidden="true"> ✕</span>}
     </button>
@@ -134,7 +135,8 @@ export default function LanguageRoleSelector({
     <div className="lang-sel">
       <div className="chip-row" role="group" aria-label={t(`fields.${field}`, { defaultValue: field })}>
         {shownPresets.map((p) =>
-          chip(p, enumLabel(t, p), !isNone && tokens.includes(p), () => toggleToken(p)))}
+          chip(p, enumLabel(t, p), !isNone && tokens.includes(p), () => toggleToken(p),
+            langCode(p) !== 'other' ? { color: langColor(p) } : undefined))}
         {customTokens.map((tk) =>
           chip(tk, enumLabel(t, tk), true, () => toggleToken(tk),
             { title: t('langSel.remove'), removable: true }))}

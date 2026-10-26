@@ -1,36 +1,33 @@
 import { useTranslation } from 'react-i18next';
 
-const COLORS: Record<string, string> = {
-  // EntryMode
-  quick: '#b8860b',
-  standard: '#2563eb',
-  research: '#7c3aed',
+// 状態値 → 見た目の種類（色は CSS 側。荧光は「要対応」の needs_review だけ）。
+const KIND: Record<string, string> = {
   // DataStatus
-  raw: '#6f6a61',
-  submitted: '#2563eb',
-  ai_drafted: '#b8860b',
-  reviewed: '#1e9e6a',
-  verified: '#0f766e',
-  needs_review: '#d97706',
-  rejected: '#c0392b',
+  reviewed: 'outline',
+  verified: 'solid',
+  needs_review: 'lime',
+  rejected: 'danger',
+  ai_drafted: 'dashed',
+  raw: 'faint',
+  submitted: 'faint',
   // _status (legacy)
-  pending: '#6f6a61',
-  ai: '#b8860b',
-  'human-reviewed': '#1e9e6a',
-  final: '#0f766e',
+  'human-reviewed': 'outline',
+  final: 'solid',
+  ai: 'dashed',
+  pending: 'faint',
+  // EntryMode
+  quick: 'mode',
+  standard: 'mode',
+  research: 'mode',
 };
 
 /** EntryMode / DataStatus / _status の小さな badge。
-    表示ラベルのみ翻訳し、内部値・色分けキーはそのまま。未知値は原文表示。 */
+    表示ラベルのみ翻訳し、内部値はそのまま。未知値は原文表示。 */
 export default function StatusBadge({ value }: { value: string }) {
   const { t } = useTranslation();
   const v = value || 'unknown';
-  const c = COLORS[v] ?? '#6f6a61';
   return (
-    <span
-      className="badge"
-      style={{ color: c, borderColor: `${c}55`, background: `${c}14` }}
-    >
+    <span className={`badge ${KIND[v] ?? 'faint'}`}>
       {t(`status.${v}`, { defaultValue: v })}
     </span>
   );

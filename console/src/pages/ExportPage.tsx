@@ -6,22 +6,11 @@ import {
   previewPhotosExport, startPackageExport, startPhotosExport,
   startPhotosSplitExport,
 } from '../api/client';
-import type {
-  AppConfig, ExportJobStatus, PhotosExportPreview, RecordsQuery,
-} from '../api/types';
+import type { AppConfig, ExportJobStatus, PhotosExportPreview } from '../api/types';
 import RecordsFilters from '../components/database/RecordsFilters';
 import useFilterOptions from '../hooks/useFilterOptions';
-import { enumLabel } from '../lib/enumLabels';
+import useSharedFilters from '../hooks/useSharedFilters';
 import { languageFilterValues } from '../lib/languageList';
-
-/** 快速筛选プリセット。patch の状態値は内部値のまま（表示のみ翻訳）。 */
-const QUICK_FILTERS: { labelKey: string; patch: RecordsQuery }[] = [
-  { labelKey: 'export.quickAll', patch: {} },
-  { labelKey: 'export.quickReviewed', patch: { dataStatus: 'reviewed' } },
-  { labelKey: 'export.quickVerified', patch: { dataStatus: 'verified' } },
-  { labelKey: 'export.quickGps', patch: { hasGps: true } },
-  { labelKey: 'export.quickPhotos', patch: { hasPhoto: true } },
-];
 
 // 写真 ZIP の字段別分包に出す枚挙字段（定義表のグループ順）。
 const SPLIT_FIELDS = [
@@ -29,6 +18,9 @@ const SPLIT_FIELDS = [
   '担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き',
   '設置主体', 'ディスコース類型', '製作品質',
 ];
+
+type Format = 'photos' | 'package' | 'csv' | 'geojson';
+const FORMATS: Format[] = ['photos', 'package', 'csv', 'geojson'];
 
 // 导出ファイル名（データ側の規約なので言語によらず固定）。
 const stamp = () => {
@@ -99,47 +91,60 @@ function useExportJob() {
   return { job, starting, error, start, cancel };
 }
 
+/** 選択肢の小さな縦組み（ラベル＋ select）。 */
+function Option({ label, value, options, onChange }: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="opt">
+      <span>{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
 export default function ExportPage() {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<RecordsQuery>({});
+  const { filters, patch, clear } = useSharedFilters();
   const [total, setTotal] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [done, setDone] = useState<string | null>(null); // CSV 保存ファイル名
-  const [exportError, setExportError] = useState<string | null>(null);
+  const [format, setFormat] = useState<Format>('photos');
   const [geoProps, setGeoProps] = useState<'minimal' | 'full'>('minimal');
-  const [photosContent, setPhotosContent] =
-    useState<'crop' | 'source' | 'both'>('both');
-  const [photosNaming, setPhotosNaming] =
-    useState<'signid' | 'displayid' | 'original'>('original');
+  const [photosContent, setPhotosContent] = useState<'crop' | 'source' | 'both'>('both');
+  const [photosNaming, setPhotosNaming] = useState<'signid' | 'displayid' | 'original'>('original');
   // 字段別分包（'' = 分包しない = 1 本の zip）。
   const [photosSplitField, setPhotosSplitField] = useState('');
   // 導出先の一時指定（空 = 設定の既定目录）。設定自体は変更しない。
   const [outputDir, setOutputDir] = useState('');
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  const [photosPreview, setPhotosPreview] =
-    useState<PhotosExportPreview | null>(null);
+  const [preview, setPreview] = useState<PhotosExportPreview | null>(null);
+  // 同期型（CSV / GeoJSON）の結果。
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncDone, setSyncDone] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const options = useFilterOptions();
   const packageJob = useExportJob();
   const photosJob = useExportJob();
 
-  useEffect(() => {
-    getConfig().then(setCfg).catch(() => {});
-  }, []);
+  useEffect(() => { getConfig().then(setCfg).catch(() => {}); }, []);
 
   // 写真 ZIP の事前集計（筛选条件・内容選択に追従）。
-  // 「筛选したのに全部出ている？」の誤解を防ぐため、内訳を常時表示する。
   useEffect(() => {
     let stale = false;
-    setPhotosPreview(null);
+    setPreview(null);
     previewPhotosExport(filters, photosContent)
-      .then((p) => { if (!stale) setPhotosPreview(p); })
-      .catch(() => { if (!stale) setPhotosPreview(null); });
+      .then((p) => { if (!stale) setPreview(p); })
+      .catch(() => { if (!stale) setPreview(null); });
     return () => { stale = true; };
   }, [filters, photosContent]);
 
-  // 筛选後の件数（导出摘要）。pageSize=1 で total だけ取得する。
-  const fetchTotal = useCallback(() => {
+  // 筛选後の件数。pageSize=1 で total だけ取得する。
+  useEffect(() => {
     setCountError(null);
     getRecords({ ...filters, page: 1, pageSize: 1 })
       .then((r) => setTotal(r.total))
@@ -148,204 +153,51 @@ export default function ExportPage() {
         setCountError(e instanceof ApiError ? e.message : String(e));
       });
   }, [filters]);
-  useEffect(fetchTotal, [fetchTotal]);
+  useEffect(() => { setSyncDone(null); setSyncError(null); }, [filters, format]);
 
-  const patchFilters = useCallback((patch: Partial<RecordsQuery>) => {
-    setDone(null);
-    setFilters((f) => ({ ...f, ...patch }));
-  }, []);
+  const dir = outputDir.trim() || undefined;
+  const job = format === 'photos' ? photosJob : format === 'package' ? packageJob : null;
+  const running = !!job && (job.starting || job.job?.status === 'running');
 
-  /** 適用中の筛选条件を chip 化する（クリックでその条件だけ解除）。
-      導出前に「何を筛选して出すのか」を一覧で確認できるようにする。 */
-  const filterChips = (): { key: string; label: string; remove: Partial<RecordsQuery> }[] => {
-    const chips: { key: string; label: string; remove: Partial<RecordsQuery> }[] = [];
-    const yn = (v: boolean) => t(v ? 'common.yes' : 'common.no');
-    if (filters.q) {
-      chips.push({ key: 'q', label: `${t('export.chipKeyword')}: ${filters.q}`,
-        remove: { q: undefined } });
+  const run = async () => {
+    if (format === 'photos') {
+      void photosJob.start(() => photosSplitField
+        ? startPhotosSplitExport(filters, photosContent, photosNaming, photosSplitField, dir)
+        : startPhotosExport(filters, photosContent, photosNaming, dir));
+      return;
     }
-    if (filters.mainLanguage) {
-      chips.push({ key: 'lang',
-        label: `${t('filters.language')}: ${enumLabel(t, filters.mainLanguage)}`,
-        remove: { mainLanguage: undefined } });
+    if (format === 'package') {
+      void packageJob.start(() => startPackageExport(filters, dir));
+      return;
     }
-    if (filters.areaCode) {
-      chips.push({ key: 'area', label: `${t('filters.area')}: ${filters.areaCode}`,
-        remove: { areaCode: undefined } });
-    }
-    if (filters.collectorId) {
-      chips.push({ key: 'collector',
-        label: `${t('filters.collector')}: ${filters.collectorId}`,
-        remove: { collectorId: undefined } });
-    }
-    if (filters.entryMode) {
-      chips.push({ key: 'mode',
-        label: `${t('filters.mode')}: ${t(`status.${filters.entryMode}`, { defaultValue: filters.entryMode })}`,
-        remove: { entryMode: undefined } });
-    }
-    if (filters.dataStatus) {
-      chips.push({ key: 'status',
-        label: `${t('filters.status')}: ${t(`status.${filters.dataStatus}`, { defaultValue: filters.dataStatus })}`,
-        remove: { dataStatus: undefined } });
-    }
-    const dsIds = filters.datasetIds
-      ?? (filters.datasetId != null ? [filters.datasetId] : []);
-    for (const id of dsIds) {
-      const ds = options.datasets.find((d) => d.id === id);
-      const rest = dsIds.filter((x) => x !== id);
-      chips.push({ key: `ds-${id}`,
-        label: `${t('filters.dataset')}: #${id}${ds ? ` ${ds.name}` : ''}`,
-        remove: { datasetIds: rest.length ? rest : undefined, datasetId: undefined } });
-    }
-    if (filters.hasGps !== undefined) {
-      chips.push({ key: 'gps', label: `${t('filters.gps')}: ${yn(filters.hasGps)}`,
-        remove: { hasGps: undefined } });
-    }
-    if (filters.hasPhoto !== undefined) {
-      chips.push({ key: 'photo', label: `${t('filters.photo')}: ${yn(filters.hasPhoto)}`,
-        remove: { hasPhoto: undefined } });
-    }
-    if (filters.hasSourcePhoto !== undefined) {
-      chips.push({ key: 'source',
-        label: `${t('filters.source')}: ${yn(filters.hasSourcePhoto)}`,
-        remove: { hasSourcePhoto: undefined } });
-    }
-    if (filters.dateFrom) {
-      chips.push({ key: 'from', label: `${t('filters.from')}: ${filters.dateFrom}`,
-        remove: { dateFrom: undefined } });
-    }
-    if (filters.dateTo) {
-      chips.push({ key: 'to', label: `${t('filters.to')}: ${filters.dateTo}`,
-        remove: { dateTo: undefined } });
-    }
-    for (const [k, v] of Object.entries(filters.fields ?? {})) {
-      const rest = { ...(filters.fields ?? {}) };
-      delete rest[k];
-      chips.push({ key: `f-${k}`,
-        label: `${t(`fields.${k}`, { defaultValue: k })}: ${enumLabel(t, v)}`,
-        remove: { fields: Object.keys(rest).length ? rest : undefined } });
-    }
-    return chips;
-  };
-
-  const doExportCsv = async () => {
-    setExporting(true);
-    setExportError(null);
-    setDone(null);
+    setSyncBusy(true);
+    setSyncDone(null);
+    setSyncError(null);
     try {
-      const blob = await exportRecordsCsv(filters);
-      const name = `llmap_export_${stamp()}.csv`;
+      const name = `llmap_export_${stamp()}.${format === 'csv' ? 'csv' : 'geojson'}`;
+      const blob = format === 'csv'
+        ? await exportRecordsCsv(filters)
+        : await exportGeoJson(filters, geoProps);
       saveBlob(blob, name);
-      setDone(name);
+      setSyncDone(name);
     } catch (e: unknown) {
-      setExportError(e instanceof ApiError ? e.message : String(e));
+      setSyncError(e instanceof ApiError ? e.message : String(e));
     } finally {
-      setExporting(false);
+      setSyncBusy(false);
     }
   };
 
-  const doExportGeoJson = async () => {
-    setExportError(null);
-    try {
-      const blob = await exportGeoJson(filters, geoProps);
-      saveBlob(blob, `llmap_export_${stamp()}.geojson`);
-    } catch (e: unknown) {
-      setExportError(e instanceof ApiError ? e.message : String(e));
-    }
-  };
-
-  /** ジョブの進捗・結果表示（Dataset Package / 写真 ZIP 共通）。 */
-  const jobStatus = (jc: ReturnType<typeof useExportJob>) => (
-    <>
-      {jc.error && (
-        <div className="error-box" style={{ marginTop: 8 }}>
-          <div className="hint">{jc.error}</div>
-        </div>
-      )}
-      {jc.job?.status === 'running' && (
-        <div className="muted" style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>{t('export.progress', { done: jc.job.done, total: jc.job.total })}</span>
-          <button className="btn" onClick={jc.cancel}>{t('common.cancel')}</button>
-        </div>
-      )}
-      {jc.job?.status === 'done' && (
-        <div className="ok-box" style={{ marginTop: 8 }}>
-          {t('export.jobDone', {
-            name: jc.job.fileName, size: fmtSize(jc.job.sizeBytes),
-          })}
-          {/* 分包ジョブは目录に複数 zip を生成 → 単一下载リンクは出さない */}
-          {jc.job.kind === 'photos_split' ? (
-            <> {t('export.splitZips', { n: jc.job.report?.zipCount ?? 0 })}</>
-          ) : (
-            <>
-              {' '}
-              <a className="btn" href={exportJobDownloadUrl(jc.job.id)}>
-                {t('export.download')}
-              </a>
-            </>
-          )}
-          {/* zip はこのパスに既に生成済み（導出目录設定の可視化）。
-              桌面版なら再ダウンロード不要でそのまま開ける。 */}
-          {jc.job.path && (
-            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              {t('export.savedTo')}: <code>{jc.job.path}</code>
-            </div>
-          )}
-        </div>
-      )}
-      {jc.job?.status === 'cancelled' && (
-        <div className="muted" style={{ marginTop: 8 }}>{t('export.jobCancelled')}</div>
-      )}
-      {jc.job?.status === 'error' && (
-        <div className="error-box" style={{ marginTop: 8 }}>
-          <strong>{t('export.failed')}</strong>
-          <div className="hint">{jc.job.error}</div>
-        </div>
-      )}
-    </>
-  );
-
-  const sel = (
-    label: string,
-    value: string,
-    opts: { value: string; label: string }[],
-    onChange: (v: string) => void,
-  ) => (
-    <label className="filter-field">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        {opts.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </label>
-  );
+  const splitOptions = [
+    { value: '', label: t('export.splitNone') },
+    ...SPLIT_FIELDS
+      .filter((k) => options.schema?.enums[k]?.length && (options.fieldStats?.[k] ?? 1) > 0)
+      .map((k) => ({ value: k, label: t(`fields.${k}`, { defaultValue: k }) })),
+  ];
 
   return (
     <>
-      <div className="page-header">
-        <h1>{t('export.title')}</h1>
-        <p>{t('export.subtitle')}</p>
-      </div>
-
-      <div className="card" style={{ marginBottom: 14 }}>
-        <p style={{ margin: 0 }} className="muted">{t('export.csvNote')}</p>
-      </div>
-
-      {/* 快速筛选 */}
-      <div className="review-tabs">
-        {QUICK_FILTERS.map((qf) => (
-          <button
-            key={qf.labelKey}
-            className="chip"
-            onClick={() => {
-              setDone(null);
-              setFilters(qf.patch);
-            }}
-          >
-            {t(qf.labelKey)}
-          </button>
-        ))}
+      <div className="page-head">
+        <h1>{t('export.title')}<span className="page-count">{total ?? ''}</span></h1>
       </div>
 
       <RecordsFilters
@@ -359,227 +211,127 @@ export default function ExportPage() {
         schemaEnums={options.schema?.enums}
         fieldPresence={options.fieldStats}
         total={total}
-        onChange={patchFilters}
-        onClear={() => {
-          setDone(null);
-          setFilters({});
-        }}
-        onRefresh={fetchTotal}
+        onChange={patch}
+        onClear={clear}
       />
 
       {countError && (
-        <div className="error-box" style={{ marginBottom: 14 }}>
+        <div className="error-box">
           <strong>{t('export.countError')}</strong>
           <div className="hint">{countError}</div>
         </div>
       )}
 
-      {/* 適用中の筛选条件（chip 化。クリックでその条件だけ解除） */}
-      {filterChips().length > 0 && (
-        <div
-          className="card"
-          style={{
-            display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
-            marginBottom: 14, paddingTop: 10, paddingBottom: 10,
-          }}
-        >
-          <span className="muted" style={{ fontSize: 12 }}>
-            {t('export.activeFilters')}
-          </span>
-          {filterChips().map((c) => (
-            <button
-              key={c.key}
-              className="chip"
-              title={t('export.removeFilter')}
-              onClick={() => patchFilters(c.remove)}
-            >
-              {c.label} ×
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="steps">
+        {/* 01 範囲: 筛选結果の内訳 */}
+        <section className="step">
+          <header><b>01</b><h2>{t('export.stepScope')}</h2></header>
+          <div className="step-big">{total ?? '—'}</div>
+          {preview && (
+            <>
+              <div className="dash-row"><span>{t('export.cropFiles')}</span><span className="mono">{preview.cropFiles}</span></div>
+              <div className="dash-row"><span>{t('export.sourceFiles')}</span><span className="mono">{preview.sourceFiles}</span></div>
+              <div className={`dash-row${preview.missingCount ? '' : ' muted'}`}>
+                <span>{t('export.missingFiles')}</span><span className="mono">{preview.missingCount}</span>
+              </div>
+            </>
+          )}
+        </section>
 
-      {/* 导出摘要（CSV 直下载） */}
-      <div className="card export-summary">
-        <div>
-          <div className="label muted">{t('export.matching')}</div>
-          <div className="value">{total != null ? total : '—'}</div>
-        </div>
-        <button
-          className="btn primary"
-          disabled={exporting || total === 0 || total == null}
-          onClick={doExportCsv}
-        >
-          {exporting ? t('export.exporting') : t('export.exportCsv')}
-        </button>
-      </div>
-
-      {done && (
-        <div className="ok-box">
-          {t('export.exportedAs')} <span className="mono">{done}</span>{' '}
-          {t('export.exportedCount', { n: total })}
-        </div>
-      )}
-      {exportError && (
-        <div className="error-box" style={{ marginTop: 10 }}>
-          <strong>{t('export.failed')}</strong>
-          <div className="hint">{exportError}</div>
-        </div>
-      )}
-
-      {/* フォーマット別の導出カード */}
-      <h3 className="detail-section" style={{ marginTop: 22 }}>{t('export.formats')}</h3>
-
-      {/* 導出先（Dataset Package / 写真 ZIP 共通の一時指定。設定は変更しない） */}
-      <div
-        className="card"
-        style={{
-          display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
-          marginBottom: 14, paddingTop: 10, paddingBottom: 10,
-        }}
-      >
-        <label className="filter-field" style={{ flex: '1 1 340px' }}>
-          <span>{t('export.outputDir')}</span>
-          <input
-            type="text"
-            value={outputDir}
-            placeholder={cfg?.effectiveExportDir ?? ''}
-            onChange={(e) => setOutputDir(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </label>
-        <span className="muted" style={{ fontSize: 12, paddingBottom: 8 }}>
-          {t('export.outputDirHint')}
-        </span>
-      </div>
-
-      <div className="format-grid">
-        {/* Dataset Package（ジョブ式・進捗つき） */}
-        <div className="card format-card">
-          <div className="format-head">
-            <strong>{t('export.formatDatasetTitle')}</strong>
-            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
-              {t('export.available')}
-            </span>
+        {/* 02 格式 */}
+        <section className="step">
+          <header><b>02</b><h2>{t('export.stepFormat')}</h2></header>
+          <div className="formats" role="radiogroup">
+            {FORMATS.map((f) => (
+              <button key={f} type="button" role="radio" aria-checked={format === f}
+                className={`format${format === f ? ' on' : ''}`} onClick={() => setFormat(f)}>
+                <i />{t(`export.format.${f}`)}
+              </button>
+            ))}
           </div>
-          <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
-            {t('export.formatDatasetDesc')}
-          </p>
-          <button
-            className="btn primary"
-            disabled={packageJob.starting || packageJob.job?.status === 'running' || !total}
-            onClick={() => packageJob.start(
-              () => startPackageExport(filters, outputDir.trim() || undefined))}
-          >
-            {t('export.start')}
-          </button>
-          {jobStatus(packageJob)}
-        </div>
+        </section>
 
-        {/* GeoJSON（同期下载） */}
-        <div className="card format-card">
-          <div className="format-head">
-            <strong>{t('export.formatGeojsonTitle')}</strong>
-            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
-              {t('export.available')}
-            </span>
-          </div>
-          <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
-            {t('export.formatGeojsonDesc')} {t('export.geojsonNote')}
-          </p>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            {sel(t('export.propsLabel'), geoProps, [
+        {/* 03 選項（形式ごと） */}
+        <section className="step">
+          <header><b>03</b><h2>{t('export.stepOptions')}</h2></header>
+          {format === 'photos' && (
+            <>
+              <Option label={t('export.contentLabel')} value={photosContent} options={[
+                { value: 'both', label: t('export.contentBoth') },
+                { value: 'crop', label: t('export.contentCrop') },
+                { value: 'source', label: t('export.contentSource') },
+              ]} onChange={(v) => setPhotosContent(v as typeof photosContent)} />
+              <Option label={t('export.namingLabel')} value={photosNaming} options={[
+                { value: 'original', label: t('export.namingOriginal') },
+                { value: 'signid', label: t('export.namingSignId') },
+                { value: 'displayid', label: t('export.namingDisplayId') },
+              ]} onChange={(v) => setPhotosNaming(v as typeof photosNaming)} />
+              <Option label={t('export.splitLabel')} value={photosSplitField}
+                options={splitOptions} onChange={setPhotosSplitField} />
+            </>
+          )}
+          {format === 'geojson' && (
+            <Option label={t('export.propsLabel')} value={geoProps} options={[
               { value: 'minimal', label: t('export.propsMinimal') },
               { value: 'full', label: t('export.propsFull') },
-            ], (v) => setGeoProps(v as 'minimal' | 'full'))}
-            <button className="btn primary" disabled={!total} onClick={doExportGeoJson}>
-              {t('export.start')}
-            </button>
-          </div>
-        </div>
-
-        {/* 写真 ZIP（ジョブ式・進捗つき） */}
-        <div className="card format-card">
-          <div className="format-head">
-            <strong>{t('export.formatPhotosTitle')}</strong>
-            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
-              {t('export.available')}
-            </span>
-          </div>
-          <p className="muted" style={{ margin: '6px 0 8px', fontSize: 12.5 }}>
-            {t('export.formatPhotosDesc')} {t('export.dedupNote')}
-          </p>
-          {/* 事前集計: 現在の筛选で実際に何枚出るか（誤解防止） */}
-          {photosPreview && (
-            <p style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 600 }}>
-              {t('export.photosPreview', {
-                records: photosPreview.recordCount,
-                total: photosPreview.totalFiles,
-                crop: photosPreview.cropFiles,
-                source: photosPreview.sourceFiles,
-                missing: photosPreview.missingCount,
-              })}
-            </p>
+            ]} onChange={(v) => setGeoProps(v as 'minimal' | 'full')} />
           )}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            {sel(t('export.contentLabel'), photosContent, [
-              { value: 'both', label: t('export.contentBoth') },
-              { value: 'crop', label: t('export.contentCrop') },
-              { value: 'source', label: t('export.contentSource') },
-            ], (v) => setPhotosContent(v as typeof photosContent))}
-            {sel(t('export.namingLabel'), photosNaming, [
-              { value: 'original', label: t('export.namingOriginal') },
-              { value: 'signid', label: t('export.namingSignId') },
-              { value: 'displayid', label: t('export.namingDisplayId') },
-            ], (v) => setPhotosNaming(v as typeof photosNaming))}
-            {/* 字段別分包: 値ごとに <字段slug>_<値slug>.zip を生成 */}
-            {sel(t('export.splitLabel'), photosSplitField, [
-              { value: '', label: t('export.splitNone') },
-              ...SPLIT_FIELDS
-                .filter((k) => options.schema?.enums[k]?.length
-                  && (options.fieldStats?.[k] ?? 1) > 0)
-                .map((k) => ({
-                  value: k, label: t(`fields.${k}`, { defaultValue: k }),
-                })),
-            ], setPhotosSplitField)}
-            <button
-              className="btn primary"
-              disabled={photosJob.starting || photosJob.job?.status === 'running' || !total}
-              onClick={() => photosJob.start(
-                () => photosSplitField
-                  ? startPhotosSplitExport(
-                      filters, photosContent, photosNaming, photosSplitField,
-                      outputDir.trim() || undefined)
-                  : startPhotosExport(
-                      filters, photosContent, photosNaming,
-                      outputDir.trim() || undefined))}
-            >
-              {t('export.start')}
-            </button>
-          </div>
-          {photosSplitField && (
-            <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
-              {t('export.splitHint', {
-                field: t(`fields.${photosSplitField}`,
-                  { defaultValue: photosSplitField }),
-              })}
-            </p>
-          )}
-          {jobStatus(photosJob)}
-        </div>
+          {(format === 'csv' || format === 'package') && <div className="muted">—</div>}
+        </section>
 
-        {/* CSV（情報カード。実行は上の摘要から） */}
-        <div className="card format-card">
-          <div className="format-head">
-            <strong>{t('export.formatCsvTitle')}</strong>
-            <span className="badge" style={{ color: '#1e9e6a', borderColor: '#1e9e6a55', background: '#1e9e6a14' }}>
-              {t('export.available')}
-            </span>
-          </div>
-          <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
-            {t('export.formatCsvDesc')}
-          </p>
-        </div>
+        {/* 04 输出 */}
+        <section className="step">
+          <header><b>04</b><h2>{t('export.stepOutput')}</h2></header>
+          {(format === 'photos' || format === 'package') && (
+            <label className="opt">
+              <span>{t('export.outputDir')}</span>
+              <input type="text" value={outputDir} placeholder={cfg?.effectiveExportDir ?? ''}
+                onChange={(e) => setOutputDir(e.target.value)} />
+            </label>
+          )}
+          {format === 'photos' && preview && (
+            <div className="step-sum">
+              <span className="step-big">{preview.totalFiles}</span>
+              <span>{t('export.filesUnit')}</span>
+            </div>
+          )}
+          <span className="spacer-v" />
+          <button className="btn primary wide" disabled={running || syncBusy || !total} onClick={run}>
+            {running || syncBusy ? t('export.exporting') : t('export.start')}
+            <kbd>↵</kbd>
+          </button>
+
+          {job?.error && <div className="error-box"><div className="hint">{job.error}</div></div>}
+          {job?.job?.status === 'running' && (
+            <div className="job-row">
+              <span className="mono">{job.job.done} / {job.job.total}</span>
+              <button className="btn ghost" onClick={job.cancel}>{t('common.cancel')}</button>
+            </div>
+          )}
+          {job?.job?.status === 'done' && (
+            <div className="ok-box">
+              <span className="mono">{job.job.fileName}</span> · {fmtSize(job.job.sizeBytes)}
+              {job.job.kind === 'photos_split'
+                ? <> · {t('export.splitZips', { n: job.job.report?.zipCount ?? 0 })}</>
+                : <> · <a href={exportJobDownloadUrl(job.job.id)}>{t('export.download')}</a></>}
+              {job.job.path && <div className="mono path">{job.job.path}</div>}
+            </div>
+          )}
+          {job?.job?.status === 'cancelled' && <div className="muted">{t('export.jobCancelled')}</div>}
+          {job?.job?.status === 'error' && (
+            <div className="error-box">
+              <strong>{t('export.failed')}</strong>
+              <div className="hint">{job.job.error}</div>
+            </div>
+          )}
+          {syncDone && <div className="ok-box"><span className="mono">{syncDone}</span></div>}
+          {syncError && (
+            <div className="error-box">
+              <strong>{t('export.failed')}</strong>
+              <div className="hint">{syncError}</div>
+            </div>
+          )}
+        </section>
       </div>
     </>
   );

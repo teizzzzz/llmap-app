@@ -187,12 +187,8 @@ export default function AiProcessingPage() {
 
   return (
     <>
-      <div className="page-header">
+      <div className="page-head">
         <h1>{t('ai.title')}</h1>
-        <p>
-          {t('ai.subtitle')}{' '}
-          <span className="muted">{t('ai.note')}</span>
-        </p>
       </div>
 
       {/* v6 の 2 大規則（実装済みの併合動作の説明 — 必須表示） */}

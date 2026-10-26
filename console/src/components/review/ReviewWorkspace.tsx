@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
@@ -11,7 +11,6 @@ import {
 import { groupedResearchFields } from '../../lib/researchFields';
 import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from '../database/FieldEditor';
-import PhotoThumb from '../database/PhotoThumb';
 import StatusBadge from '../database/StatusBadge';
 
 // 只読の元情報。
@@ -46,6 +45,15 @@ export default function ReviewWorkspace({
   // 大画面ビューアの表示対象（裁切図/元写真）。記録が変わったら裁切図に戻す。
   const [view, setView] = useState<'crop' | 'source'>('crop');
   useEffect(() => setView('crop'), [recordId]);
+
+  // 快捷键: 1 已审核→下一条 / 2 已确认 / 3 需复核 / X 拒绝 / Ctrl+S 保存。
+  // 入力中（input・textarea・select）は Ctrl+S 以外を無視する。
+  const keyHandler = useRef<((e: KeyboardEvent) => void) | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => keyHandler.current?.(e);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     setDetail(null);
@@ -104,9 +112,10 @@ export default function ReviewWorkspace({
     }
   };
 
+  keyHandler.current = null; // 読込中・エラー中は旧記録へ誤操作しない
   if (error) {
     return (
-      <div className="card review-workspace">
+      <div className="rv-viewer">
         <div className="error-box">
           <strong>{t('record.loadError')}</strong>
           <div className="hint">{error}</div>
@@ -114,7 +123,7 @@ export default function ReviewWorkspace({
       </div>
     );
   }
-  if (!detail) return <div className="card review-workspace muted">{t('record.loading')}</div>;
+  if (!detail) return <div className="rv-viewer muted">{t('record.loading')}</div>;
 
 
   // 存在しない側を選んでいたら自動で他方へ（写真が片方しか無い記録がある）。
@@ -125,73 +134,78 @@ export default function ReviewWorkspace({
   const mainUrl = photoUrl(
     effView === 'crop' ? detail.photoUrl : detail.sourcePhotoUrl);
 
-  const actionBtn = (a: ReviewActionDef) => (
-    <button
-      key={a.key}
-      className={`btn review-action ${a.kind}`}
-      disabled={busy != null}
-      onClick={() =>
-        patch(actionPayload(a, detail?.data['_status'] ?? ''), a.key, a.leavesQueue)}
-    >
-      {busy === a.key ? t('review.working') : t(a.labelKey)}
+  const run = (a: ReviewActionDef) =>
+    patch(actionPayload(a, detail?.data['_status'] ?? ''), a.key, a.leavesQueue);
+  const act = (key: string) => REVIEW_ACTIONS.find((a) => a.key === key)!;
+  const actionBtn = (key: string, cls: string, hint: string, label?: string) => (
+    <button key={key} className={`btn ${cls}`} disabled={busy != null} onClick={() => run(act(key))}>
+      {busy === key ? t('review.working') : label ?? t(act(key).labelKey)}
+      <kbd>{hint}</kbd>
     </button>
   );
 
+  keyHandler.current = (e) => {
+    if (busy != null || lightbox) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (dirty) void patch({}, 'save', false);
+      return;
+    }
+    const el = e.target as HTMLElement | null;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return;
+    const key = ({ '1': 'reviewed', '2': 'verified', '3': 'needs_review', x: 'rejected' } as Record<string, string>)[e.key.toLowerCase()];
+    if (key) { e.preventDefault(); void run(act(key)); }
+  };
+
   return (
-    <div className="card review-workspace">
-      <div className="review-head">
-        <div>
-          <div className="detail-title">{detail.DisplayID || detail.SignID}</div>
-          <div className="muted mono" style={{ fontSize: 11.5 }}>{detail.SignID}</div>
+    <>
+      <div className="rv-viewer">
+        <div className="rv-id">{detail.DisplayID || detail.SignID}</div>
+        <div
+          className="rv-photo"
+          style={{ cursor: mainUrl ? 'zoom-in' : 'default' }}
+          onClick={() => mainUrl && setLightbox(effView)}
+        >
+          {mainUrl
+            ? <img src={mainUrl} alt={effView} />
+            : <div className="muted">{t('review.noPhoto')}</div>}
+          <span className="crop c1" /><span className="crop c2" />
+          <span className="crop c3" /><span className="crop c4" />
         </div>
-        <div className="detail-badges">
-          <StatusBadge value={current('EntryMode') || detail.EntryMode} />
+        <div className="rv-photo-bar">
+          <div className="seg">
+            <button type="button" className={effView === 'crop' ? 'on' : ''}
+              disabled={!detail.photoUrl} onClick={() => setView('crop')}>
+              {t('record.crop')}
+            </button>
+            <button type="button" className={effView === 'source' ? 'on' : ''}
+              disabled={!detail.sourcePhotoUrl} onClick={() => setView('source')}>
+              {t('record.source')}
+            </button>
+          </div>
+          <span className="spacer" />
           <StatusBadge value={detail.data.DataStatus || detail.DataStatus} />
         </div>
+        <details className="rv-meta">
+          <summary>{t('record.metadata')}</summary>
+          <div className="identity-grid">
+            {META_FIELDS.map((f) => (
+              <div key={f} className="identity-row">
+                <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
+                <span className="v mono">{detail.data[f] || '—'}</span>
+              </div>
+            ))}
+          </div>
+        </details>
       </div>
 
-      <div className="review-columns review-columns--viewer">
-        {/* ── 字段編集（画面右。row-reverse で視覚順はビューアが左）── */}
-        <div className="review-fields">
-          {/* 保存・審核アクションは字段列の最上部に sticky で常時表示
-              （ユーザー要望: ボタンは右側へ。スクロールしても消えない）。 */}
-          <div className="review-actionbar">
-            {actionError && (
-              <div className="error-box" style={{ marginBottom: 6 }}>
-                <strong>{t('review.actionFailed')}</strong>
-                <div className="hint">{actionError}</div>
-              </div>
-            )}
-            <div className="review-actions">
-              <button
-                className="btn"
-                disabled={!dirty || busy != null}
-                onClick={() => patch({}, 'save', false)}
-              >
-                {busy === 'save' ? t('record.saving') : t('review.saveChanges')}
-              </button>
-              {REVIEW_ACTIONS.map(actionBtn)}
-              <button
-                className="btn"
-                disabled={busy != null}
-                onClick={() => navigate(`/database?record=${detail.id}`)}
-              >
-                {t('common.openInDatabase')}
-              </button>
-            </div>
-          </div>
-
-          <h3 className="detail-section">
-            {t('record.researchFields')}{' '}
-            {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
-          </h3>
-          {/* v6 定義表と同じ区分・順序（schema から派生）。
-              状態はアクションボタン経由でのみ変更する。 */}
+      <div className="rv-fields">
+        <div className="rv-fields-scroll">
+          {/* v6 定義表と同じ区分・順序（schema から派生）。状態はアクションボタン経由でのみ変更する。 */}
           {groupedResearchFields(schema).map((g) => (
-            <div key={g.key}>
-              <div className="muted" style={{ margin: '8px 0 4px', fontSize: 12, fontWeight: 600 }}>
-                {t(`fields.group.${g.key}`)}
-              </div>
+            <div key={g.key} className="rv-group">
+              <h3>{t(`fields.group.${g.key}`)}</h3>
               <div className="edit-grid">
                 {g.fields.map((f) => (
                   <label key={f} className="edit-row">
@@ -210,56 +224,29 @@ export default function ReviewWorkspace({
           ))}
         </div>
 
-        {/* ── 大画面ビューア（画面左・sticky）＋アクション ──
-            標注効率のため詳細画面で写真を大きく出し、原寸表示を開く回数を減らす。
-            下の縮略バーで裁切図/元写真を切替。元情報は既定で折りたたみ。 */}
-        <div className="review-viewer">
-          <div
-            className="review-viewer-main"
-            style={{ cursor: mainUrl ? 'zoom-in' : 'default' }}
-            title={t('record.openFull')}
-            onClick={() => mainUrl && setLightbox(effView)}
-          >
-            {mainUrl
-              ? <img src={mainUrl} alt={effView} />
-              : <div className="muted">{t('review.noPhoto')}</div>}
-          </div>
-          <div className="review-viewer-thumbs">
-            <button
-              type="button"
-              className={`viewer-thumb${effView === 'crop' ? ' on' : ''}`}
-              disabled={!detail.photoUrl}
-              onClick={() => setView('crop')}
-            >
-              <PhotoThumb src={photoUrl(detail.photoUrl)} size={56} alt="crop" />
-              <span>{t('record.crop')}</span>
-            </button>
-            <button
-              type="button"
-              className={`viewer-thumb${effView === 'source' ? ' on' : ''}`}
-              disabled={!detail.sourcePhotoUrl}
-              onClick={() => setView('source')}
-            >
-              <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={56} alt="source" />
-              <span>{t('record.source')}</span>
-            </button>
-            <span className="spacer" />
-            <span className="muted" style={{ fontSize: 11.5, alignSelf: 'center' }}>
-              {t('record.openFull')}
-            </span>
-          </div>
-
-          <details className="review-meta-details">
-            <summary>{t('record.metadata')}</summary>
-            <div className="identity-grid">
-              {META_FIELDS.map((f) => (
-                <div key={f} className="identity-row">
-                  <span className="k">{t(`fields.${f}`, { defaultValue: f })}</span>
-                  <span className="v mono">{detail.data[f] || '—'}</span>
-                </div>
-              ))}
+        <div className="rv-actions">
+          {actionError && (
+            <div className="error-box">
+              <strong>{t('review.actionFailed')}</strong>
+              <div className="hint">{actionError}</div>
             </div>
-          </details>
+          )}
+          {actionBtn('reviewed', 'primary wide', '1', t('review.actions.reviewedNext'))}
+          <div className="rv-actions-row">
+            {actionBtn('verified', '', '2')}
+            {actionBtn('needs_review', 'accent', '3')}
+            {actionBtn('rejected', 'danger', 'X')}
+            <span className="spacer" />
+            <button className="btn ghost" disabled={!dirty || busy != null}
+              onClick={() => patch({}, 'save', false)}>
+              {busy === 'save' ? t('record.saving') : t('record.save')}
+              {dirty && <span className="dirty-dot" aria-label={t('record.unsaved')} />}
+            </button>
+            <button className="btn ghost" disabled={busy != null}
+              onClick={() => navigate(`/database?record=${detail.id}`)}>
+              {t('review.openInDatabase')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -275,6 +262,6 @@ export default function ReviewWorkspace({
           onClose={() => setLightbox(null)}
         />
       )}
-    </div>
+    </>
   );
 }

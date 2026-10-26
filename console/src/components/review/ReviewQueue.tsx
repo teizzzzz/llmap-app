@@ -1,11 +1,10 @@
-import { useTranslation } from 'react-i18next';
 import { photoUrl } from '../../api/client';
 import type { RecordItem } from '../../api/types';
-import { multiEnumLabel } from '../../lib/enumLabels';
+import LangTags from '../LangTags';
 import PhotoThumb from '../database/PhotoThumb';
 import StatusBadge from '../database/StatusBadge';
 
-/** 審核队列（左列）。1件 = カード。選択中はハイライト。 */
+/** 審核队列（左列）。選択中は左に墨の縦線。 */
 export default function ReviewQueue({
   items,
   selectedId,
@@ -15,28 +14,25 @@ export default function ReviewQueue({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
-  const { t } = useTranslation();
   return (
-    <div className="review-queue">
+    <div className="rv-queue">
       {items.map((r) => (
         <button
           key={r.id}
           type="button"
-          className={`queue-card${r.id === selectedId ? ' selected' : ''}`}
+          className={`queue-item${r.id === selectedId ? ' selected' : ''}`}
+          ref={r.id === selectedId ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
           onClick={() => onSelect(r.id)}
         >
           <PhotoThumb src={photoUrl(r.thumbnailUrl)} size={52} alt={r.SignID} />
-          <div className="queue-card-body">
-            <div className="queue-card-title mono">{r.DisplayID || r.SignID}</div>
-            <div className="queue-card-sub">
-              {r.主要言語 ? multiEnumLabel(t, r.主要言語) : '—'} · {r.地区コード || '—'}
-            </div>
-            <div className="queue-card-sub mono">{r.採集日時 || '—'}</div>
-            <div className="queue-card-badges">
-              <StatusBadge value={r.EntryMode} />
+          <span className="queue-body">
+            <span className="mono queue-id">{r.DisplayID || r.SignID}</span>
+            <LangTags value={r.主要言語} />
+            <span className="queue-meta">
+              <span className="mono">{(r.採集日時 || '—').slice(5)}</span>
               <StatusBadge value={r.DataStatus} />
-            </div>
-          </div>
+            </span>
+          </span>
         </button>
       ))}
     </div>

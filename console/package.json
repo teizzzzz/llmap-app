@@ -1,7 +1,7 @@
 {
   "name": "llmap-console",
   "private": true,
-  "version": "0.11.12",
+  "version": "0.12.0",
   "description": "LLMap Research Console — PC/Web management UI for linguistic landscape datasets",
   "type": "module",
   "scripts": {
@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/archivo": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "i18next": "^26.3.4",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",

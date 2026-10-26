@@ -7,6 +7,7 @@ import ReviewWorkspace from '../components/review/ReviewWorkspace';
 import useFilterOptions from '../hooks/useFilterOptions';
 import { enumLabel } from '../lib/enumLabels';
 import { languageFilterValues } from '../lib/languageList';
+import { SelectDropdown } from '../components/Dropdown';
 import { QUEUE_TABS } from '../reviewStatus';
 
 // 内部値（API に渡る）。表示ラベルのみ翻訳する。
@@ -78,12 +79,6 @@ export default function ReviewPage() {
     fetchQueue(false);
   };
 
-  const skipNext = () => {
-    if (selectedId == null || !confirmLeave()) return;
-    dirtyRef.current = false;
-    setSelectedId(nextIdAfter(selectedId));
-  };
-
   const select = (id: number) => {
     if (id === selectedId || !confirmLeave()) return;
     dirtyRef.current = false;
@@ -93,85 +88,81 @@ export default function ReviewPage() {
   const patchFilters = (p: Partial<QueueFilters>) =>
     setFilters((f) => ({ ...f, ...p }));
 
-  const sel = (
-    label: string,
-    value: string,
-    options: { value: string; label: string }[],
-    onChange: (v: string) => void,
-  ) => (
-    <label className="filter-field" key={label}>
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{t('common.all')}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </label>
-  );
+  // J / K で队列の次・前へ（入力中は無効）。
+  const moveRef = useRef<((d: 1 | -1) => void) | null>(null);
+  moveRef.current = (d) => {
+    const list = items ?? [];
+    const i = list.findIndex((r) => r.id === selectedId);
+    const next = list[i + d];
+    if (next) select(next.id);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return;
+      const k = e.key.toLowerCase();
+      if (k === 'j') { e.preventDefault(); moveRef.current?.(1); }
+      if (k === 'k') { e.preventDefault(); moveRef.current?.(-1); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const raw = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
   const translated = (xs: string[]) =>
     xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
   // 選択肢値（言語等）は value は正準値のまま、表示ラベルのみ翻訳する。
   const enumOpts = (xs: string[]) =>
     xs.map((x) => ({ value: x, label: enumLabel(t, x) }));
+  const position = (items ?? []).findIndex((r) => r.id === selectedId) + 1;
 
   return (
-    <>
-      <div className="page-header">
-        <h1>{t('review.title')}</h1>
-        <p>{t('review.subtitle')}</p>
+    <div className="review-page">
+      <div className="page-head">
+        <h1>{t('review.title')}<span className="page-count">{items != null ? total : ''}</span></h1>
+        {items != null && total > 0 && (
+          <div className="rv-progress">
+            <span className="mono">{position || '—'} / {total}</span>
+            <span className="rv-progress-bar">
+              <i style={{ width: `${total ? (position / total) * 100 : 0}%` }} />
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* 快速タブ（DataStatus 群） */}
-      <div className="review-tabs">
-        {QUEUE_TABS.map((tb) => (
-          <button
-            key={tb.key}
-            className={`chip${tab === tb.key ? ' on' : ''}`}
-            onClick={() => {
-              if (!confirmLeave()) return;
-              dirtyRef.current = false;
-              setTab(tb.key);
-            }}
-          >
-            {t(tb.labelKey)}
-          </button>
-        ))}
-      </div>
-
-      <div className="card filters-bar">
-        {sel(t('filters.mode'), filters.entryMode ?? '', translated(ENTRY_MODES),
-          (v) => patchFilters({ entryMode: v || undefined }))}
-        {sel(t('filters.language'), filters.mainLanguage ?? '',
-          enumOpts(languageFilterValues(schema?.enums['主要言語'])),
-          (v) => patchFilters({ mainLanguage: v || undefined }))}
-        {sel(t('filters.area'), filters.areaCode ?? '', raw(areas),
-          (v) => patchFilters({ areaCode: v || undefined }))}
-        <label className="filter-field">
-          <span>{t('filters.dataset')}</span>
-          <select
-            value={filters.datasetId != null ? String(filters.datasetId) : ''}
-            onChange={(e) =>
-              patchFilters({ datasetId: e.target.value ? Number(e.target.value) : undefined })}
-          >
-            <option value="">{t('common.all')}</option>
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>{`#${d.id} ${d.name}`}</option>
-            ))}
-          </select>
-        </label>
+      <div className="rv-toolbar">
+        <div className="chip-row">
+          {QUEUE_TABS.map((tb) => (
+            <button
+              key={tb.key}
+              className={`chip${tab === tb.key ? ' on' : ''}`}
+              onClick={() => {
+                if (!confirmLeave()) return;
+                dirtyRef.current = false;
+                setTab(tb.key);
+              }}
+            >
+              {t(tb.labelKey)}
+            </button>
+          ))}
+        </div>
         <span className="spacer" />
-        <span className="muted total">
-          {items != null ? t('review.inQueue', { n: total }) : ''}
-          {items != null && total > QUEUE_PAGE_SIZE &&
-            ` ${t('review.showingFirst', { n: QUEUE_PAGE_SIZE })}`}
-        </span>
-        <button className="btn" onClick={() => setFilters({})}>{t('common.clearFilters')}</button>
-        <button className="btn" onClick={() => fetchQueue(false)}>{t('common.refresh')}</button>
-        <button className="btn" disabled={selectedId == null} onClick={skipNext}>
-          {t('review.skipNext')}
-        </button>
+        <div className="dd-row">
+          <SelectDropdown label={t('filters.mode')} value={filters.entryMode ?? ''}
+            options={translated(ENTRY_MODES)}
+            onChange={(v) => patchFilters({ entryMode: v || undefined })} />
+          <SelectDropdown label={t('filters.language')} value={filters.mainLanguage ?? ''}
+            options={enumOpts(languageFilterValues(schema?.enums['主要言語']))}
+            onChange={(v) => patchFilters({ mainLanguage: v || undefined })} />
+          <SelectDropdown label={t('filters.area')} value={filters.areaCode ?? ''}
+            options={raw(areas)}
+            onChange={(v) => patchFilters({ areaCode: v || undefined })} />
+          <SelectDropdown label={t('filters.dataset')}
+            value={filters.datasetId != null ? String(filters.datasetId) : ''}
+            options={datasets.map((d) => ({ value: String(d.id), label: d.name }))}
+            onChange={(v) => patchFilters({ datasetId: v ? Number(v) : undefined })} />
+        </div>
       </div>
 
       {error && (
@@ -192,7 +183,7 @@ export default function ReviewPage() {
       )}
 
       {!error && items != null && items.length > 0 && (
-        <div className="review-main">
+        <div className="rv-main">
           <ReviewQueue items={items} selectedId={selectedId} onSelect={select} />
           {selectedId != null ? (
             <ReviewWorkspace
@@ -202,12 +193,10 @@ export default function ReviewPage() {
               onActioned={handleActioned}
             />
           ) : (
-            <div className="card review-workspace muted">
-              {t('review.selectPrompt')}
-            </div>
+            <div className="rv-viewer muted">{t('review.selectPrompt')}</div>
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

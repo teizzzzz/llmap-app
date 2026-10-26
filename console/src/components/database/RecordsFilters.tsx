@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getRecords } from '../../api/client';
 import type { Dataset, RecordsQuery } from '../../api/types';
 import { enumLabel } from '../../lib/enumLabels';
+import { Dropdown, SelectDropdown } from '../Dropdown';
 import MultiSelect from '../MultiSelect';
 
 export interface FilterOptions {
@@ -13,108 +15,58 @@ export interface FilterOptions {
 
 // 内部値（API に渡る）。表示ラベルのみ翻訳する。
 const ENTRY_MODES = ['quick', 'standard', 'research'];
-const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'reviewed', 'verified', 'rejected'];
+const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'needs_review', 'reviewed', 'verified', 'rejected'];
 
-// 字段筛选に出す研究字段（字段表の枚挙字段すべて）。定義表のグループ順に
-// 3 行で表示する。言語3役・文字体系は複数選択字段のため含有判定
-// （backend の MULTI_FIELDS と同じ規則）。主要言語は上の「語言」筛选と
-// 同じ条件になるが、字段一覧の完全性を優先して両方に出す。
+// 「更多筛选」に出す研究字段（字段表の枚挙字段すべて、定義表のグループ順）。
+// 言語3役・文字体系は複数選択字段のため含有判定（backend の MULTI_FIELDS と同じ規則）。
 const FIELD_FILTER_GROUPS: { group: string; keys: string[] }[] = [
   { group: 'B', keys: ['文字性', '主要言語', '補助言語', '装飾の言語', '文字体系', '多言語関係'] },
   { group: 'C', keys: ['担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き'] },
   { group: 'D', keys: ['設置主体', 'ディスコース類型', '製作品質'] },
 ];
 
-function Select({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <label className="filter-field">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{t('common.all')}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
+type Chip = { key: string; label: string; remove: Partial<RecordsQuery> };
 
-/** yes/no/any の三値筛选（hasGps / hasPhoto / hasSourcePhoto 用）。 */
-function TriState({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: boolean | undefined;
-  onChange: (v: boolean | undefined) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <label className="filter-field">
-      <span>{label}</span>
-      <select
-        value={value === undefined ? '' : String(value)}
-        onChange={(e) =>
-          onChange(e.target.value === '' ? undefined : e.target.value === 'true')
-        }
-      >
-        <option value="">{t('common.all')}</option>
-        <option value="true">{t('common.yes')}</option>
-        <option value="false">{t('common.no')}</option>
-      </select>
-    </label>
-  );
-}
-
-/** 検索＋筛选バー。変更は即時 onChange（page リセットは親が行う）。 */
+/** 検索＋筛选バー。常用 4 項目を 1 行に、残りは「更多筛选」に畳む。
+    適用中の条件は chip で一覧し、クリックでその条件だけ外せる。
+    変更は即時 onChange（page リセットは親が行う）。 */
 export default function RecordsFilters({
   value,
   options,
   total,
   onChange,
   onClear,
-  onRefresh,
   schemaEnums,
   fieldPresence,
   hideDatasets,
+  trailing,
 }: {
   value: RecordsQuery;
   options: FilterOptions;
   total: number | null;
   onChange: (patch: Partial<RecordsQuery>) => void;
   onClear: () => void;
-  onRefresh: () => void;
-  /** 字段筛选の選択肢（/schema の enums）。渡すと「字段筛选」区が出る。 */
+  /** 旧 API 互換（自動再取得になったため未使用）。 */
+  onRefresh?: () => void;
+  /** 字段筛选の選択肢（/schema の enums）。 */
   schemaEnums?: Record<string, string[]> | null;
-  /** 字段ごとの非空記録数（/stats/fields）。0 の字段は隠す
-      （実データに無い字段 — 例: v6 廃止の空間階層 — を出さない）。 */
+  /** 字段ごとの非空記録数（/stats/fields）。0 の字段は隠す。 */
   fieldPresence?: Record<string, number> | null;
-  /** データセット筛选を隠す（相册内など対象が固定の文脈用）。 */
+  /** データセット筛选を隠す（対象が固定の文脈用）。 */
   hideDatasets?: boolean;
+  /** chip 行の右側に置く追加操作（相册の縮略図サイズ等）。 */
+  trailing?: ReactNode;
 }) {
   const { t } = useTranslation();
   const fieldFilters = value.fields ?? {};
-  const fieldCount = Object.keys(fieldFilters).length;
-  // 既に字段筛选が効いている状態で開き直したら展開したままにする。
-  const [showFields, setShowFields] = useState(fieldCount > 0);
-  const setField = (key: string, v: string) => {
-    const next = { ...fieldFilters };
-    if (v) next[key] = v;
-    else delete next[key];
-    onChange({ fields: Object.keys(next).length ? next : undefined });
-  };
+  const [showMore, setShowMore] = useState(false);
+
+  // 全件数（「1987 / 2029」の分母）。
+  const [grand, setGrand] = useState<number | null>(null);
+  useEffect(() => {
+    getRecords({ page: 1, pageSize: 1 }).then((r) => setGrand(r.total)).catch(() => {});
+  }, []);
+
   // q は打鍵のたびに叩かないよう 400ms デバウンス。
   const [q, setQ] = useState(value.q ?? '');
   useEffect(() => setQ(value.q ?? ''), [value.q]);
@@ -125,123 +77,157 @@ export default function RecordsFilters({
     return () => clearTimeout(timer);
   }, [q, value.q, onChange]);
 
-  // データ由来の選択肢（地区・採集者）は原文のまま表示する。
-  const opts = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
-  // 内部状態値は表示ラベルのみ翻訳する。
+  const setField = (key: string, v: string) => {
+    const next = { ...fieldFilters };
+    if (v) next[key] = v;
+    else delete next[key];
+    onChange({ fields: Object.keys(next).length ? next : undefined });
+  };
+
+  const raw = (xs: string[]) => xs.map((x) => ({ value: x, label: x }));
   const statusOpts = (xs: string[]) =>
     xs.map((x) => ({ value: x, label: t(`status.${x}`, { defaultValue: x }) }));
-  // 選択肢値（言語等）は value は正準値のまま、表示ラベルのみ翻訳する。
-  const enumOpts = (xs: string[]) =>
-    xs.map((x) => ({ value: x, label: enumLabel(t, x) }));
+  const enumOpts = (xs: string[]) => xs.map((x) => ({ value: x, label: enumLabel(t, x) }));
+  const ynOpts = [
+    { value: 'true', label: t('common.yes') },
+    { value: 'false', label: t('common.no') },
+  ];
+  const yn = (v: boolean | undefined) => (v === undefined ? '' : String(v));
+  const fromYn = (v: string) => (v === '' ? undefined : v === 'true');
+
+  const datasetIds = value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : []);
+  const chip = (k: string, v: string) => t('filters.chip', { k, v });
+
+  // 適用中の条件 → chip。
+  const chips: Chip[] = [];
+  if (value.q) chips.push({ key: 'q', label: chip(t('filters.keyword'), value.q), remove: { q: undefined } });
+  if (value.mainLanguage) chips.push({ key: 'lang', label: chip(t('filters.language'), enumLabel(t, value.mainLanguage)), remove: { mainLanguage: undefined } });
+  if (value.dataStatus) chips.push({ key: 'status', label: chip(t('filters.status'), t(`status.${value.dataStatus}`, { defaultValue: value.dataStatus })), remove: { dataStatus: undefined } });
+  if (value.areaCode) chips.push({ key: 'area', label: chip(t('filters.area'), value.areaCode), remove: { areaCode: undefined } });
+  if (value.dateFrom || value.dateTo) chips.push({ key: 'date', label: chip(t('filters.date'), `${value.dateFrom ?? '…'} — ${value.dateTo ?? '…'}`), remove: { dateFrom: undefined, dateTo: undefined } });
+  if (value.collectorId) chips.push({ key: 'collector', label: chip(t('filters.collector'), value.collectorId), remove: { collectorId: undefined } });
+  if (value.entryMode) chips.push({ key: 'mode', label: chip(t('filters.mode'), t(`status.${value.entryMode}`, { defaultValue: value.entryMode })), remove: { entryMode: undefined } });
+  for (const id of datasetIds) {
+    const ds = options.datasets.find((d) => d.id === id);
+    const rest = datasetIds.filter((x) => x !== id);
+    chips.push({ key: `ds-${id}`, label: chip(t('filters.dataset'), ds ? ds.name : `#${id}`), remove: { datasetIds: rest.length ? rest : undefined, datasetId: undefined } });
+  }
+  for (const [k, label] of [['hasGps', 'filters.gps'], ['hasPhoto', 'filters.photo'], ['hasSourcePhoto', 'filters.source']] as const) {
+    const v = value[k];
+    if (v !== undefined) chips.push({ key: k, label: chip(t(label), t(v ? 'common.yes' : 'common.no')), remove: { [k]: undefined } });
+  }
+  for (const [k, v] of Object.entries(fieldFilters)) {
+    const rest = { ...fieldFilters };
+    delete rest[k];
+    chips.push({ key: `f-${k}`, label: chip(t(`fields.${k}`, { defaultValue: k }), enumLabel(t, v)), remove: { fields: Object.keys(rest).length ? rest : undefined } });
+  }
+  const primaryKeys = new Set(['q', 'lang', 'status', 'area', 'date']);
+  const moreCount = chips.filter((c) => !primaryKeys.has(c.key)).length;
 
   return (
-    <div className="card filters-bar">
-      <input
-        className="filter-search"
-        placeholder={t('filters.search')}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-      <Select label={t('filters.language')} value={value.mainLanguage ?? ''}
-        options={enumOpts(options.languages)}
-        onChange={(v) => onChange({ mainLanguage: v || undefined })} />
-      <Select label={t('filters.area')} value={value.areaCode ?? ''}
-        options={opts(options.areas)}
-        onChange={(v) => onChange({ areaCode: v || undefined })} />
-      <Select label={t('filters.collector')} value={value.collectorId ?? ''}
-        options={opts(options.collectors)}
-        onChange={(v) => onChange({ collectorId: v || undefined })} />
-      <Select label={t('filters.mode')} value={value.entryMode ?? ''}
-        options={statusOpts(ENTRY_MODES)}
-        onChange={(v) => onChange({ entryMode: v || undefined })} />
-      <Select label={t('filters.status')} value={value.dataStatus ?? ''}
-        options={statusOpts(DATA_STATUSES)}
-        onChange={(v) => onChange({ dataStatus: v || undefined })} />
-      {/* データセットは多选（導出で複数データセットをまとめて出せる）。
-          旧単値 datasetId が残っていたら選択済みとして表示し、以後は datasetIds に統一。 */}
-      {!hideDatasets && <MultiSelect label={t('filters.dataset')}
-        options={options.datasets.map((d) => ({ value: String(d.id), label: `#${d.id} ${d.name}` }))}
-        selected={(value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : [])).map(String)}
-        onChange={(vs) => onChange({
-          datasetIds: vs.length ? vs.map(Number) : undefined,
-          datasetId: undefined,
-        })} />}
-      <TriState label={t('filters.gps')} value={value.hasGps}
-        onChange={(v) => onChange({ hasGps: v })} />
-      <TriState label={t('filters.photo')} value={value.hasPhoto}
-        onChange={(v) => onChange({ hasPhoto: v })} />
-      <TriState label={t('filters.source')} value={value.hasSourcePhoto}
-        onChange={(v) => onChange({ hasSourcePhoto: v })} />
-      <label className="filter-field">
-        <span>{t('filters.from')}</span>
-        <input type="date" value={value.dateFrom ?? ''}
-          onChange={(e) => onChange({ dateFrom: e.target.value || undefined })} />
-      </label>
-      <label className="filter-field">
-        <span>{t('filters.to')}</span>
-        <input type="date" value={value.dateTo ?? ''}
-          onChange={(e) => onChange({ dateTo: e.target.value || undefined })} />
-      </label>
-      {schemaEnums && (
-        <button
-          className="btn"
-          aria-expanded={showFields}
-          onClick={() => setShowFields((s) => !s)}
-        >
-          {t('filters.fieldsToggle')}
-          {fieldCount ? ` (${fieldCount})` : ''} {showFields ? '▴' : '▾'}
+    <div className="fbar">
+      <div className="fbar-row">
+        <label className="fbar-search">
+          <span aria-hidden="true">⌕</span>
+          <input placeholder={t('filters.search')} value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        <SelectDropdown label={t('filters.language')} value={value.mainLanguage ?? ''}
+          options={enumOpts(options.languages)}
+          onChange={(v) => onChange({ mainLanguage: v || undefined })} />
+        <SelectDropdown label={t('filters.status')} value={value.dataStatus ?? ''}
+          options={statusOpts(DATA_STATUSES)}
+          onChange={(v) => onChange({ dataStatus: v || undefined })} />
+        <SelectDropdown label={t('filters.area')} value={value.areaCode ?? ''}
+          options={raw(options.areas)}
+          onChange={(v) => onChange({ areaCode: v || undefined })} />
+        <Dropdown
+          label={t('filters.date')}
+          valueLabel={value.dateFrom || value.dateTo
+            ? `${(value.dateFrom ?? '').slice(5).replace('-', '.') || '…'} — ${(value.dateTo ?? '').slice(5).replace('-', '.') || '…'}`
+            : t('common.all')}
+          active={!!(value.dateFrom || value.dateTo)}
+          panel={() => (
+            <div className="dd-dates">
+              <label>{t('filters.from')}
+                <input type="date" value={value.dateFrom ?? ''}
+                  onChange={(e) => onChange({ dateFrom: e.target.value || undefined })} />
+              </label>
+              <label>{t('filters.to')}
+                <input type="date" value={value.dateTo ?? ''}
+                  onChange={(e) => onChange({ dateTo: e.target.value || undefined })} />
+              </label>
+            </div>
+          )}
+        />
+        <button type="button" className={`fbar-more-btn${showMore ? ' open' : ''}`}
+          aria-expanded={showMore} onClick={() => setShowMore((s) => !s)}>
+          {t('filters.more')}
+          {moreCount > 0 && <span className="fbar-more-n">{moreCount}</span>}
         </button>
-      )}
-      <span className="spacer" />
-      <span className="muted total">
-        {total != null ? t('common.records', { n: total }) : ''}
-      </span>
-      <button className="btn" onClick={onClear}>{t('common.clearFilters')}</button>
-      <button className="btn" onClick={onRefresh}>{t('common.refresh')}</button>
-      {schemaEnums && showFields && (
-        <div
-          style={{
-            flexBasis: '100%', display: 'flex', flexDirection: 'column',
-            gap: 8, paddingTop: 8,
-            borderTop: '1px solid var(--border, #e5e0d8)',
-          }}
-        >
-          {FIELD_FILTER_GROUPS.map(({ group, keys }) => {
-            // 選択肢が定義されていて、かつ実データに値がある字段だけ出す
-            // （fieldPresence 未取得＝旧 backend の間はすべて表示）。
+      </div>
+
+      {showMore && (
+        <div className="fbar-more">
+          <div className="fbar-more-row">
+            <SelectDropdown label={t('filters.collector')} value={value.collectorId ?? ''}
+              options={raw(options.collectors)}
+              onChange={(v) => onChange({ collectorId: v || undefined })} />
+            <SelectDropdown label={t('filters.mode')} value={value.entryMode ?? ''}
+              options={statusOpts(ENTRY_MODES)}
+              onChange={(v) => onChange({ entryMode: v || undefined })} />
+            {!hideDatasets && (
+              <MultiSelect label={t('filters.dataset')}
+                options={options.datasets.map((d) => ({ value: String(d.id), label: `#${d.id} ${d.name}` }))}
+                selected={datasetIds.map(String)}
+                onChange={(vs) => onChange({
+                  datasetIds: vs.length ? vs.map(Number) : undefined,
+                  datasetId: undefined,
+                })} />
+            )}
+            <SelectDropdown label={t('filters.gps')} value={yn(value.hasGps)} options={ynOpts}
+              onChange={(v) => onChange({ hasGps: fromYn(v) })} />
+            <SelectDropdown label={t('filters.photo')} value={yn(value.hasPhoto)} options={ynOpts}
+              onChange={(v) => onChange({ hasPhoto: fromYn(v) })} />
+            <SelectDropdown label={t('filters.source')} value={yn(value.hasSourcePhoto)} options={ynOpts}
+              onChange={(v) => onChange({ hasSourcePhoto: fromYn(v) })} />
+          </div>
+          {schemaEnums && FIELD_FILTER_GROUPS.map(({ group, keys }) => {
+            // 選択肢が定義されていて、かつ実データに値がある字段だけ出す。
             // ただし現に筛选中の字段は隠さない（解除できなくなるため）。
             const present = keys.filter((k) =>
               schemaEnums[k]?.length
               && ((fieldPresence?.[k] ?? 1) > 0 || fieldFilters[k]));
             if (!present.length) return null;
             return (
-              <div
-                key={group}
-                style={{
-                  display: 'flex', flexWrap: 'wrap', gap: 10,
-                  alignItems: 'flex-end',
-                }}
-              >
-                <span
-                  className="muted"
-                  style={{ fontSize: 12, minWidth: 72, paddingBottom: 8 }}
-                >
-                  {t(`fields.group.${group}`)}
-                </span>
+              <div key={group} className="fbar-more-row">
                 {present.map((k) => (
-                  <Select
-                    key={k}
+                  <SelectDropdown key={k}
                     label={t(`fields.${k}`, { defaultValue: k })}
                     value={fieldFilters[k] ?? ''}
                     options={enumOpts(schemaEnums[k])}
-                    onChange={(v) => setField(k, v)}
-                  />
+                    onChange={(v) => setField(k, v)} />
                 ))}
               </div>
             );
           })}
         </div>
       )}
+
+      <div className="fbar-chips">
+        {chips.map((c) => (
+          <button key={c.key} type="button" className="chip removable" onClick={() => onChange(c.remove)}>
+            {c.label}<span aria-hidden="true">×</span>
+          </button>
+        ))}
+        {chips.length > 0 && (
+          <button type="button" className="btn ghost" onClick={onClear}>{t('filters.clearAll')}</button>
+        )}
+        <span className="spacer" />
+        {trailing}
+        <span className="fbar-count mono">
+          {total != null ? total : '—'}{grand != null && ` / ${grand}`}
+        </span>
+      </div>
     </div>
   );
 }
