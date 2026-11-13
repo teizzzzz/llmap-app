@@ -5,6 +5,8 @@
   "identifier": "app.llmap.desktop",
   "build": {
     "frontendDist": "../../console/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm --prefix ../console run dev -- --strictPort",
     "beforeBuildCommand": ""
   },
   "app": {

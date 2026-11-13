@@ -35,6 +35,11 @@ npm install                                # @tauri-apps/cli
 npm run dev                                # = tauri dev
 ```
 
+`tauri dev` は `devUrl`（Vite dev server, :5173）を読み込み、`beforeDevCommand` が
+console の `npm run dev` を自動起動する。**Console の変更は保存即反映（HMR）**、
+再インストール・再ビルド不要。Rust 側の変更のみ自動再コンパイル＋窗口再起動。
+`tauri build` は従来どおり `console/dist` を同梱する（devUrl は無関係）。
+
 `npm run build`（= `tauri build`）は現状 bundle 無効（`bundle.active: false`）で、
 実行ファイルのみ生成する。正式なインストーラは 10E–10G で扱う。
 
