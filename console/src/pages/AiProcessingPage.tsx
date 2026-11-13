@@ -161,24 +161,24 @@ export default function AiProcessingPage() {
       case 'jobStart':
         return { text: t('ai.log.jobStart', { model: e.data.model, total: e.data.total }) };
       case 'changed':
-        return { text: `✓ ${e.signId} — ${t('ai.log.changed', { n: e.data.n })}`, color: '#1d7a4f' };
+        return { text: `✓ ${e.signId} — ${t('ai.log.changed', { n: e.data.n })}`, color: 'var(--ink)' };
       case 'unchanged':
-        return { text: `– ${e.signId} — ${t('ai.log.unchanged')}`, color: '#6f6a61' };
+        return { text: `– ${e.signId} — ${t('ai.log.unchanged')}`, color: 'var(--muted)' };
       case 'skipped':
-        return { text: `⏭ ${e.signId} — ${t('ai.log.skipped')}`, color: '#6f6a61' };
+        return { text: `⏭ ${e.signId} — ${t('ai.log.skipped')}`, color: 'var(--muted)' };
       case 'error':
-        return { text: `✗ ${e.signId} — ${e.data.message}`, color: '#b3261e' };
+        return { text: `✗ ${e.signId} — ${e.data.message}`, color: 'var(--badge-red)' };
       case 'abort':
-        return { text: `✗ ${t('ai.log.abort', { message: e.data.message })}`, color: '#b3261e' };
+        return { text: `✗ ${t('ai.log.abort', { message: e.data.message })}`, color: 'var(--badge-red)' };
       case 'cancelled':
-        return { text: t('ai.log.cancelled'), color: '#6f6a61' };
+        return { text: t('ai.log.cancelled'), color: 'var(--muted)' };
       case 'done':
         return {
           text: t('ai.log.done', {
             changed: e.data.changed, unchanged: e.data.unchanged,
             skipped: e.data.skipped, errors: e.data.errors,
           }),
-          color: '#1d7a4f',
+          color: 'var(--ink)',
         };
       default:
         return { text: `${e.event} ${e.signId}` };
@@ -253,9 +253,7 @@ export default function AiProcessingPage() {
         <div className="format-head">
           <strong>{t('ai.task.title')}</strong>
           {ai && (
-            <span className="badge" style={ai.enabled
-              ? { color: '#1d7a4f', borderColor: '#1d7a4f55', background: '#1d7a4f14' }
-              : { color: '#6f6a61', borderColor: '#6f6a6155', background: '#6f6a6114' }}>
+            <span className={`badge ${ai.enabled ? 'solid' : 'faint'}`}>
               {ai.enabled
                 ? `${ai.provider} · ${ai.models?.[ai.provider] ?? ''}`
                 : t('ai.disabledBadge')}

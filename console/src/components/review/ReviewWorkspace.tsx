@@ -170,8 +170,6 @@ export default function ReviewWorkspace({
           {mainUrl
             ? <img src={mainUrl} alt={effView} />
             : <div className="muted">{t('review.noPhoto')}</div>}
-          <span className="crop c1" /><span className="crop c2" />
-          <span className="crop c3" /><span className="crop c4" />
         </div>
         <div className="rv-photo-bar">
           <div className="seg">
