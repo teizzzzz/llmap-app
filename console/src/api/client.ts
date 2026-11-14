@@ -7,6 +7,7 @@ import type {
   AppConfig,
   AppConfigUpdate,
   Dataset,
+  ExploreJob,
   ExportJobStatus,
   ImportDatasetResult,
   MapQuery,
@@ -297,3 +298,13 @@ export const updateConfig = (payload: AppConfigUpdate) =>
 /** 写真 URL（<img src> 用）。 */
 export const photoUrl = (path: string | null): string | null =>
   path ? `${API_BASE_URL}${path}` : null;
+
+/** 探索データを範囲（筛选 / ids）から生成する（既にあれば即 done）。 */
+export const startExploreBuild = (filters: RecordsQuery = {}) =>
+  request<{ jobId: string }>('/explore/build', {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
+
+export const getExploreJob = (jobId: string) =>
+  request<ExploreJob>(`/explore/jobs/${jobId}`);

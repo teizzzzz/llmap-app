@@ -11,6 +11,7 @@ import type {
   AppConfig, ExportJobStatus, PhotosExportPreview, PhotosSplitPreview, RecordsQuery,
 } from '../api/types';
 import ScopeBanner from '../components/ScopeBanner';
+import { forgetJob, recallJob, rememberJob } from '../hooks/jobMemory';
 import useFilterOptions from '../hooks/useFilterOptions';
 import useSharedFilters, { scopeQuery, type ScopeKind } from '../hooks/useSharedFilters';
 import { enumLabel } from '../lib/enumLabels';
@@ -77,7 +78,8 @@ const saveBlob = (blob: Blob, name: string) => {
 };
 
 /** バックエンドの導出ジョブ 1 本を管理する（進捗ポーリング・取消）。 */
-function useExportJob() {
+/** 導出ジョブ 1 本（slot ごと）。ページを離れて戻っても、進捗・結果を再表示する。 */
+function useExportJob(slot: string) {
   const [job, setJob] = useState<ExportJobStatus | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,21 +93,37 @@ function useExportJob() {
   }, []);
   useEffect(() => stopPolling, [stopPolling]);
 
+  const follow = useCallback((jobId: string) => {
+    stopPolling();
+    const poll = async () => {
+      try {
+        const st = await getExportJob(jobId);
+        setJob(st);
+        if (st.status !== 'running') stopPolling();
+      } catch {
+        // backend の再起動などでジョブが無い → 忘れる
+        stopPolling();
+        forgetJob(slot);
+      }
+    };
+    void poll();
+    timer.current = setInterval(poll, 700);
+  }, [slot, stopPolling]);
+
+  // 戻ってきたとき: 覚えているジョブの進捗（終わっていれば結果）を再表示。
+  useEffect(() => {
+    const id = recallJob(slot);
+    if (id) follow(id);
+  }, [slot, follow]);
+
   const start = async (kickoff: () => Promise<{ jobId: string }>) => {
     setStarting(true);
     setError(null);
     setJob(null);
     try {
       const { jobId } = await kickoff();
-      timer.current = setInterval(async () => {
-        try {
-          const st = await getExportJob(jobId);
-          setJob(st);
-          if (st.status !== 'running') stopPolling();
-        } catch {
-          stopPolling();
-        }
-      }, 700);
+      rememberJob(slot, jobId);
+      follow(jobId);
     } catch (e: unknown) {
       setError(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -244,9 +262,9 @@ export default function ExportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey, prefs.tab, prefs.content]);
 
-  const splitJob = useExportJob();
-  const packageJob = useExportJob();
-  const photosJob = useExportJob();
+  const splitJob = useExportJob('export.split');
+  const packageJob = useExportJob('export.package');
+  const photosJob = useExportJob('export.photos');
 
   // 同期型（CSV / GeoJSON）の結果。
   const [syncBusy, setSyncBusy] = useState(false);

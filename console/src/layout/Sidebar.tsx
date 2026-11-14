@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import pkg from '../../package.json';
 import { API_BASE_URL, getHealth } from '../api/client';
+import ExploreSidebar from '../components/explore/ExploreSidebar';
 import useAiEnabled from '../hooks/useAiEnabled';
 
 // 研究の流れに沿った並び（導入 → 審核 → 地図で確認 → 導出、AI は任意、概覧は参照用）。
@@ -19,6 +20,13 @@ const NAV = [
 export default function Sidebar() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const exploring = pathname.startsWith('/explore');
+  // 研究に戻るときは、最後に開いていた研究のページへ。
+  const lastResearch = useRef('/database');
+  useEffect(() => {
+    if (!exploring && pathname !== '/settings') lastResearch.current = pathname;
+  }, [pathname, exploring]);
   const [status, setStatus] = useState<'checking' | 'ok' | 'down'>('checking');
   const [version, setVersion] = useState('');
   const [aiOn] = useAiEnabled();
@@ -39,14 +47,31 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">LLMAP</div>
-      <nav>
-        {/* AI は任意: 設定で切っていれば入口を出さない。 */}
-        {NAV.filter((n) => aiOn || n.to !== '/ai').map((n) => (
-          <NavLink key={n.to} to={n.to} className={item}>
-            {t(n.labelKey)}
-          </NavLink>
-        ))}
-      </nav>
+      {/* 最上位の切替: 探索（写真から自由に発見）／研究（資料の整理・審核・導出）。 */}
+      <div className="mode-switch seg" role="tablist" aria-label={t('nav.mode')}>
+        <button type="button" role="tab" aria-selected={!exploring}
+          className={!exploring ? 'on' : ''}
+          onClick={() => exploring && navigate(lastResearch.current)}>
+          {t('nav.research')}
+        </button>
+        <button type="button" role="tab" aria-selected={exploring}
+          className={exploring ? 'on' : ''}
+          onClick={() => !exploring && navigate('/explore')}>
+          {t('nav.explore')}
+        </button>
+      </div>
+      {exploring ? (
+        <ExploreSidebar />
+      ) : (
+        <nav>
+          {/* AI は任意: 設定で切っていれば入口を出さない。 */}
+          {NAV.filter((n) => aiOn || n.to !== '/ai').map((n) => (
+            <NavLink key={n.to} to={n.to} className={item}>
+              {t(n.labelKey)}
+            </NavLink>
+          ))}
+        </nav>
+      )}
       {/* 設定は侧栏の底に固定（研究の流れとは別の常設項目）。 */}
       <div className="sidebar-bottom">
         <NavLink to="/settings" className={item}>

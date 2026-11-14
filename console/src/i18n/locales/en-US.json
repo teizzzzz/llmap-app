@@ -11,7 +11,11 @@
     "ai": "AI Processing",
     "export": "Export",
     "settings": "Settings",
-    "overview": "Overview"
+    "overview": "Overview",
+    "mode": "Mode",
+    "research": "Research",
+    "explore": "Explore",
+    "exploreNote": "Open a photo and choose “Open in Research” to view or edit its record."
   },
   "topbar": {
     "checking": "checking backend…",
@@ -280,7 +284,9 @@
     "clearSelection": "Clear selection",
     "selReview": "Review {{n}} selected",
     "selAi": "Run AI on {{n}} selected",
-    "selExport": "Export {{n}} selected"
+    "selExport": "Export {{n}} selected",
+    "scopeExplore": "Explore the {{n}} filtered records",
+    "selExplore": "Explore {{n}} selected"
   },
   "table": {
     "area": "Area",
@@ -339,8 +345,11 @@
     "stillMissing": "Still missing in package",
     "reused": "Reused (deduplicated)",
     "viewImported": "View the {{n}} records from this import",
-    "nextHint": "You can start reviewing right away. To use AI (optional), run it on this batch from the “Current results” menu in the Library.",
-    "nextHintNoAi": "You can start reviewing this batch right away."
+    "nextHint": "AI is optional — you can go straight to review.",
+    "nextHintNoAi": "AI is off in Settings; you can review and export directly.",
+    "nextLabel": "Next",
+    "reviewImported": "Review the {{n}} imported",
+    "aiImported": "Run AI on the {{n}} imported"
   },
   "map": {
     "title": "Map",
@@ -567,7 +576,8 @@
     "scopeReset": "Back to default scope (raw)",
     "offTitle": "AI features are turned off",
     "offBody": "AI is turned off in Settings, so its entry points are hidden. Existing AI results and API keys are kept, and running jobs are not affected.",
-    "offGoSettings": "Open Settings"
+    "offGoSettings": "Open Settings",
+    "offRunning": "AI job still running: {{done}} / {{total}} (turning AI off does not stop it)"
   },
   "settings": {
     "title": "Settings",
@@ -645,5 +655,29 @@
     "count": "{{n}} records",
     "reset": "Use all records",
     "selectedN": "{{n}} selected records"
+  },
+  "explore": {
+    "scope": "Scope",
+    "scopeAll": "All records",
+    "scopeDb": "Library filter",
+    "scopeSel": "{{n}} selected",
+    "noFilter": "No filter is set in the Library yet",
+    "count": "{{n}} photos",
+    "phase": {
+      "analyse": "Analysing colors {{done}}/{{total}}",
+      "layout": "Computing layout…",
+      "atlas": "Building thumbnail atlas {{done}}/{{total}}"
+    },
+    "failed": "Could not build the explore data",
+    "preparing": "Building explore data locally…",
+    "loading": "Loading…",
+    "firstTimeHint": "The first run analyses every photo (about a minute). Later runs use the cache and take seconds.",
+    "rebuilding": "Building for the new scope…",
+    "empty": "No records with photos in this scope.",
+    "view": {
+      "explore": "Photos",
+      "themes": "Themes",
+      "chain": "Chain"
+    }
   }
 }

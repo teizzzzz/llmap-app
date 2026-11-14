@@ -1223,3 +1223,61 @@ def test_storage_reset_wipes_everything_but_settings():
     assert list((data_dir() / "imports").iterdir()) == []
     assert list((data_dir() / "archives").iterdir()) == []
     assert load_settings().get("marker") == "keep-me"
+
+
+def _wait_explore(job_id: str) -> dict:
+    import time as _t
+    for _ in range(200):
+        st = client.get(f"/explore/jobs/{job_id}").json()
+        if st["status"] != "running":
+            return st
+        _t.sleep(0.05)
+    raise AssertionError("explore job did not finish")
+
+
+def test_explore_build_bundle_and_empty_scope():
+    """探索バンドル: 範囲の写真から data.js / atlas を作り、2 回目はキャッシュ。
+    壊れた写真は外して続行。写真の無い範囲は失敗ではなく空（count 0, key なし）。"""
+    from PIL import Image as _Image
+
+    def jpeg(rgb):
+        b = io.BytesIO()
+        _Image.new("RGB", (120, 90), rgb).save(b, "JPEG")
+        return b.getvalue()
+
+    cap = "OOK-EXPLR001-260702100000000"
+    rows = [
+        _row(SignID=f"{cap}-{s}", CaptureID=cap, DisplayID=f"OOK-20260702-901-{s}",
+             採集者ID="EXPLR001", 地区コード="OOK", CropSuffix=s,
+             写真ファイル名=f"{cap}-{s}.jpg", 緯度="35.70", 経度="139.70",
+             採集日時="2026-07-02 10:00:00", 主要言語="日本語",
+             DataStatus="raw", SchemaVersion="1.5", AppVersion="v1.8.0")
+        for s in ("a", "b", "c")
+    ]
+    files = {f"photos/{cap}-a.jpg": jpeg((200, 30, 40)),
+             f"photos/{cap}-b.jpg": jpeg((30, 60, 200)),
+             f"photos/{cap}-c.jpg": JPEG}  # 壊れた写真（ダミー）
+    r = _import(make_package(rows, files, [(p, p[7:-4], cap) for p in files]))
+    assert r.status_code == 200, r.text
+    ids = [x["id"] for x in client.get("/records", params={"q": cap, "limit": 50}).json()["items"]]
+    assert len(ids) == 3
+
+    st = _wait_explore(client.post("/explore/build", json={"ids": ids}).json()["jobId"])
+    assert st["status"] == "done", st
+    assert st["key"] and st["count"] == 2      # 壊れた 1 枚は外れる
+    js = client.get(f"/explore/bundles/{st['key']}/data.js")
+    assert js.status_code == 200 and js.text.startswith("window.LLV_DATA = ")
+    data = json.loads(js.text[len("window.LLV_DATA = "):-1])
+    assert len(data["records"]) == 2
+    assert {x["rid"] for x in data["records"]} <= set(ids)
+    assert all("x" in x and "y" in x for x in data["records"])
+    assert client.get(f"/explore/bundles/{st['key']}/atlas.webp").status_code == 200
+    # 同じ範囲はキャッシュから同じ key
+    st2 = _wait_explore(client.post("/explore/build", json={"ids": ids}).json()["jobId"])
+    assert st2["status"] == "done" and st2["key"] == st["key"]
+
+    # 写真の無い範囲（存在しない id）は空として正常終了
+    st = _wait_explore(client.post("/explore/build", json={"ids": [999999]}).json()["jobId"])
+    assert st["status"] == "done" and st["count"] == 0 and not st["key"]
+    # 不正な key は拒否
+    assert client.get("/explore/bundles/bad-key/data.js").status_code == 400

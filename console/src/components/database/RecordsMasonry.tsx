@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, getRecords, photoUrl } from '../../api/client';
 import type { RecordItem, RecordsQuery } from '../../api/types';
+import { dbBrowse, photoRatios } from '../../lib/browseMemory';
 import { copyImageToClipboard } from '../../lib/copyImage';
 import LangTags from '../LangTags';
 import PhotoLightbox, { type LightboxItem } from '../PhotoLightbox';
@@ -49,6 +50,7 @@ export default function RecordsMasonry({
   reloadKey,
   checked,
   onToggleCheck,
+  restoreKey,
 }: {
   filters: RecordsQuery;
   thumb: number;
@@ -62,6 +64,8 @@ export default function RecordsMasonry({
   reloadKey?: number;
   /** 批量操作用に選んだ記録 id。 */
   checked: number[];
+  /** 閲覧状態の鍵（範囲＋視図）。前回と同じなら、読込済みの枚数ぶんを一度に読み直す。 */
+  restoreKey?: string;
   onToggleCheck: (id: number) => void;
 }) {
   const { t } = useTranslation();
@@ -72,7 +76,8 @@ export default function RecordsMasonry({
   const [loading, setLoading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const ratios = useRef(new Map<number, number>());
+  // 縦横比は共有（戻ったときに同じ配置を再現する）。
+  const ratios = useRef(photoRatios);
   const [ratioVer, bump] = useState(0);
 
   const loadPage = useCallback((p: number) => {
@@ -88,10 +93,32 @@ export default function RecordsMasonry({
       .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, [filters, onTotal]);
-  useEffect(() => loadPage(1), [loadPage]);
+  // 初回だけ: 前回と同じ範囲なら、読込済みだった枚数ぶんを一度に読む（続きから見られる）。
+  // 復元点は最初の描画で取っておく（下の dbBrowse.albumLoaded の更新より前に）。
+  const restoreFrom = useRef(
+    restoreKey != null && dbBrowse.key === restoreKey ? dbBrowse.albumLoaded : 0);
+  useEffect(() => {
+    const n = restoreFrom.current;
+    restoreFrom.current = 0;
+    if (n <= PAGE) { loadPage(1); return; }
+    const size = Math.min(600, n);
+    setLoading(true);
+    getRecords({ ...filters, hasPhoto: true, page: 1, pageSize: size })
+      .then((res) => {
+        setItems(res.items);
+        setTotal(res.total);
+        onTotal(res.total);
+        setPage(Math.ceil(res.items.length / PAGE));
+      })
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPage]);
   // 详情で保存した後: 読込済みの枚数ぶんを読み直して表示を更新（位置は保つ）。
   const loadedRef = useRef(0);
   loadedRef.current = items.length;
+  // 読込済み枚数を記録（空の初回描画では上書きしない —— 復元中に 0 にしないため）。
+  if (items.length > 0) dbBrowse.albumLoaded = items.length;
   useEffect(() => {
     if (!reloadKey) return;
     const size = Math.min(500, Math.max(PAGE, loadedRef.current));

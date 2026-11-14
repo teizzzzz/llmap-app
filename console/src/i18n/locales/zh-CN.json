@@ -11,7 +11,11 @@
     "ai": "AI处理",
     "export": "导出",
     "settings": "设置",
-    "overview": "概览"
+    "overview": "概览",
+    "mode": "工作模式",
+    "research": "研究",
+    "explore": "探索",
+    "exploreNote": "点开照片，可「在研究台中打开」查看和编辑这条记录。"
   },
   "topbar": {
     "checking": "正在检查 backend…",
@@ -280,7 +284,9 @@
     "clearSelection": "清除选择",
     "selReview": "审核选中的 {{n}} 条",
     "selAi": "AI 处理选中的 {{n}} 条",
-    "selExport": "导出选中的 {{n}} 条"
+    "selExport": "导出选中的 {{n}} 条",
+    "scopeExplore": "探索当前筛选的 {{n}} 条",
+    "selExplore": "探索选中的 {{n}} 条"
   },
   "table": {
     "area": "地区",
@@ -339,8 +345,11 @@
     "stillMissing": "包内同样缺失",
     "reused": "复用（内容去重）",
     "viewImported": "查看本次导入的 {{n}} 条",
-    "nextHint": "接下来可以直接审核；如需 AI，可在资料库右上角“当前结果”菜单中对这批资料运行（可选）。",
-    "nextHintNoAi": "接下来可以直接开始审核这批资料。"
+    "nextHint": "AI 是可选的：不需要时直接审核即可。",
+    "nextHintNoAi": "AI 已在设置中关闭，可直接审核和导出。",
+    "nextLabel": "下一步",
+    "reviewImported": "审核本次导入的 {{n}} 条",
+    "aiImported": "AI 处理本次导入的 {{n}} 条"
   },
   "map": {
     "title": "地图",
@@ -567,7 +576,8 @@
     "scopeReset": "改为默认范围（未整理）",
     "offTitle": "AI 功能已关闭",
     "offBody": "在设置中关闭了 AI，相关入口已隐藏。已有的 AI 结果和 API 密钥都会保留，已在运行的任务也不受影响。",
-    "offGoSettings": "前往设置"
+    "offGoSettings": "前往设置",
+    "offRunning": "仍在运行的 AI 任务：{{done}} / {{total}}（关闭 AI 不会中止它）"
   },
   "settings": {
     "title": "设置",
@@ -645,5 +655,29 @@
     "count": "{{n}} 条",
     "reset": "改为全部记录",
     "selectedN": "手动选中的 {{n}} 条"
+  },
+  "explore": {
+    "scope": "范围",
+    "scopeAll": "全部记录",
+    "scopeDb": "资料库当前筛选",
+    "scopeSel": "已选 {{n}} 条",
+    "noFilter": "资料库中还没有设定筛选条件",
+    "count": "{{n}} 张照片",
+    "phase": {
+      "analyse": "分析照片色彩 {{done}}/{{total}}",
+      "layout": "计算布局…",
+      "atlas": "生成缩略图集 {{done}}/{{total}}"
+    },
+    "failed": "探索数据生成失败",
+    "preparing": "正在本地生成探索数据…",
+    "loading": "正在载入…",
+    "firstTimeHint": "首次分析全部照片约需 1 分钟，之后会使用缓存，几秒即可完成。",
+    "rebuilding": "正在为新范围生成…",
+    "empty": "该范围内没有带照片的记录。",
+    "view": {
+      "explore": "照片探索",
+      "themes": "主题",
+      "chain": "接龙"
+    }
   }
 }

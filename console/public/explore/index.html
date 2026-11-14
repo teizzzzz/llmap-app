@@ -1,0 +1,213 @@
+<!doctype html>
+<!-- LLMap 桌面: 研究台に埋め込む探索（llmap-view のコピー）。
+     データ・縮略図・atlas は本地 backend から。?api=&key=&lang=&embed=1 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLmap · 新大久保</title>
+<link rel="stylesheet" href="style.css?v=202611100747">
+</head>
+<body data-view="landing">
+
+<!-- ================= top navigation (shared) ================= -->
+<header class="nav">
+  <div class="nav-l">
+    <a class="logo" href="#" data-go="landing" aria-label="LLmap">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="6.5" r="3.6"/><circle cx="25" cy="12.5" r="3.6"/><circle cx="21.6" cy="23.5" r="3.6"/>
+        <circle cx="10.4" cy="23.5" r="3.6"/><circle cx="7" cy="12.5" r="3.6"/><circle cx="16" cy="16" r="2.2"/>
+      </svg>
+      <span>LLmap</span>
+    </a>
+    <nav class="links">
+      <a href="#" data-go="explore" data-i18n="nav.explore">探索</a>
+      <a href="#" data-go="themes" data-i18n="nav.themes">主题</a>
+      <a href="#" data-go="chain" data-i18n="nav.chain">接龙</a>
+      <a href="#" data-go="about" data-i18n="nav.about">关于</a>
+    </nav>
+  </div>
+  <label class="search" id="search-box">
+    <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+    <input id="search" type="search" data-i18n-ph="nav.search" placeholder="试试 “红色 韩语” 或 “禁止”" autocomplete="off">
+    <span class="spectrum" aria-hidden="true"></span>
+  </label>
+  <div class="nav-r">
+    <span class="count-pill" id="count-pill"><b id="count">0</b><span>/ <span id="total">0</span></span></span>
+    <button class="pill ghost" id="toggle-filter"><span data-i18n="nav.filter">筛选</span><i class="badge" id="filter-badge" hidden></i></button>
+    <div class="lang-sw" id="lang-sw" role="group" aria-label="Language">
+      <button data-l="zh" lang="zh">中</button><button data-l="ja" lang="ja">日</button>
+    </div>
+    <button class="pill dark" id="nav-cta" data-go="explore" data-i18n="nav.cta">开始探索</button>
+  </div>
+</header>
+
+<!-- ================= landing ================= -->
+<section class="view landing" id="landing">
+  <div class="hero">
+    <div class="floaters" id="floaters"></div>
+    <div class="hero-c">
+      <p class="eyebrow">LLMAP SHIN-OKUBO 2026</p>
+      <h1 data-i18n-html="hero.h1">街道的文字<br>ことばのかたち</h1>
+      <div class="cta">
+        <button class="pill dark xl" data-go="explore" data-i18n="hero.go">开始探索</button>
+        <button class="pill light xl" data-go="chain" data-random="1" data-i18n="hero.wander">随便逛逛</button>
+      </div>
+    </div>
+    <button class="scroll-cue" id="scroll-cue" data-i18n-aria="hero.down" aria-label="向下">
+      <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+  </div>
+
+  <section class="themes" id="themes">
+    <div class="sec-head">
+      <div>
+        <h2 data-i18n="themes.h">从一个主题开始</h2>
+        <p data-i18n="themes.p">每个主题是一组筛选条件，点进去就是一片新的照片云。左右滑动查看更多。</p>
+      </div>
+      <div class="th-nav">
+        <button class="round lg" id="th-prev" data-i18n-aria="themes.prev" aria-label="上一组"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="round lg" id="th-next" data-i18n-aria="themes.next" aria-label="下一组"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="th-wrap" id="th-wrap">
+      <div class="th-row" id="th-row"></div>
+    </div>
+    <div class="th-progress"><i id="th-bar"></i></div>
+  </section>
+
+  <div class="about" id="about">
+    <div class="about-grid">
+      <div>
+        <h2 data-i18n-html="about.h">每一块招牌<br>都是一次选择</h2>
+      </div>
+      <div class="about-text">
+        <p data-i18n="about.p"></p>
+        <ul class="facts">
+          <li><b>1,933</b><span data-i18n="about.f1">块标识</span></li>
+          <li><b>10</b><span data-i18n="about.f2">种主要语言</span></li>
+          <li><b>6</b><span data-i18n="about.f3">种关联方式</span></li>
+          <li><b>5</b><span data-i18n="about.f4">种视图</span></li>
+        </ul>
+      </div>
+    </div>
+    <footer class="foot">
+      <div class="foot-row">
+        <span data-i18n="foot.modes"></span>
+        <span data-i18n="foot.note"></span>
+      </div>
+      <div class="wordmark" aria-hidden="true">LLMAP</div>
+    </footer>
+  </div>
+</section>
+
+<!-- ================= explore ================= -->
+<section class="view explore" id="explore">
+  <canvas id="cv"></canvas>
+  <div class="glabels" id="labels"></div>
+  <div class="ctx-head" id="ctx-head">
+    <h2 id="ctx-t"></h2>
+    <p id="ctx-s"></p>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <aside class="float panel" id="panel" hidden>
+    <div class="panel-head">
+      <h3 data-i18n="panel.h">筛选</h3>
+      <button class="txt" id="reset" data-i18n="panel.reset">全部清除</button>
+    </div>
+    <div class="pick">
+      <div class="sec-t" data-i18n="panel.pick">按颜色找图</div>
+      <div class="pick-row">
+        <label class="swatch-in"><input type="color" id="pick-color" value="#f0281e"></label>
+        <div class="pick-sliders">
+          <label><span data-i18n="panel.tol">容差</span><input type="range" id="pick-tol" min="0.03" max="0.2" step="0.005" value="0.08"></label>
+          <label><span data-i18n="panel.share">最低占比</span><input type="range" id="pick-share" min="0.03" max="0.6" step="0.01" value="0.1"></label>
+        </div>
+      </div>
+      <div class="pick-actions">
+        <button class="pill dark sm" id="pick-apply" data-i18n="panel.apply">应用</button>
+        <button class="txt" id="pick-clear" data-i18n="panel.clear">清除</button>
+      </div>
+    </div>
+    <div id="charts"></div>
+  </aside>
+
+  <div class="dock" id="dock">
+    <div class="seg" id="modes">
+      <button data-mode="wall" data-i18n="mode.wall">照片墙</button>
+      <button data-mode="group" data-i18n="mode.group">照片云</button>
+      <button data-mode="wheel" data-i18n="mode.wheel">色轮</button>
+      <button data-mode="hl" data-i18n="mode.hl">色相×明度</button>
+      <button data-mode="map" data-i18n="mode.map">地图</button>
+    </div>
+    <span class="dock-sep"></span>
+    <label class="dock-sel" id="ctl-sort"><span data-i18n="dock.sort">排序</span>
+      <select id="sort">
+        <option value="spec" data-i18n="sort.spec">色谱</option>
+        <option value="light" data-i18n="sort.light">明度</option>
+        <option value="cf" data-i18n="sort.cf">鲜艳度</option>
+        <option value="time" data-i18n="sort.time">采集时间</option>
+        <option value="lang" data-i18n="sort.lang">主要语言</option>
+      </select>
+    </label>
+    <label class="dock-sel" id="ctl-group"><span data-i18n="dock.group">分组</span><select id="group"></select></label>
+  </div>
+  <div class="hint" data-i18n="explore.hint">滚轮缩放 · 拖动平移 · 双击空白处复位</div>
+</section>
+
+<!-- ================= chain (mind map) ================= -->
+<section class="view chain" id="chain">
+  <div class="board" id="board">
+    <div class="world" id="world">
+      <svg class="wires" id="links"></svg>
+    </div>
+  </div>
+  <div class="chain-title" id="chain-title"></div>
+  <div class="chain-empty" id="chain-empty" hidden>
+    <p data-i18n="chain.empty">从一张照片出发，沿着颜色、位置、语言一路走下去。</p>
+    <button class="pill dark" id="chain-start" data-i18n="chain.start">随机选一张开始</button>
+  </div>
+  <aside class="float next" id="next" hidden>
+    <div class="next-head" id="next-head"></div>
+    <div class="next-body" id="next-body"></div>
+  </aside>
+  <div class="dock tools">
+    <button class="tool" id="t-random"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3"/><circle cx="15" cy="15" r="1.3"/><circle cx="15" cy="9" r="1.3"/><circle cx="9" cy="15" r="1.3"/></svg><span data-i18n="tool.random">随机起点</span></button>
+    <button class="tool" id="t-tidy"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M7 12c5 0 5-6 10-6M7 12c5 0 5 6 10 6"/></svg><span data-i18n="tool.tidy">整理</span></button>
+    <button class="tool" id="t-fit"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span data-i18n="tool.fit">全览</span></button>
+    <button class="tool" id="t-clear"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg><span data-i18n="tool.clear">清空</span></button>
+  </div>
+  <div class="hint" data-i18n="chain.hint">点击节点展开 · 右侧切换关联方式 · 双击查看详情</div>
+</section>
+
+<!-- ================= detail card (shared) ================= -->
+<aside class="float detail" id="detail" hidden>
+  <div class="detail-head">
+    <div class="trail" id="trail"></div>
+    <button class="round" id="detail-close" data-i18n-aria="close" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</aside>
+
+<div class="tip" id="tip" hidden></div>
+
+<script src="i18n.js?v=202611100747"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var api = q.get('api') || '';
+  var key = q.get('key') || '';
+  window.LLV_API = api;
+  window.LLV_THUMBS = api + '/thumbs/';
+  window.LLV_ASSET_BASE = api + '/explore/bundles/' + key + '/';
+  window.LLV_EMBED = q.get('embed') === '1';
+  if (window.LLV_EMBED) document.documentElement.classList.add('embed');
+  window.LLV_LANG = q.get('lang');
+  document.write('<script src="' + window.LLV_ASSET_BASE + 'data.js"><\/script>');
+})();
+</script>
+<script src="data/basemap.js?v=202611100747"></script>
+<script src="app.js?v=202611100747"></script>
+</body>
+</html>

@@ -25,6 +25,8 @@ export default function App() {
             <Route path="export" element={<ExportPage />} />
             <Route path="ai" element={<AiProcessingPage />} />
             <Route path="overview" element={<DashboardPage />} />
+            {/* 探索区の本体は AppLayout が保持する（ここは経路だけ）。 */}
+            <Route path="explore" element={null} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/database" replace />} />
           </Route>

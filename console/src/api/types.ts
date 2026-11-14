@@ -335,3 +335,18 @@ export interface AppConfigUpdate {
   claudeModel?: string | null;
   geminiModel?: string | null;
 }
+
+/** GET /explore/jobs/{id} — 探索データ（範囲ごとのバンドル）の生成状況 */
+export interface ExploreJob {
+  id: string;
+  status: 'running' | 'done' | 'error';
+  /** analyse = 写真の色の分析 / layout = 並べ方の計算 / atlas = 書き出し */
+  phase: 'analyse' | 'layout' | 'atlas';
+  done: number;
+  total: number;
+  /** done 時: バンドルの鍵（/explore/bundles/{key}/data.js） */
+  key: string;
+  /** 範囲内で写真のある記録数 */
+  count: number;
+  error: string;
+}

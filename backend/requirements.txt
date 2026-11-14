@@ -10,3 +10,5 @@ httpx>=0.27
 pillow>=10.0
 # tests
 pytest>=8.0
+# 桌面の「探索」（色の分析・格子レイアウト。scipy は使わない）
+numpy>=1.26

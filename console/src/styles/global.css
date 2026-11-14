@@ -8,7 +8,7 @@
   --track: #e8e8e8;
   --ink: #0f0f0e;
   --ink-2: #3d3c39;
-  --muted: #8e8e8e;
+  --muted: #6b6b6b; /* 補助文字: 背景 --bg に対し 4.8:1（AA） */
   --faint: #c6c6c6;
   --line: rgba(15, 15, 14, 0.07);
   --line-strong: rgba(15, 15, 14, 0.14);
@@ -142,6 +142,8 @@ kbd {
   transition: background var(--t-fast), color var(--t-fast);
 }
 .nav-item:hover { color: var(--ink); background: var(--hover); }
+button.nav-item { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+button.nav-item:disabled { opacity: 0.4; cursor: default; background: transparent; }
 .nav-item.active { background: var(--charcoal); color: #fff; font-weight: 500; }
 .nav-item.active:hover { background: var(--charcoal-hover); }
 .sidebar-footer {
@@ -1283,12 +1285,20 @@ a.kpi:hover { background: var(--hover); }
 .detail-meta .identity-grid { margin-top: 8px; }
 .detail-badges { align-items: center; }
 .next-hint { margin: 12px 0 0; font-size: 12px; }
+/* 導入完了後の「次へ」: 本次导入分をそのまま審核 / AI へ */
+.import-next {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.import-next > .muted { font-size: 12.5px; margin-right: 4px; }
+.import-next .next-hint { flex-basis: 100%; margin-top: 4px; }
 
 /* 資料庫の见出し行はスクロールしても上に残す（视图切替・範囲メニューを常に使える）。 */
 .db-page .page-head {
   position: sticky;
   top: 0;
-  z-index: 30;
+  /* 详情抽屉（40）より上: 範囲メニューの下拉が抽屉に隠れないように（抽屉は top 76px から）。 */
+  z-index: 45;
   margin: 0 -36px 12px;
   padding: 0 36px 10px;
   background: var(--bg);
@@ -1354,3 +1364,58 @@ a.kpi:hover { background: var(--hover); }
 .switch-row .muted { font-size: 12px; }
 .ai-off { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 640px; }
 .ai-off p { margin: 0 0 6px; }
+.ai-off + .job-row { margin-top: 14px; max-width: 640px; }
+
+/* ── 探索 / 研究の切替（サイドバー最上位）と探索区 ── */
+.mode-switch { margin: 0 24px 10px; display: flex; }
+.mode-switch button { flex: 1; }
+.sidebar-note { margin: 14px 24px 6px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+
+/* 探索モードのサイドバー: 範囲と生成状況 */
+.ex-side { margin: 18px 14px 0; padding: 16px 0 0; border-top: 1px solid var(--line); }
+.ex-side-h { margin: 0 16px 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.ex-scopes { display: flex; flex-direction: column; gap: 2px; }
+.ex-scope {
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 16px; border: 0; border-radius: var(--r-pill);
+  background: transparent; font: inherit; font-size: 13.5px; color: var(--ink-2);
+  text-align: left; cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.ex-scope i {
+  width: 14px; height: 14px; flex: none; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--faint);
+  transition: box-shadow var(--t-fast);
+}
+.ex-scope:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
+.ex-scope.on { color: var(--ink); font-weight: 500; }
+.ex-scope.on i { box-shadow: inset 0 0 0 4.5px var(--ink); }
+.ex-scope:disabled { opacity: 0.4; cursor: default; }
+.ex-side-hint { margin: 4px 16px 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.ex-status {
+  min-height: 22px; margin: 12px 16px 0;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.ex-status .job-bar { flex: none; width: 100%; }
+.ex-count { color: var(--muted); }
+
+.main { position: relative; }
+.explore-host { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.explore-host.is-hidden { position: absolute; inset: 0; visibility: hidden; pointer-events: none; z-index: -1; }
+.explore-error { margin: 16px 24px 0; }
+.explore-frame { position: relative; flex: 1; min-height: 0; }
+.explore-frame iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--bg); }
+.explore-wait {
+  height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; text-align: center; padding: 24px;
+}
+.explore-wait p { margin: 0; }
+.explore-wait-hint { font-size: 12.5px; color: var(--muted); }
+.explore-veil {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  padding: 8px 16px; border-radius: var(--r-pill);
+  background: var(--ink); color: var(--surface); font-size: 12.5px;
+  box-shadow: var(--shadow);
+}

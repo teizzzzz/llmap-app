@@ -9,6 +9,7 @@ import RecordDetailPanel from '../components/database/RecordDetailPanel';
 import RecordsFilters from '../components/database/RecordsFilters';
 import RecordsMasonry, { ThumbSlider, useThumbSize } from '../components/database/RecordsMasonry';
 import RecordsTable from '../components/database/RecordsTable';
+import { dbBrowse } from '../lib/browseMemory';
 import useAiEnabled from '../hooks/useAiEnabled';
 import useFilterOptions from '../hooks/useFilterOptions';
 import useSharedFilters, { hasAnyFilter } from '../hooks/useSharedFilters';
@@ -28,7 +29,6 @@ export default function DatabasePage() {
     selection, toggleSelect, setSelection, clearSelection,
   } = useSharedFilters();
   const [aiOn] = useAiEnabled();
-  const [page, setPage] = useState(1);
   const [data, setData] = useState<RecordsResponse | null>(null);
   const [albumTotal, setAlbumTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +43,54 @@ export default function DatabasePage() {
   useEffect(() => {
     try { localStorage.setItem(VIEW_KEY, view); } catch { /* 保存できなくても表示は切替わる */ }
   }, [view]);
+
+  // 閲覧状態（審核・地図・探索などへ行って戻ったとき、続きから）。
+  // 鍵＝範囲＋視図。前回と同じならページ・読込済み枚数・スクロール位置を戻す。
+  const browseKey = JSON.stringify(filters) + '|' + view;
+  const [page, setPage] = useState(() => (dbBrowse.key === browseKey ? dbBrowse.tablePage : 1));
+  const browseRef = useRef({ key: browseKey, page });
+  browseRef.current = { key: browseKey, page };
+  useEffect(() => {
+    const content = () => document.querySelector<HTMLElement>('.content');
+    const target = dbBrowse.key === browseKey ? dbBrowse.scroll : 0;
+    // 離れる時点の .content は次のページに替わっている（探索では消える）ので、
+    // スクロール位置は随時記録しておく。
+    let last = target;
+    const el0 = content();
+    const onScroll = () => { last = el0?.scrollTop ?? 0; };
+    el0?.addEventListener('scroll', onScroll, { passive: true });
+    let raf = 0;
+    if (target > 0) {
+      // 写真・行が読み込まれ、配置が落ち着いて（高さが数フレーム変わらない）から戻す。
+      // 相册は幅の測定前に 1 列で並ぶ一瞬があり、その高さで戻すとずれるため。最大 4 秒。
+      const until = performance.now() + 4000;
+      let prevH = -1;
+      let steady = 0;
+      const tick = () => {
+        const el = content();
+        if (!el) return;
+        const h = el.scrollHeight;
+        steady = h === prevH ? steady + 1 : 0;
+        prevH = h;
+        if ((h - el.clientHeight >= target && steady >= 8) || performance.now() > until) {
+          el.scrollTop = target;
+          last = el.scrollTop;
+        } else {
+          raf = requestAnimationFrame(tick);
+        }
+      };
+      raf = requestAnimationFrame(tick);
+    }
+    return () => {
+      cancelAnimationFrame(raf);
+      el0?.removeEventListener('scroll', onScroll);
+      dbBrowse.key = browseRef.current.key;
+      dbBrowse.tablePage = browseRef.current.page;
+      dbBrowse.scroll = last;
+    };
+    // 表示時に 1 回だけ（離れるときに保存）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [thumb, setThumb] = useThumbSize();
 
   const { schema, datasets, areas, collectors, fieldStats,
@@ -121,11 +169,13 @@ export default function DatabasePage() {
   };
 
   /** 導入直後: 今回の導入分（データセット）だけに絞って写真で見る。 */
-  const viewImported = (datasetId: number) => {
+  const viewImported = (datasetId: number, then?: 'review' | 'ai') => {
     replace({ datasetIds: [datasetId] });
     setPage(1);
     setView('album');
     setImporting(false);
+    // 範囲＝本次导入分のまま、審核 / AI へ（?scope=db で引き継ぐ）。
+    if (then) navigate(`/${then}?scope=db`);
   };
 
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
@@ -165,6 +215,10 @@ export default function DatabasePage() {
                 <button type="button" role="menuitem" className="menu-item" disabled={!n}
                   onClick={() => { close(); navigate('/export?scope=db'); }}>
                   {t('database.scopeExport', { n })}
+                </button>
+                <button type="button" role="menuitem" className="menu-item" disabled={!n}
+                  onClick={() => { close(); navigate('/explore?scope=db'); }}>
+                  {t('database.scopeExplore', { n })}
                 </button>
               </>
             )}
@@ -208,6 +262,7 @@ export default function DatabasePage() {
 
       {view === 'album' && (
         <RecordsMasonry filters={filters} thumb={thumb} onThumb={setThumb} onTotal={setAlbumTotal}
+          restoreKey={browseKey}
           onOpen={(r) => openRecord(r.id)} selectedId={selectedId} reloadKey={reloadKey}
           checked={selection} onToggleCheck={toggleSelect} />
       )}
@@ -263,6 +318,9 @@ export default function DatabasePage() {
               {t('database.selAi', { n: selection.length })}
             </button>
           )}
+          <button type="button" className="btn" onClick={() => navigate('/explore?scope=sel')}>
+            {t('database.selExplore', { n: selection.length })}
+          </button>
           <button type="button" className="btn primary" onClick={() => navigate('/export?scope=sel')}>
             {t('database.selExport', { n: selection.length })}
           </button>

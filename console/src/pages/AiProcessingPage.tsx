@@ -9,6 +9,7 @@ import type {
   AiJobStatus, AiLogEntry, AiPreview, AiStatus, RecordsQuery,
 } from '../api/types';
 import ScopeBanner from '../components/ScopeBanner';
+import { forgetJob, recallJob, rememberJob } from '../hooks/jobMemory';
 import useFilterOptions from '../hooks/useFilterOptions';
 import useAiEnabled from '../hooks/useAiEnabled';
 import useSharedFilters, { scopeQuery } from '../hooks/useSharedFilters';
@@ -18,6 +19,8 @@ import { languageFilterValues } from '../lib/languageList';
 // 内部値（API に渡る）。表示ラベルのみ翻訳する。
 const ENTRY_MODES = ['quick', 'standard', 'research'];
 const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'needs_review', 'reviewed', 'verified', 'rejected'];
+
+const AI_SLOT = 'ai';
 
 /** バッチ AI ジョブ 1 本の管理（進捗ポーリング・取消・実時ログの増分蓄積）。 */
 function useAiJob() {
@@ -36,6 +39,35 @@ function useAiJob() {
   }, []);
   useEffect(() => stopPolling, [stopPolling]);
 
+  const follow = useCallback((jobId: string) => {
+    stopPolling();
+    const poll = async () => {
+      try {
+        const st = await getAiJob(jobId, lastSeq.current);
+        setJob(st);
+        if (st.logs.length > 0) {
+          lastSeq.current = st.lastSeq;
+          // 表示は直近 1000 行に抑える（DOM を無限に増やさない）
+          setLogs((prev) => [...prev, ...st.logs].slice(-1000));
+        }
+        if (st.status !== 'running') stopPolling();
+      } catch {
+        // backend の再起動などでジョブが無い → 忘れる
+        stopPolling();
+        forgetJob(AI_SLOT);
+      }
+    };
+    void poll();
+    timer.current = setInterval(poll, 700);
+  }, [stopPolling]);
+
+  // 戻ってきたとき: 覚えているジョブの進捗・ログ（終わっていれば結果）を再表示。
+  // AI を設定で切っていても、走っているジョブは止めずに見えるようにする。
+  useEffect(() => {
+    const id = recallJob(AI_SLOT);
+    if (id) follow(id);
+  }, [follow]);
+
   const start = async (filters: RecordsQuery) => {
     setStarting(true);
     setError(null);
@@ -44,20 +76,8 @@ function useAiJob() {
     lastSeq.current = -1;
     try {
       const { jobId } = await startAiJob(filters);
-      timer.current = setInterval(async () => {
-        try {
-          const st = await getAiJob(jobId, lastSeq.current);
-          setJob(st);
-          if (st.logs.length > 0) {
-            lastSeq.current = st.lastSeq;
-            // 表示は直近 1000 行に抑える（DOM を無限に増やさない）
-            setLogs((prev) => [...prev, ...st.logs].slice(-1000));
-          }
-          if (st.status !== 'running') stopPolling();
-        } catch {
-          stopPolling();
-        }
-      }, 700);
+      rememberJob(AI_SLOT, jobId);
+      follow(jobId);
     } catch (e: unknown) {
       setError(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -215,6 +235,13 @@ export default function AiProcessingPage() {
           <p className="muted">{t('ai.offBody')}</p>
           <Link className="btn" to="/settings">{t('ai.offGoSettings')}</Link>
         </div>
+        {/* 切る前に始めたジョブは止めない。進捗だけは見えるようにする（取消は利用者が選ぶ）。 */}
+        {jc.job?.status === 'running' && (
+          <div className="job-row">
+            <span>{t('ai.offRunning', { done: jc.job.done, total: jc.job.total })}</span>
+            <button className="btn" onClick={jc.cancel}>{t('common.cancel')}</button>
+          </div>
+        )}
       </>
     );
   }

@@ -48,7 +48,8 @@ a = Analysis(
         # AI SDK は遅延 import のため除外（体積節約。/ai 使用時のみ必要）
         "anthropic", "google", "google.genai",
         # 不要な大物
-        "tkinter", "unittest", "pytest", "numpy",
+        # numpy は探索（/explore: 写真の色分析・レイアウト）で使うため同梱する
+        "tkinter", "unittest", "pytest",
     ],
     noarchive=False,
 )

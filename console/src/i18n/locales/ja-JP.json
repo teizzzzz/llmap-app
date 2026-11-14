@@ -11,7 +11,11 @@
     "ai": "AI処理",
     "export": "エクスポート",
     "settings": "設定",
-    "overview": "概要"
+    "overview": "概要",
+    "mode": "モード",
+    "research": "研究",
+    "explore": "探索",
+    "exploreNote": "写真を開いて「研究台で開く」を押すと、その記録を確認・編集できます。"
   },
   "topbar": {
     "checking": "backend 確認中…",
@@ -280,7 +284,9 @@
     "clearSelection": "選択を解除",
     "selReview": "選んだ {{n}} 件を審査",
     "selAi": "選んだ {{n}} 件を AI 処理",
-    "selExport": "選んだ {{n}} 件を書き出す"
+    "selExport": "選んだ {{n}} 件を書き出す",
+    "scopeExplore": "現在の絞り込み {{n}} 件を探索",
+    "selExplore": "選択中の {{n}} 件を探索"
   },
   "table": {
     "area": "地区",
@@ -339,8 +345,11 @@
     "stillMissing": "パッケージ内にも無い写真",
     "reused": "共用（内容去重）",
     "viewImported": "今回取り込んだ {{n}} 件を見る",
-    "nextHint": "このまま審査を始められます。AI を使う場合は、ライブラリ右上の「現在の結果」メニューからこのデータに対して実行できます（任意）。",
-    "nextHintNoAi": "このまま、このデータの審査を始められます。"
+    "nextHint": "AI は任意です。不要ならそのままレビューできます。",
+    "nextHintNoAi": "AI は設定でオフです。そのままレビュー・エクスポートできます。",
+    "nextLabel": "次へ",
+    "reviewImported": "今回取り込んだ {{n}} 件をレビュー",
+    "aiImported": "今回取り込んだ {{n}} 件を AI 処理"
   },
   "map": {
     "title": "地図",
@@ -567,7 +576,8 @@
     "scopeReset": "既定の対象（未整理）に戻す",
     "offTitle": "AI 機能はオフです",
     "offBody": "設定で AI をオフにしているため、関連する入口を隠しています。既存の AI の結果と API キーはそのまま残り、実行中のジョブにも影響しません。",
-    "offGoSettings": "設定を開く"
+    "offGoSettings": "設定を開く",
+    "offRunning": "実行中の AI タスク：{{done}} / {{total}}（AI をオフにしても止まりません）"
   },
   "settings": {
     "title": "設定",
@@ -645,5 +655,29 @@
     "count": "{{n}} 件",
     "reset": "すべての記録に戻す",
     "selectedN": "手動で選んだ {{n}} 件"
+  },
+  "explore": {
+    "scope": "範囲",
+    "scopeAll": "すべての記録",
+    "scopeDb": "ライブラリの絞り込み",
+    "scopeSel": "選択中の {{n}} 件",
+    "noFilter": "ライブラリで絞り込み条件がまだ設定されていません",
+    "count": "写真 {{n}} 枚",
+    "phase": {
+      "analyse": "写真の色を分析中 {{done}}/{{total}}",
+      "layout": "レイアウトを計算中…",
+      "atlas": "サムネイル集を作成中 {{done}}/{{total}}"
+    },
+    "failed": "探索データを作成できませんでした",
+    "preparing": "探索データをローカルで作成しています…",
+    "loading": "読み込み中…",
+    "firstTimeHint": "初回は全写真の分析に 1 分ほどかかります。2 回目以降はキャッシュを使うので数秒で終わります。",
+    "rebuilding": "新しい範囲で作成中…",
+    "empty": "この範囲には写真付きの記録がありません。",
+    "view": {
+      "explore": "写真を探索",
+      "themes": "テーマ",
+      "chain": "しりとり"
+    }
   }
 }
