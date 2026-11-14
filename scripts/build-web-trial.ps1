@@ -34,6 +34,17 @@ New-Item -ItemType Directory -Force -Path $Out | Out-Null
 Copy-Item -Recurse (Join-Path $App 'build\web') (Join-Path $Out 'web')
 Copy-Item (Join-Path $RepoRoot 'deploy\nas-trial\*') $Out
 
+# 古い版が CDN・ブラウザのキャッシュに残らないよう、スクリプトの URL にビルド時刻を付ける
+# （index.html はキャッシュされないので、開くたびに新しい URL を指す）。
+$stamp = Get-Date -Format 'yyyyMMddHHmmss'
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$f = Join-Path $Out 'web\index.html'
+$s = [IO.File]::ReadAllText($f, $utf8).Replace('src="flutter_bootstrap.js"', "src=`"flutter_bootstrap.js?v=$stamp`"")
+[IO.File]::WriteAllText($f, $s, $utf8)
+$f = Join-Path $Out 'web\flutter_bootstrap.js'
+$s = [IO.File]::ReadAllText($f, $utf8).Replace('"mainJsPath":"main.dart.js"', "`"mainJsPath`":`"main.dart.js?v=$stamp`"")
+[IO.File]::WriteAllText($f, $s, $utf8)
+
 if ($ExploreData -and (Test-Path $ExploreData)) {
     Copy-Item -Recurse $ExploreData (Join-Path $Out 'web\explore-data')
     Write-Host "[trial] explore data: $ExploreData"
