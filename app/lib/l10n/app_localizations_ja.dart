@@ -51,10 +51,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get newCollection => '新規採集';
 
   @override
-  String get takePhoto => '撮影';
+  String get takePhoto => '写真を撮る';
 
   @override
-  String get chooseFromGallery => 'ギャラリーから選択';
+  String get chooseFromGallery => 'アルバムから選ぶ';
 
   @override
   String get recordsTitle => '採集記録';
@@ -74,14 +74,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get emptyTitle => 'まだ記録がありません';
 
   @override
-  String get emptyBody => '「新規採集」から、身の回りの言語景観を記録しましょう。';
+  String get emptyBody => '下のカメラボタンから、街で見つけた文字を記録してみましょう。';
 
   @override
-  String get savedTitle => 'ローカルプロジェクトに保存しました';
+  String get savedTitle => '保存しました';
 
   @override
   String get savedBody =>
-      '写真記録を現在のプロジェクトに保存しました。後で CSV と写真の ZIP を書き出して整理・バックアップ・分析に使えます。';
+      '写真と記録をこの端末に保存しました。あとで CSV と写真の ZIP を書き出して、整理・バックアップ・分析に使えます。';
 
   @override
   String get backToMap => '地図に戻る';
@@ -94,12 +94,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String exportedTo(String path) {
-    return '書き出し: $path';
+    return '書き出し先：$path';
   }
 
   @override
   String exportFailed(String error) {
-    return '書き出し失敗: $error';
+    return '書き出しに失敗しました：$error';
   }
 
   @override
@@ -123,7 +123,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get settingsSaved => '設定を保存しました（URL変更は次回起動から）';
+  String get settingsSaved => '設定を保存しました';
 
   @override
   String get menu => 'メニュー';
@@ -145,7 +145,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String aboutBody(String version) {
-    return '言語景観の採集ツール · $version\nローカル優先：写真と記録は端末内に保存。いつでも CSV と写真 ZIP を書き出せます。クラウド同期は今後対応。';
+    return '言語景観の採集ツール · $version\n写真と記録はこの端末に保存され、いつでも CSV と写真の ZIP を書き出せます。クラウド同期は今後対応予定です。';
   }
 
   @override
@@ -153,28 +153,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String cropTitle(int count) {
-    return '框选標識 ($count)';
+    return '標識を囲む（$count）';
   }
 
   @override
   String get undoLastBox => '最後の枠を取り消し';
 
   @override
-  String get clearAll => '全消去';
+  String get clearAll => 'すべて消去';
 
   @override
-  String get cropHintEmpty => 'ドラッグで各標識を囲む。囲まなければ全景を1件として登録。';
+  String get cropHintEmpty => 'ドラッグして標識を囲んでください。囲まない場合は、写真全体を 1 件として登録します。';
 
   @override
   String cropHintBoxed(String list) {
-    return '枠: $list';
+    return '選択中：$list';
   }
 
   @override
-  String get nextFillFields => '次へ：字段入力';
+  String get nextFillFields => '次へ：項目を入力';
 
   @override
-  String get nextWholeImage => '全景を1件として次へ';
+  String get nextWholeImage => '写真全体を 1 件として次へ';
 
   @override
   String get gpsLocating => '現在地を取得中…';
@@ -183,47 +183,47 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gpsGot => '現在地を取得しました';
 
   @override
-  String get gpsFailed => '現在地を取得できません。撮影地点を手動で選んでください';
+  String get gpsFailed => '現在地を取得できません。撮影した場所を手動で選んでください。';
 
   @override
-  String get gpsAdjust => '位置がずれている？手動調整';
+  String get gpsAdjust => '位置を手動で調整';
 
   @override
   String get gpsManual => '手動で選択';
 
   @override
-  String get gpsAdjusted => '位置を手動調整しました';
+  String get gpsAdjusted => '位置を手動で調整しました';
 
   @override
   String get gpsReadjust => '再調整';
 
   @override
   String fieldsTitle(String suffix, int index, int total) {
-    return '字段入力 · $suffix ($index/$total)';
+    return '項目の入力 · $suffix（$index/$total）';
   }
 
   @override
-  String get reRecognize => '再識別';
+  String get reRecognize => 'もう一度認識';
 
   @override
-  String get recognizing => '識別中…';
+  String get recognizing => '認識中…';
 
   @override
   String aiFailed(String error) {
-    return 'AI識別に失敗: $error';
+    return 'AI 認識に失敗しました：$error';
   }
 
   @override
-  String get stashDone => '暂存して完了';
+  String get stashDone => '一時保存して完了';
 
   @override
-  String get stashNext => '暂存して次へ';
+  String get stashNext => '一時保存して次へ';
 
   @override
-  String get saveDone => '入力して保存・完了';
+  String get saveDone => '保存して完了';
 
   @override
-  String get saveNext => '入力して保存・次へ';
+  String get saveNext => '保存して次へ';
 
   @override
   String get editTitle => '編集';
@@ -237,10 +237,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get saveChanges => '保存';
 
   @override
-  String get aiAuto => 'AI自動識別';
+  String get aiAuto => 'AI 認識';
 
   @override
-  String get aiAutoSub => 'オンにすると、框选した各標識に入ると自動で字段を識別します。';
+  String get aiAutoSub =>
+      'AI が項目を提案します。結果はあとから修正できます。現在はエキスパートモードでのみ使えます（かんたんモードは OCR の方式が決まり次第対応します）。';
 
   @override
   String get provider => 'プロバイダ';
@@ -250,16 +251,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get apiKeyNote =>
-      'キーは端末内にのみ保存され、判定時に各社AI（Claude/Gemini）へ直接送信されます（PC不要）。';
+      'キーはこの端末にのみ保存され、認識のときに各社の AI（Claude / Gemini）へ直接送信されます。PC は不要です。';
 
   @override
-  String get backendOptional => '後端アドレス（任意）';
+  String get backendOptional => 'バックエンドのアドレス（任意）';
 
   @override
-  String get backendNote => '日常の採集に後端は不要。旧版後端を使う場合のみ入力。';
+  String get backendNote => '通常の採集にバックエンドは不要です。';
 
   @override
-  String get backendUrl => '後端 URL';
+  String get backendUrl => 'バックエンド URL';
 
   @override
   String get backendHint =>
@@ -279,7 +280,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get collectorIdNote =>
-      '採集者の識別子。SignID の「採集者」位に入り、多人協作時の採番衝突を防ぐ。既定で自動生成済み（NanoID 8桁・易混字 0/O/1/l/I を除外）。自由に変更可。';
+      '採集者を見分けるための ID です。SignID に含まれ、複数人で採集しても番号が重ならないようにします。初期値は自動で作成済みです（8 桁。見間違えやすい 0/O/1/l/I は使いません）。自由に変更できます。';
 
   @override
   String get collectorIdLabel => '採集者 ID';
@@ -306,7 +307,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get selectLocBody1 => '現在地を自動取得しました。';
 
   @override
-  String get selectLocBody2 => 'ずれている場合は地図をドラッグして撮影地点を調整。';
+  String get selectLocBody2 => 'ずれている場合は、地図をドラッグして撮影した場所に合わせてください。';
 
   @override
   String coords(String lat, String lng) {
@@ -333,7 +334,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String noCoords(int count) {
-    return '座標なし $count 件は非表示';
+    return '座標のない $count 件は表示していません';
   }
 
   @override
@@ -369,37 +370,37 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get captureModeNote =>
-      '撮影・框選後の入力フローを決めます。3モードは同じデータ構造を共用し、いつでも切り替えられます。';
+      '撮影後の入力の流れを選べます。どちらのモードも同じデータ形式なので、いつでも切り替えられます。';
 
   @override
-  String get modeQuick => 'クイックモード';
+  String get modeQuick => 'かんたんモード';
 
   @override
-  String get modeQuickDesc => '框選後すぐ保存。フィールドは後で補完';
+  String get modeQuickDesc => '写真と場所の記録を優先。標識を囲むこともでき、言語の入力は任意です';
 
   @override
   String get modeStandard => '標準モード';
 
   @override
-  String get modeStandardDesc => '標識に現れる言語を選ぶだけ（既定）';
+  String get modeStandardDesc => '標識に使われている言語を選ぶだけ';
 
   @override
-  String get modeResearch => '研究モード';
+  String get modeResearch => 'エキスパートモード';
 
   @override
-  String get modeResearchDesc => '完全な研究フィールド表単で正式に採集・標注';
+  String get modeResearchDesc => '標識ごとに枠で囲み、研究用のすべての項目を入力します';
 
   @override
-  String get fieldScheme => 'フィールド構成';
+  String get fieldScheme => '項目の構成';
 
   @override
-  String get fieldSchemeOfficial => '公式フィールド';
+  String get fieldSchemeOfficial => '公式の項目';
 
   @override
-  String get fieldSchemeCustom => 'カスタムフィールド';
+  String get fieldSchemeCustom => 'カスタム項目';
 
   @override
-  String get savedQuick => '記録を保存しました。フィールドは後から補完できます。';
+  String get savedQuick => '保存しました。詳しい情報は、あとで「自分の記録」から追加できます。';
 
   @override
   String get savedStandard => '記録を提出しました。';
@@ -408,7 +409,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get savedResearch => '研究記録を保存しました。';
 
   @override
-  String get stdLangPrompt => '標識に現れる言語を選択';
+  String get stdLangPrompt => '標識に使われている言語を選択';
 
   @override
   String get stdMoreInfo => '＋ 情報を追加';
@@ -420,7 +421,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get fieldNote => '備考（任意）';
 
   @override
-  String get datasetExported => 'Dataset Package を書き出しました';
+  String get datasetExported => 'データセットパッケージを書き出しました';
 
   @override
   String get select => '選択';
@@ -622,11 +623,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String processFailed(String error) {
-    return '処理に失敗しました: $error';
+    return '処理に失敗しました：$error';
   }
 
   @override
-  String get customAddHint => '＋ カスタム追加';
+  String get customAddHint => '＋ 自由に追加';
 
   @override
   String get add => '追加';
@@ -671,5 +672,334 @@ class AppLocalizationsJa extends AppLocalizations {
   String get statusFinal => '確定';
 
   @override
-  String get fieldPlacement => '放置位置';
+  String get fieldPlacement => '設置場所';
+
+  @override
+  String get navExplore => '探索';
+
+  @override
+  String get navMap => '地図';
+
+  @override
+  String get navMine => '自分の記録';
+
+  @override
+  String get tabFeed => 'フィード';
+
+  @override
+  String get tabThemes => 'テーマ';
+
+  @override
+  String get toolLanguage => '言語';
+
+  @override
+  String get toolColor => '色';
+
+  @override
+  String get searchHint => 'ID・備考で検索';
+
+  @override
+  String photosCount(int count) {
+    return '$count 枚';
+  }
+
+  @override
+  String get exploreNoSourceTitle => '探索データにまだ接続していません';
+
+  @override
+  String get exploreNoSourceBody =>
+      '設定で探索データのアドレスを入力すると、共有の写真コレクションを見られます。いまは自分の記録を表示しています。';
+
+  @override
+  String get exploreLoading => '探索データを読み込み中…';
+
+  @override
+  String exploreLoadFailed(String error) {
+    return '探索データを読み込めませんでした：$error';
+  }
+
+  @override
+  String get goToSettings => '設定を開く';
+
+  @override
+  String get themesNeedSource => 'テーマは探索データから作られます。設定でアドレスを入力してください。';
+
+  @override
+  String mapInView(int count) {
+    return 'この範囲の写真 · $count 枚';
+  }
+
+  @override
+  String mapInViewCapped(int count) {
+    return '最初の $count 枚を表示しています。地図を拡大すると、ほかの写真も見られます';
+  }
+
+  @override
+  String get mapInViewEmpty => 'この範囲には写真がありません。地図を動かすか、縮小してみてください。';
+
+  @override
+  String get backToList => '一覧に戻る';
+
+  @override
+  String get showOnMap => '地図で見る';
+
+  @override
+  String get editRecord => '情報を追加';
+
+  @override
+  String get sourceMine => '自分';
+
+  @override
+  String get sourceShared => '共有';
+
+  @override
+  String get capturedAt => '採集日時';
+
+  @override
+  String get locationLabel => '場所';
+
+  @override
+  String get noLocation => '位置情報なし';
+
+  @override
+  String get languagesLabel => '言語';
+
+  @override
+  String get myRecordsTitle => '自分の記録';
+
+  @override
+  String get manageArchive => 'アルバムとまとめて操作';
+
+  @override
+  String get moreActions => 'その他';
+
+  @override
+  String get exploreDataUrl => '探索データのアドレス';
+
+  @override
+  String get exploreDataUrlNote =>
+      'llmap-view フォルダのアドレス（NAS や PC 上）。空欄の場合は、自分の記録だけを探索します。';
+
+  @override
+  String get advanced => '詳細設定';
+
+  @override
+  String get aboutUs => 'このアプリについて';
+
+  @override
+  String aboutUsBody(String version) {
+    return 'LLMap · $version\n東京・新大久保の言語景観をテーマにした卒業制作です。誰でも街の文字を気軽に見つけて記録でき、研究者向けの本格的な採集機能も備えています。\n写真と記録はこの端末に保存され、いつでも書き出せます。';
+  }
+
+  @override
+  String get quickLangPrompt => 'どの言語が使われていますか？（任意）';
+
+  @override
+  String get quickHint => '写真と場所だけで大丈夫です。詳しい情報は、あとで「自分の記録」から追加できます。';
+
+  @override
+  String get quickSave => '保存';
+
+  @override
+  String get statusRawTag => '未完了';
+
+  @override
+  String get statusSubmittedTag => '提出済み';
+
+  @override
+  String get colorRed => '赤';
+
+  @override
+  String get colorOrange => 'オレンジ';
+
+  @override
+  String get colorYellow => '黄';
+
+  @override
+  String get colorGreen => '緑';
+
+  @override
+  String get colorBlue => '青';
+
+  @override
+  String get colorPurple => '紫';
+
+  @override
+  String get colorPink => 'ピンク';
+
+  @override
+  String get colorBrown => '茶';
+
+  @override
+  String get colorWhite => '白';
+
+  @override
+  String get colorGray => 'グレー';
+
+  @override
+  String get colorBlack => '黒';
+
+  @override
+  String get langJa => '日本語';
+
+  @override
+  String get langEn => '英語';
+
+  @override
+  String get langZh => '中国語';
+
+  @override
+  String get langKo => '韓国語';
+
+  @override
+  String get langVi => 'ベトナム語';
+
+  @override
+  String get langNe => 'ネパール語';
+
+  @override
+  String get langOther => 'その他';
+
+  @override
+  String get langNone => '言語なし';
+
+  @override
+  String get theme1Title => '中国語看板の赤';
+
+  @override
+  String get theme1Sub => '中国語が主で、代表色が赤';
+
+  @override
+  String get theme2Title => '手書きの街';
+
+  @override
+  String get theme2Sub => '手作りの貼り紙と看板';
+
+  @override
+  String get theme3Title => '臨時と季節';
+
+  @override
+  String get theme3Sub => '期間限定のポスターやのぼり';
+
+  @override
+  String get theme4Title => '規約と禁止';
+
+  @override
+  String get theme4Sub => '「〜しないで」「禁止」のことば';
+
+  @override
+  String get theme5Title => '一語一句の翻訳';
+
+  @override
+  String get theme5Sub => '複製型の多言語看板';
+
+  @override
+  String get theme6Title => 'ベトナム語とネパール語';
+
+  @override
+  String get theme6Sub => '新大久保のもうひとつの声';
+
+  @override
+  String get theme7Title => 'いちばん鮮やかな看板';
+
+  @override
+  String get theme7Sub => '鮮やかさ上位のグループ';
+
+  @override
+  String get theme8Title => '黒地の看板';
+
+  @override
+  String get theme8Sub => '暗い背景に書かれた文字';
+
+  @override
+  String get theme9Title => 'ステッカーと貼り紙';
+
+  @override
+  String get theme9Sub => 'どこにでも貼られる小さな紙';
+
+  @override
+  String get viewFeed => '一覧';
+
+  @override
+  String get viewCanvas => 'キャンバス';
+
+  @override
+  String get layoutWall => '写真ウォール';
+
+  @override
+  String get layoutGroup => 'グループ別';
+
+  @override
+  String get layoutWheel => 'カラーホイール';
+
+  @override
+  String get layoutHueLight => '色相×明度';
+
+  @override
+  String get groupBy => 'グループ分けの基準';
+
+  @override
+  String get canvasHint => 'ピンチで拡大・縮小、ドラッグで移動、写真をタップで詳細';
+
+  @override
+  String get exploreNext => '関連する写真';
+
+  @override
+  String get relColorName => '色が近い';
+
+  @override
+  String get relSceneName => '同じ写真から';
+
+  @override
+  String get relNearName => 'この近く';
+
+  @override
+  String get relLangName => '同じ言語の組み合わせ';
+
+  @override
+  String get relTypeName => '同じ種類・媒体';
+
+  @override
+  String get relContrastName => '色の対比';
+
+  @override
+  String relColorSub(int count) {
+    return 'パレットが最も近い $count 枚';
+  }
+
+  @override
+  String relSceneSub(int count) {
+    return '同じ写真に写っている、ほかの $count 枚';
+  }
+
+  @override
+  String relNearSub(int meters, int count) {
+    return '半径 $meters m 以内の $count 枚';
+  }
+
+  @override
+  String relLangTitle(String langs) {
+    return '同じく $langs';
+  }
+
+  @override
+  String relLangSub(int count) {
+    return '言語の組み合わせが同じ $count 枚';
+  }
+
+  @override
+  String relTypeSub(int count) {
+    return '話の種類と媒体が同じ $count 枚';
+  }
+
+  @override
+  String relContrastSub(String lang) {
+    return '同じ$langでも、色はまったく違う';
+  }
+
+  @override
+  String get nextChooseLangs => '次へ：言語を選ぶ';
+
+  @override
+  String get manageShort => '管理';
 }

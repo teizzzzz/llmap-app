@@ -4,12 +4,12 @@ import 'package:llmap_app/models.dart';
 import 'package:llmap_app/schema_defaults.dart';
 
 void main() {
-  test('captureModeFrom: 既定・未知値は standard に落ちる', () {
-    expect(captureModeFrom(null), CaptureMode.standard);
-    expect(captureModeFrom(''), CaptureMode.standard);
-    expect(captureModeFrom('bogus'), CaptureMode.standard);
+  test('captureModeFrom: research 以外（既定・未知値・旧 standard）は quick', () {
+    expect(captureModeFrom(null), CaptureMode.quick);
+    expect(captureModeFrom(''), CaptureMode.quick);
+    expect(captureModeFrom('bogus'), CaptureMode.quick);
     expect(captureModeFrom('quick'), CaptureMode.quick);
-    expect(captureModeFrom('standard'), CaptureMode.standard);
+    expect(captureModeFrom('standard'), CaptureMode.quick);
     expect(captureModeFrom('research'), CaptureMode.research);
   });
 

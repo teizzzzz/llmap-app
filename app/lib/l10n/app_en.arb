@@ -145,8 +145,8 @@
     }
   },
   "saveChanges": "Save changes",
-  "aiAuto": "AI auto-recognition",
-  "aiAutoSub": "When on, fields are auto-recognized as you open each boxed sign.",
+  "aiAuto": "AI recognition",
+  "aiAutoSub": "Lets AI suggest fields; you can edit the results. Works in expert mode for now; default mode will follow once the OCR approach is decided.",
   "provider": "Provider",
   "apiKey": "API key",
   "apiKeyNote": "The key is stored only on your device and sent directly to the AI provider (Claude / Gemini), no PC needed.",
@@ -222,17 +222,17 @@
     }
   },
   "captureMode": "Capture mode",
-  "captureModeNote": "Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.",
-  "modeQuick": "Quick mode",
-  "modeQuickDesc": "Save right after boxing; fill fields later",
+  "captureModeNote": "Decides what you fill in after taking a photo. Both modes share the same data and can be switched anytime.",
+  "modeQuick": "Default mode",
+  "modeQuickDesc": "Photo and location first; box signs if you like, languages are optional",
   "modeStandard": "Standard mode",
   "modeStandardDesc": "Just pick the languages on the sign (default)",
-  "modeResearch": "Research mode",
-  "modeResearchDesc": "Full research field form for formal annotation",
+  "modeResearch": "Expert mode",
+  "modeResearchDesc": "Box each sign and fill in the full research fields",
   "fieldScheme": "Field scheme",
   "fieldSchemeOfficial": "Official fields",
   "fieldSchemeCustom": "Custom fields",
-  "savedQuick": "Record saved. You can add fields later.",
+  "savedQuick": "Saved. You can add details later in Mine.",
   "savedStandard": "Record submitted.",
   "savedResearch": "Research record saved.",
   "stdLangPrompt": "Select the languages on this sign",
@@ -339,7 +339,13 @@
   "exportScopeSelected": "Selected records",
   "exportScopeAlbum": "Current album",
   "exportConfirmTitle": "{count, plural, =1{Export 1 record?} other{Export {count} records?}}",
-  "@exportConfirmTitle": {"placeholders": {"count": {"type": "int"}}},
+  "@exportConfirmTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "exportConfirmBody": "This will create a Dataset Package containing only the selected records and required photos.",
   "noRecordsToExport": "No records to export.",
   "exportAction": "Export",
@@ -354,7 +360,13 @@
   "discardCaptureBody": "Abandon this capture? Entered fields and cropped photos will not be saved.",
   "discard": "Discard",
   "processFailed": "Processing failed: {error}",
-  "@processFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@processFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "customAddHint": "+ Add custom",
   "add": "Add",
   "fieldName": "Name",
@@ -370,5 +382,193 @@
   "statusAi": "AI draft",
   "statusHumanReviewed": "Reviewed",
   "statusFinal": "Final",
-  "fieldPlacement": "Placement"
+  "fieldPlacement": "Placement",
+  "navExplore": "Explore",
+  "navMap": "Map",
+  "navMine": "Mine",
+  "tabFeed": "Photos",
+  "tabThemes": "Themes",
+  "toolLanguage": "Language",
+  "toolColor": "Color",
+  "searchHint": "Search ID or notes",
+  "photosCount": "{count} photos",
+  "@photosCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exploreNoSourceTitle": "Explore data not connected",
+  "exploreNoSourceBody": "Add the explore data address in Settings to browse the shared photo collection. Showing your own records for now.",
+  "exploreLoading": "Loading explore data…",
+  "exploreLoadFailed": "Couldn't load explore data: {error}",
+  "@exploreLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "goToSettings": "Open settings",
+  "themesNeedSource": "Themes are built from the explore data. Add its address in Settings.",
+  "mapInView": "{count} photos in the current map view",
+  "@mapInView": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mapInViewCapped": "Showing the first {count}. Zoom in to see more.",
+  "@mapInViewCapped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mapInViewEmpty": "No photos here. Move or zoom out the map.",
+  "backToList": "Back to list",
+  "showOnMap": "Show on map",
+  "editRecord": "Add details",
+  "sourceMine": "Mine",
+  "sourceShared": "Shared",
+  "capturedAt": "Captured",
+  "locationLabel": "Location",
+  "noLocation": "No location",
+  "languagesLabel": "Languages",
+  "myRecordsTitle": "My records",
+  "manageArchive": "Albums & batch actions",
+  "moreActions": "More",
+  "exploreDataUrl": "Explore data address",
+  "exploreDataUrlNote": "Address of an llmap-view folder (on a NAS or your PC). Leave empty to explore only your own records.",
+  "advanced": "Advanced",
+  "aboutUs": "About",
+  "aboutUsBody": "LLMap · {version}\nA graduation project on the linguistic landscape of Shin-Ōkubo, Tokyo. It helps anyone discover and record writing on the street, while keeping a full collection workflow for researchers.\nPhotos and records stay on this device and can be exported at any time.",
+  "@aboutUsBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "quickLangPrompt": "Which languages appear? (optional)",
+  "quickHint": "A photo and a location are enough. You can add details later in Mine.",
+  "quickSave": "Save",
+  "statusRawTag": "To complete",
+  "statusSubmittedTag": "Submitted",
+  "colorRed": "Red",
+  "colorOrange": "Orange",
+  "colorYellow": "Yellow",
+  "colorGreen": "Green",
+  "colorBlue": "Blue",
+  "colorPurple": "Purple",
+  "colorPink": "Pink",
+  "colorBrown": "Brown",
+  "colorWhite": "White",
+  "colorGray": "Gray",
+  "colorBlack": "Black",
+  "langJa": "Japanese",
+  "langEn": "English",
+  "langZh": "Chinese",
+  "langKo": "Korean",
+  "langVi": "Vietnamese",
+  "langNe": "Nepali",
+  "langOther": "Other",
+  "langNone": "No text language",
+  "theme1Title": "The red of Chinese signs",
+  "theme1Sub": "Chinese-led, with red as the main color",
+  "theme2Title": "A handwritten street",
+  "theme2Sub": "Handmade notices and signs",
+  "theme3Title": "Temporary and seasonal",
+  "theme3Sub": "Posters and banners that come and go",
+  "theme4Title": "Rules and prohibitions",
+  "theme4Sub": "The language of \"please don't\" and \"no\"",
+  "theme5Title": "Word-for-word translation",
+  "theme5Sub": "Multilingual signs that copy each other",
+  "theme6Title": "Vietnamese and Nepali",
+  "theme6Sub": "Other voices of Shin-Ōkubo",
+  "theme7Title": "The most vivid signs",
+  "theme7Sub": "The most colorful group",
+  "theme8Title": "Signs on black",
+  "theme8Sub": "Text on dark backgrounds",
+  "theme9Title": "Stickers and notes",
+  "theme9Sub": "Little papers stuck anywhere",
+  "viewFeed": "Feed",
+  "viewCanvas": "Roam",
+  "layoutWall": "Wall",
+  "layoutGroup": "Groups",
+  "layoutWheel": "Color wheel",
+  "layoutHueLight": "Hue × lightness",
+  "groupBy": "Group by",
+  "canvasHint": "Pinch to zoom · drag to roam · tap a photo to open",
+  "exploreNext": "What to explore next?",
+  "relColorName": "Similar colors",
+  "relSceneName": "Same scene",
+  "relNearName": "Nearby",
+  "relLangName": "Same languages",
+  "relTypeName": "Discourse & carrier",
+  "relContrastName": "Color contrast",
+  "relColorSub": "The {count} with the closest palettes",
+  "@relColorSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relSceneSub": "{count} more signs from the same street photo",
+  "@relSceneSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relNearSub": "{count} within {meters} m",
+  "@relNearSub": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relLangTitle": "Also {langs}",
+  "@relLangTitle": {
+    "placeholders": {
+      "langs": {
+        "type": "String"
+      }
+    }
+  },
+  "relLangSub": "{count} with exactly the same language mix",
+  "@relLangSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relTypeSub": "{count} with the same discourse and carrier",
+  "@relTypeSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relContrastSub": "Also {lang}, but in completely different colors",
+  "@relContrastSub": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
+  "nextChooseLangs": "Next: languages",
+  "manageShort": "Manage"
 }

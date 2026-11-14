@@ -44,7 +44,7 @@ class SignForm extends StatelessWidget {
           children: [
             Expanded(
               child: Text(sign.displayId,
-                  style: AppText.body().copyWith(fontWeight: FontWeight.w800)),
+                  style: AppText.body().copyWith(fontWeight: FontWeight.w600)),
             ),
             statusBadge(sign.status, label: statusLabel(t, sign.status)),
           ],
@@ -203,8 +203,8 @@ class _MultiSelectFieldState extends State<_MultiSelectField> {
                   selected: _selected.contains(o),
                   onSelected: (_) => _toggle(o),
                   visualDensity: VisualDensity.compact,
-                  selectedColor: AppColors.accentTerracotta.withValues(alpha: 0.18),
-                  checkmarkColor: AppColors.accentTerracotta,
+                  selectedColor: AppColors.primary.withValues(alpha: 0.18),
+                  checkmarkColor: AppColors.primary,
                 ),
               // 自由追加した値は削除可能なチップで表示。
               for (final e in extras)
@@ -213,7 +213,7 @@ class _MultiSelectFieldState extends State<_MultiSelectField> {
                   selected: true,
                   onDeleted: () => _toggle(e),
                   visualDensity: VisualDensity.compact,
-                  selectedColor: AppColors.accentBlue.withValues(alpha: 0.18),
+                  selectedColor: AppColors.link.withValues(alpha: 0.18),
                 ),
             ],
           ),

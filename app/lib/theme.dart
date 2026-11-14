@@ -1,6 +1,6 @@
-/// Lingscape デザインシステム（Figma参照）の Flutter テーマ。
-/// 暖色クリーム背景・テラコッタ橙の主アクション・大きな角丸カード・
-/// Fraunces(セリフ見出し)/Nunito(本文) のエディトリアル調を全画面に適用する。
+/// LLMap の Flutter テーマ（v2: llmap-view / Research Console と同じ設計言語）。
+/// 淡灰の背景・白いカード・黒の胶囊ボタン・Inter。写真が主役になるよう、
+/// 面板や装飾の色は黒白灰に抑える。値はすべて theme/tokens.dart から引く。
 library;
 
 import 'package:flutter/material.dart';
@@ -8,188 +8,205 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'theme/tokens.dart';
 
-// ── 後方互換エイリアス（既存画面は llXxx を使用）。実体は AppColors。 ──
-const llBackground = AppColors.backgroundWarm;
-const llForeground = AppColors.textPrimary;
-const llCard = AppColors.surfaceIvory;
-const llPrimary = AppColors.accentTerracotta;
-const llAccent = AppColors.accentBlue;
-const llYellow = AppColors.accentMustard;
-const llPurple = AppColors.accentViolet;
-const llMuted = AppColors.muted;
-const llMutedFg = AppColors.textSecondary;
-const llDestructive = AppColors.danger;
-const llBorder = AppColors.borderSubtle;
-
-/// 採集状態（_status）の色。全画面で共通利用する。
+/// 採集状態（_status）の色。黒白灰の濃淡で段階を示す（確定だけ緑）。
 Color statusColor(String status) =>
     {
       'pending': AppColors.textSecondary,
-      'ai': AppColors.accentBlue,
-      'human-reviewed': AppColors.accentTerracotta,
+      'ai': AppColors.link,
+      'human-reviewed': AppColors.textPrimary,
       'final': AppColors.success,
     }[status] ??
     AppColors.textSecondary;
 
-/// 状態バッジ（チップ）。一覧・フォーム・地図詳情で共用。
+/// 状態バッジ（小さな胶囊）。一覧・フォーム・地図詳情で共用。
 /// [label] は表示文言（field_labels.statusLabel の本地化済みラベルを渡す。
 /// null なら内部値をそのまま表示）。色分けキーは常に内部値 [status] で引く。
 Widget statusBadge(String status, {String? label}) {
   final c = statusColor(status);
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
     decoration: BoxDecoration(
-      color: c.withValues(alpha: 0.14),
-      border: Border.all(color: c.withValues(alpha: 0.55)),
-      borderRadius: BorderRadius.circular(999),
+      color: c.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(AppRadius.pill),
     ),
     child: Text(label ?? status,
-        style: TextStyle(
-            fontSize: 11, color: c, fontWeight: FontWeight.w700)),
+        style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
   );
 }
 
-ThemeData lingscapeTheme() {
+ThemeData llmapTheme() {
   const scheme = ColorScheme(
     brightness: Brightness.light,
-    primary: llPrimary,
-    onPrimary: llCard,
-    secondary: llAccent,
-    onSecondary: llCard,
-    tertiary: llYellow,
-    onTertiary: llForeground,
-    error: llDestructive,
-    onError: llCard,
-    surface: llCard,
-    onSurface: llForeground,
-    surfaceContainerHighest: llMuted,
-    onSurfaceVariant: llMutedFg,
-    outline: Color(0xFF8C806F),
-    outlineVariant: llBorder,
+    primary: AppColors.primary,
+    onPrimary: AppColors.surface,
+    secondary: AppColors.link,
+    onSecondary: AppColors.surface,
+    tertiary: AppColors.charcoal,
+    onTertiary: AppColors.surface,
+    error: AppColors.danger,
+    onError: AppColors.surface,
+    surface: AppColors.surface,
+    onSurface: AppColors.textPrimary,
+    surfaceContainerHighest: AppColors.muted,
+    onSurfaceVariant: AppColors.textSecondary,
+    outline: AppColors.outline,
+    outlineVariant: AppColors.borderSubtle,
   );
 
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
-  final body = GoogleFonts.nunitoTextTheme(base.textTheme);
-  // 見出しは Fraunces(セリフ)、本文は Nunito。
-  final text = body.copyWith(
-    displayLarge: GoogleFonts.fraunces(textStyle: body.displayLarge, fontWeight: FontWeight.w600),
-    displayMedium: GoogleFonts.fraunces(textStyle: body.displayMedium, fontWeight: FontWeight.w600),
-    displaySmall: GoogleFonts.fraunces(textStyle: body.displaySmall, fontWeight: FontWeight.w600),
-    headlineMedium: GoogleFonts.fraunces(textStyle: body.headlineMedium, fontWeight: FontWeight.w600),
-    headlineSmall: GoogleFonts.fraunces(textStyle: body.headlineSmall, fontWeight: FontWeight.w600),
-    titleLarge: GoogleFonts.fraunces(textStyle: body.titleLarge, fontWeight: FontWeight.w600),
-  ).apply(bodyColor: llForeground, displayColor: llForeground);
+  final text = GoogleFonts.interTextTheme(base.textTheme)
+      .apply(bodyColor: AppColors.textPrimary, displayColor: AppColors.textPrimary);
 
-  const cardShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(26)));
-  const btnShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(22)));
+  const pill = StadiumBorder();
+  final fieldBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(AppRadius.sm),
+    borderSide: const BorderSide(color: AppColors.borderSubtle),
+  );
 
   return base.copyWith(
-    scaffoldBackgroundColor: llBackground,
+    scaffoldBackgroundColor: AppColors.background,
     textTheme: text,
-    dividerColor: llBorder,
+    dividerColor: AppColors.borderSubtle,
     splashFactory: InkRipple.splashFactory,
     appBarTheme: AppBarTheme(
-      backgroundColor: llBackground,
-      foregroundColor: llForeground,
+      backgroundColor: AppColors.background,
+      foregroundColor: AppColors.textPrimary,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: GoogleFonts.fraunces(
-          fontSize: 22, fontWeight: FontWeight.w600, color: llForeground),
+      titleTextStyle: AppText.appTitle(),
     ),
     cardTheme: const CardThemeData(
-      color: llCard,
+      color: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: cardShape,
-      shadowColor: Color(0x1A2F3032),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
+        side: BorderSide(color: AppColors.borderSubtle),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: llPrimary,
-        foregroundColor: llCard,
-        shape: btnShape,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 22),
-        textStyle: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+        shape: pill,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 22),
+        textStyle: AppText.button(),
         elevation: 0,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: llForeground,
-        side: const BorderSide(color: Color(0xFF8C806F)),
-        shape: btnShape,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-        textStyle: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700),
+        foregroundColor: AppColors.textPrimary,
+        backgroundColor: AppColors.surface,
+        side: const BorderSide(color: AppColors.borderSubtle),
+        shape: pill,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        textStyle: AppText.button(),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: llAccent,
-        textStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+        foregroundColor: AppColors.textPrimary,
+        shape: pill,
+        textStyle: AppText.button().copyWith(fontSize: 14),
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: llPrimary,
-      foregroundColor: llCard,
+      backgroundColor: AppColors.primary,
+      foregroundColor: AppColors.surface,
       elevation: 2,
-      extendedTextStyle:
-          GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(24))),
+      extendedTextStyle: AppText.button(),
+      shape: pill,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: llCard,
+      fillColor: AppColors.surface,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: llBorder)),
-      enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: llBorder)),
+      border: fieldBorder,
+      enabledBorder: fieldBorder,
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: llAccent, width: 1.6)),
-      labelStyle: const TextStyle(color: llMutedFg),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderSide: const BorderSide(color: AppColors.textPrimary, width: 1.4)),
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      hintStyle: const TextStyle(color: AppColors.textSecondary),
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: llCard,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+        fillColor: AppColors.surface,
+        border: fieldBorder,
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: llMuted,
-      side: const BorderSide(color: llBorder),
-      shape: const StadiumBorder(),
-      labelStyle: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700),
+      backgroundColor: AppColors.surface,
+      selectedColor: AppColors.selected,
+      secondarySelectedColor: AppColors.selected,
+      checkmarkColor: AppColors.surface,
+      side: const BorderSide(color: AppColors.borderSubtle),
+      shape: pill,
+      labelStyle: GoogleFonts.inter(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary),
+      secondaryLabelStyle: GoogleFonts.inter(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.surface),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected) ? AppColors.surface : null),
+      trackColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected) ? AppColors.primary : null),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected)
+              ? AppColors.primary
+              : AppColors.textSecondary),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected) ? AppColors.primary : null),
+    ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: AppColors.textPrimary,
+      unselectedLabelColor: AppColors.textSecondary,
+      indicatorColor: AppColors.textPrimary,
     ),
     dialogTheme: const DialogThemeData(
-      backgroundColor: llCard,
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(28))),
+          borderRadius: BorderRadius.all(Radius.circular(AppRadius.lg))),
     ),
     bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: llCard,
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md)),
+      textStyle: AppText.body(),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: llForeground,
-      contentTextStyle: GoogleFonts.nunito(color: llCard),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: AppColors.textPrimary,
+      contentTextStyle: GoogleFonts.inter(color: AppColors.surface),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md)),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: llPrimary),
-    listTileTheme: const ListTileThemeData(iconColor: llMutedFg),
+    progressIndicatorTheme:
+        const ProgressIndicatorThemeData(color: AppColors.primary),
+    listTileTheme: const ListTileThemeData(iconColor: AppColors.textSecondary),
   );
 }

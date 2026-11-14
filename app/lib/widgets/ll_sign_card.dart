@@ -30,7 +30,7 @@ class LLSignCard extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.muted, borderRadius: radius),
       child: Text('${index + 1}',
           style: const TextStyle(
-              fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
     );
     if (file == null || !file.existsSync()) return numberBox;
     return SizedBox(
@@ -56,7 +56,7 @@ class LLSignCard extends StatelessWidget {
                 child: Text('${index + 1}',
                     style: const TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white)),
               ),
             ),
@@ -70,7 +70,7 @@ class LLSignCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasGps = sign.lat != null && sign.lng != null;
     return Material(
-      color: AppColors.surfaceIvory,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: InkWell(
         onTap: onTap,
@@ -96,7 +96,7 @@ class LLSignCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.body()
-                          .copyWith(fontSize: 16, fontWeight: FontWeight.w800),
+                          .copyWith(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 3),
                     Row(

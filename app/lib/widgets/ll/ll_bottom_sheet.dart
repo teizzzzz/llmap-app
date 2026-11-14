@@ -29,7 +29,7 @@ class LLBottomSheetScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.surfaceIvory,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       child: SafeArea(
@@ -41,10 +41,10 @@ class LLBottomSheetScaffold extends StatelessWidget {
             const SizedBox(height: 10),
             Center(
               child: Container(
-                width: 44,
+                width: 40,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: AppColors.borderSubtle,
+                  color: AppColors.outline,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
               ),
@@ -96,7 +96,7 @@ class LLSheetTile extends StatelessWidget {
               Expanded(
                 child: Text(label,
                     style: AppText.body().copyWith(
-                        color: c, fontWeight: FontWeight.w700)),
+                        color: c, fontWeight: FontWeight.w500)),
               ),
               if (showChevron)
                 const Icon(Icons.chevron_right,

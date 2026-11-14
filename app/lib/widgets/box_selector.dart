@@ -142,9 +142,9 @@ class _BoxPainter extends CustomPainter {
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..color = AppColors.accentTerracotta;
+      ..color = AppColors.primary;
     final fill = Paint()
-      ..color = AppColors.accentTerracotta.withValues(alpha: 0.13);
+      ..color = AppColors.primary.withValues(alpha: 0.13);
 
     for (final r in regions) {
       final rect = Rect.fromLTWH(
@@ -161,8 +161,8 @@ class _BoxPainter extends CustomPainter {
           style: const TextStyle(
             color: Colors.white,
             fontSize: 14,
-            fontWeight: FontWeight.bold,
-            backgroundColor: AppColors.accentTerracotta,
+            fontWeight: FontWeight.w600,
+            backgroundColor: AppColors.primary,
           ),
         ),
         textDirection: TextDirection.ltr,

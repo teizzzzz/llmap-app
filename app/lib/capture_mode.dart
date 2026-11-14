@@ -1,10 +1,10 @@
-/// 採集モード（quick / standard / research）。
-/// 3モードは同一の Sign データ構造・同一の首页を共用し、
-/// **框选の後**のフローと表単の複雑さだけが変わる:
-/// - quick    : 框选 → 直接保存（字段は後で補完）
-/// - standard : 框选 → 簡易言語選択（既定モード。Lingscape 相当）
-/// - research : 框选 → 完全な研究字段表単（既存 FieldsScreen）
-/// 本機のアプリ設定であり、権限/アカウントの仕組みではない。
+/// 採集モード。設定で選べるのは 2 つ:
+/// - quick    : デフォルトモード。写真と地点を優先。框选（しなければ写真全体が
+///              1 sign）の後、標識ごとに言語を任意で選んで保存。字段は後で補完。
+/// - research : エキスパートモード。框选 → 完全な研究字段表単（FieldsScreen）。
+/// standard（旧・既定。框选 → 簡易言語選択）は旧データの EntryMode として
+/// 残すだけで、新規の採集では選ばない（保存値 'standard' は quick に読み替え）。
+/// 同一の Sign データ構造を共用する本機のアプリ設定（権限の仕組みではない）。
 /// 純ロジックのみ（UI ラベルは settings.dart の CaptureModeLabels 拡張にある）。
 library;
 
@@ -21,9 +21,9 @@ extension CaptureModeX on CaptureMode {
       this == CaptureMode.quick ? 'raw' : 'submitted';
 }
 
-/// 保存値 → モード。未知値・未設定は standard（既定モード）。
+/// 保存値 → モード。'research' 以外（未設定・旧 'standard' を含む）は
+/// デフォルトモード（quick）。
 CaptureMode captureModeFrom(String? value) => switch (value) {
-      'quick' => CaptureMode.quick,
       'research' => CaptureMode.research,
-      _ => CaptureMode.standard,
+      _ => CaptureMode.quick,
     };

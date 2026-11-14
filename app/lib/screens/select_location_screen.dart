@@ -10,7 +10,7 @@ import '../capture.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/tokens.dart';
 import '../widgets/ll/ll.dart';
-import '../widgets/map/ll_map_view.dart' show LLMapLayer;
+import '../widgets/map/ll_map_view.dart' show LLMapLayer, quietStreetTiles;
 
 class SelectLocationScreen extends StatefulWidget {
   /// 自動GPS等の初期位置（無ければ既定中心から開始）。
@@ -79,16 +79,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                   userAgentPackageName: 'com.llmap.llmap_app',
                 )
               else
-                TileLayer(
-                  urlTemplate:
-                      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
-                  maxZoom: 19,
-                  keepBuffer: 5,
-                  panBuffer: 2,
-                  retinaMode: RetinaMode.isHighDensity(context),
-                  userAgentPackageName: 'com.llmap.llmap_app',
-                ),
+                quietStreetTiles(),
             ],
           ),
 
@@ -97,7 +88,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
             child: Padding(
               padding: EdgeInsets.only(bottom: 44),
               child: Icon(Icons.location_on,
-                  size: 48, color: AppColors.accentTerracotta),
+                  size: 48, color: AppColors.primary),
             ),
           ),
 
@@ -119,8 +110,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                     t.coords(_center.latitude.toStringAsFixed(5),
                         _center.longitude.toStringAsFixed(5)),
                     style: AppText.caption().copyWith(
-                        color: AppColors.accentBlue,
-                        fontWeight: FontWeight.w700),
+                        color: AppColors.link,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -137,12 +128,6 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                 LLSegment(LLMapLayer.satellite, t.layerSatellite),
               ],
               selected: _layer,
-              activeColor: _layer == LLMapLayer.satellite
-                  ? AppColors.accentViolet
-                  : AppColors.accentMustard,
-              activeTextColor: _layer == LLMapLayer.satellite
-                  ? Colors.white
-                  : AppColors.textPrimary,
               onChanged: (v) => setState(() => _layer = v),
             ),
           ),

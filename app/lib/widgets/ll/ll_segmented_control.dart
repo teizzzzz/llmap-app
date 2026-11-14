@@ -23,8 +23,8 @@ class LLSegmentedControl<T> extends StatelessWidget {
     required this.segments,
     required this.selected,
     required this.onChanged,
-    this.activeColor = AppColors.accentMustard,
-    this.activeTextColor = AppColors.textPrimary,
+    this.activeColor = AppColors.selected,
+    this.activeTextColor = AppColors.surface,
   });
 
   @override
@@ -32,8 +32,9 @@ class LLSegmentedControl<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surfaceIvory,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.borderSubtle),
         boxShadow: AppShadows.floating,
       ),
       child: Row(

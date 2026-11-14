@@ -1,6 +1,6 @@
 /// 設定の永続化と設定画面。
-/// - backend URL（Android は PC の LAN IP を入れる）
-/// - AI 自動識別の有効/無効・プロバイダ・APIキー
+/// - 言語 / 採集モード / AI 識別（有効/無効・プロバイダ・APIキー）/ 探索データ / 採集者ID
+/// 手機端は後端を使わない（端末内で完結）ため、後端アドレスの設定は無い。
 library;
 
 import 'dart:math';
@@ -11,16 +11,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'capture_mode.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/tokens.dart';
+import 'version.dart';
 import 'widgets/ll/ll.dart';
 
-const _kBaseUrl = 'backend_base_url';
 const _kAiEnabled = 'ai_enabled';
 const _kAiProvider = 'ai_provider';
 const _kAiKey = 'ai_api_key';
 const _kLocale = 'app_locale';
 const _kCollectorId = 'collector_id';
 const _kCaptureMode = 'capture_mode';
-const defaultBaseUrl = 'http://localhost:8000';
 
 // 採集者ID（採集者の識別子）。SignID の「采集者」位に入り、多人協作の衝突防止になる。
 // NanoID 風に 8 桁。視認・手抄・スキャンで紛れやすい 0 O 1 l I を除いた英数字を使う。
@@ -86,7 +85,14 @@ extension CaptureModeLabels on CaptureMode {
       };
 }
 
-/// 採集モード。未設定は standard（既定）。
+/// 設定画面で選べる採集モード（デフォルト / エキスパート）。
+/// standard は旧データの EntryMode として残るだけで、新規には選ばせない。
+const List<CaptureMode> kSelectableModes = [
+  CaptureMode.quick,
+  CaptureMode.research,
+];
+
+/// 採集モード。未設定は quick（デフォルトモード）。
 Future<CaptureMode> loadCaptureMode() async {
   final prefs = await SharedPreferences.getInstance();
   return captureModeFrom(prefs.getString(_kCaptureMode));
@@ -95,16 +101,6 @@ Future<CaptureMode> loadCaptureMode() async {
 Future<void> saveCaptureMode(CaptureMode mode) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_kCaptureMode, mode.name);
-}
-
-Future<String> loadBaseUrl() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString(_kBaseUrl) ?? defaultBaseUrl;
-}
-
-Future<void> saveBaseUrl(String url) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(_kBaseUrl, url.trim());
 }
 
 class AiConfig {
@@ -130,18 +126,27 @@ Future<void> saveAiConfig(AiConfig c) async {
   await prefs.setString(_kAiKey, c.apiKey.trim());
 }
 
-/// 設定画面。保存すると更新後の (baseUrl, AiConfig, collectorId, captureMode) を返す。
+/// 設定画面の保存結果。
+typedef SettingsResult = ({
+  AiConfig ai,
+  String collectorId,
+  CaptureMode captureMode,
+  String exploreUrl,
+});
+
+/// 設定画面。並びは 言語 → 採集モード → AI 識別 → 探索データ →
+/// 詳細設定（採集者ID）→ このアプリについて。保存で [SettingsResult] を返す。
 class SettingsScreen extends StatefulWidget {
-  final String baseUrl;
   final AiConfig ai;
   final String collectorId;
   final CaptureMode captureMode;
+  final String exploreUrl;
   const SettingsScreen({
     super.key,
-    required this.baseUrl,
     required this.ai,
     required this.collectorId,
     required this.captureMode,
+    this.exploreUrl = '',
   });
 
   @override
@@ -149,12 +154,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late final TextEditingController _url =
-      TextEditingController(text: widget.baseUrl);
   late final TextEditingController _key =
       TextEditingController(text: widget.ai.apiKey);
   late final TextEditingController _collector =
       TextEditingController(text: widget.collectorId);
+  late final TextEditingController _explore =
+      TextEditingController(text: widget.exploreUrl);
   late bool _aiEnabled = widget.ai.enabled;
   late String _provider = widget.ai.provider;
   late CaptureMode _mode = widget.captureMode;
@@ -164,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     // テキスト変更でも PopScope の canPop を更新する（破棄確認のため）。
-    for (final c in [_url, _key, _collector]) {
+    for (final c in [_key, _collector, _explore]) {
       c.addListener(_onFieldChanged);
     }
   }
@@ -173,17 +178,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    _url.dispose();
     _key.dispose();
     _collector.dispose();
+    _explore.dispose();
     super.dispose();
   }
 
   /// 「保存設定」を押さずに離れようとしていないか（言語は即時適用なので対象外）。
   bool get _dirty =>
-      _url.text.trim() != widget.baseUrl ||
       _key.text.trim() != widget.ai.apiKey ||
       _collector.text.trim() != widget.collectorId ||
+      _explore.text.trim() != widget.exploreUrl.trim() ||
       _aiEnabled != widget.ai.enabled ||
       _provider != widget.ai.provider ||
       _mode != widget.captureMode;
@@ -208,7 +213,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _save() {
     final collector = _collector.text.trim();
     Navigator.pop(context, (
-      baseUrl: _url.text.trim(),
       ai: AiConfig(
         enabled: _aiEnabled,
         provider: _provider,
@@ -216,6 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       collectorId: collector.isEmpty ? generateCollectorId() : collector,
       captureMode: _mode,
+      exploreUrl: _explore.text.trim(),
     ));
   }
 
@@ -255,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: AppSpacing.xs),
                 Text(t.captureModeNote, style: AppText.caption()),
                 const SizedBox(height: AppSpacing.sm),
-                for (final m in CaptureMode.values) _modeOption(t, m),
+                for (final m in kSelectableModes) _modeOption(t, m),
                 // research のみ: 字段方案（官方字段 / 自定义=未実装入口）。
                 if (_mode == CaptureMode.research) ...[
                   const Divider(height: AppSpacing.lg),
@@ -265,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       LLTagChip(
                           label: t.fieldSchemeOfficial,
-                          color: AppColors.accentTerracotta),
+                          color: AppColors.primary),
                       const SizedBox(width: AppSpacing.sm),
                       InkWell(
                         onTap: () => showLLDialog(
@@ -288,35 +293,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ── 採集者ID / Collector ID ──
-          LLCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(t.collectorId, style: AppText.sectionTitle()),
-                const SizedBox(height: AppSpacing.xs),
-                Text(t.collectorIdNote, style: AppText.caption()),
-                const SizedBox(height: AppSpacing.md),
-                LLFormField(
-                  label: t.collectorIdLabel,
-                  child: TextField(
-                    controller: _collector,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. K7m9Qp4t',
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.casino_outlined),
-                        tooltip: t.collectorIdRegenerate,
-                        onPressed: () => setState(
-                            () => _collector.text = generateCollectorId()),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
           // ── AI 自动识别 ──
           LLCard(
             child: Column(
@@ -324,7 +300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  activeThumbColor: AppColors.accentTerracotta,
+                  activeThumbColor: AppColors.primary,
                   title: Text(t.aiAuto, style: AppText.sectionTitle()),
                   subtitle: Text(t.aiAutoSub, style: AppText.caption()),
                   value: _aiEnabled,
@@ -370,26 +346,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ── 后端地址（可选・进阶） ──
+          // ── 探索データ / Explore data ──
           LLCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t.backendOptional, style: AppText.sectionTitle()),
+                Text(t.exploreDataUrl, style: AppText.sectionTitle()),
                 const SizedBox(height: AppSpacing.xs),
-                Text(t.backendNote, style: AppText.caption()),
+                Text(t.exploreDataUrlNote, style: AppText.caption()),
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  controller: _explore,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                      hintText: 'http://192.168.x.x:5500/llmap-view'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── 詳細設定 ──
+          Padding(
+            padding: const EdgeInsets.only(
+                left: AppSpacing.xs, bottom: AppSpacing.sm),
+            child: Text(t.advanced, style: AppText.caption()),
+          ),
+          // ── 採集者ID / Collector ID ──
+          LLCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.collectorId, style: AppText.sectionTitle()),
+                const SizedBox(height: AppSpacing.xs),
+                Text(t.collectorIdNote, style: AppText.caption()),
                 const SizedBox(height: AppSpacing.md),
                 LLFormField(
-                  label: t.backendUrl,
+                  label: t.collectorIdLabel,
                   child: TextField(
-                    controller: _url,
-                    decoration: const InputDecoration(
-                        hintText: 'http://192.168.x.x:8000'),
+                    controller: _collector,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. K7m9Qp4t',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.casino_outlined),
+                        tooltip: t.collectorIdRegenerate,
+                        onPressed: () => setState(
+                            () => _collector.text = generateCollectorId()),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(t.backendHint, style: AppText.caption()),
               ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── このアプリについて ──
+          LLCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: Text(t.aboutUs, style: AppText.body()),
+              subtitle: Text(kAppVersion, style: AppText.caption()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showLLDialog(
+                context,
+                icon: Icons.travel_explore,
+                title: t.aboutUs,
+                message: t.aboutUsBody(kAppVersion),
+                primaryLabel: t.ok,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -418,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : Icons.radio_button_unchecked,
               size: 20,
               color: selected
-                  ? AppColors.accentTerracotta
+                  ? AppColors.primary
                   : AppColors.textSecondary,
             ),
             const SizedBox(width: AppSpacing.md),
@@ -429,7 +455,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(m.label(t),
                       style: AppText.body().copyWith(
                           fontWeight:
-                              selected ? FontWeight.w800 : FontWeight.w500)),
+                              selected ? FontWeight.w600 : FontWeight.w500)),
                   Text(m.description(t), style: AppText.caption()),
                 ],
               ),
@@ -457,12 +483,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
               size: 20,
-              color: selected ? AppColors.accentTerracotta : AppColors.textSecondary,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
             ),
             const SizedBox(width: AppSpacing.md),
             Text(label,
                 style: AppText.body().copyWith(
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500)),
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
           ],
         ),
       ),

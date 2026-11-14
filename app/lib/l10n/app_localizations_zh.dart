@@ -236,10 +236,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get saveChanges => '保存修改';
 
   @override
-  String get aiAuto => 'AI 自动识别';
+  String get aiAuto => 'AI 识别';
 
   @override
-  String get aiAutoSub => '开启后，进入每个框选标志时自动识别字段。';
+  String get aiAutoSub => '让 AI 辅助识别字段，结果可以修改。目前在专家模式中生效，默认模式等 OCR 方案确定后接入。';
 
   @override
   String get provider => '服务商';
@@ -366,13 +366,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get captureMode => '采集模式';
 
   @override
-  String get captureModeNote => '决定拍照框选后的填写流程。三种模式共用同一套数据结构，可随时切换。';
+  String get captureModeNote => '决定拍照后的填写流程。两种模式共用同一套数据，可随时切换。';
 
   @override
-  String get modeQuick => '快速模式';
+  String get modeQuick => '默认模式';
 
   @override
-  String get modeQuickDesc => '拍照框选后直接保存，字段稍后补充';
+  String get modeQuickDesc => '优先记录照片和地点；可以框选标志，语言可选填';
 
   @override
   String get modeStandard => '标准模式';
@@ -381,10 +381,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modeStandardDesc => '只需选择标识上出现的语言（默认）';
 
   @override
-  String get modeResearch => '研究模式';
+  String get modeResearch => '专家模式';
 
   @override
-  String get modeResearchDesc => '完整研究字段表单，用于正式采集标注';
+  String get modeResearchDesc => '框选每个标志，填写完整研究字段';
 
   @override
   String get fieldScheme => '字段方案';
@@ -396,7 +396,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fieldSchemeCustom => '自定义字段';
 
   @override
-  String get savedQuick => '记录已保存，可稍后在采集档案中补充字段。';
+  String get savedQuick => '已保存。详细信息可以之后在「我的」里补充。';
 
   @override
   String get savedStandard => '记录已提交。';
@@ -667,4 +667,332 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fieldPlacement => '放置位置';
+
+  @override
+  String get navExplore => '探索';
+
+  @override
+  String get navMap => '地图';
+
+  @override
+  String get navMine => '我的';
+
+  @override
+  String get tabFeed => '图片流';
+
+  @override
+  String get tabThemes => '主题';
+
+  @override
+  String get toolLanguage => '语言';
+
+  @override
+  String get toolColor => '颜色';
+
+  @override
+  String get searchHint => '搜索 ID 或备注';
+
+  @override
+  String photosCount(int count) {
+    return '$count 张';
+  }
+
+  @override
+  String get exploreNoSourceTitle => '尚未连接探索数据';
+
+  @override
+  String get exploreNoSourceBody => '在设置里填写探索数据地址后，就能浏览共享照片库。现在先显示你自己的记录。';
+
+  @override
+  String get exploreLoading => '正在加载探索数据…';
+
+  @override
+  String exploreLoadFailed(String error) {
+    return '探索数据加载失败：$error';
+  }
+
+  @override
+  String get goToSettings => '去设置';
+
+  @override
+  String get themesNeedSource => '主题来自探索数据，请先在设置里填写探索数据地址。';
+
+  @override
+  String mapInView(int count) {
+    return '当前地图范围内 · $count 张';
+  }
+
+  @override
+  String mapInViewCapped(int count) {
+    return '仅显示前 $count 张，放大地图可看到更多';
+  }
+
+  @override
+  String get mapInViewEmpty => '这片区域还没有照片，移动或缩小地图看看。';
+
+  @override
+  String get backToList => '返回列表';
+
+  @override
+  String get showOnMap => '在地图上看';
+
+  @override
+  String get editRecord => '补充记录信息';
+
+  @override
+  String get sourceMine => '我的';
+
+  @override
+  String get sourceShared => '共享';
+
+  @override
+  String get capturedAt => '采集时间';
+
+  @override
+  String get locationLabel => '地点';
+
+  @override
+  String get noLocation => '没有位置信息';
+
+  @override
+  String get languagesLabel => '语言';
+
+  @override
+  String get myRecordsTitle => '我的记录';
+
+  @override
+  String get manageArchive => '相册与批量管理';
+
+  @override
+  String get moreActions => '更多';
+
+  @override
+  String get exploreDataUrl => '探索数据地址';
+
+  @override
+  String get exploreDataUrlNote =>
+      'llmap-view 文件夹的网址（放在 NAS 或电脑上）。留空则只探索自己的记录。';
+
+  @override
+  String get advanced => '高级';
+
+  @override
+  String get aboutUs => '关于我们';
+
+  @override
+  String aboutUsBody(String version) {
+    return 'LLMap · $version\n以东京新大久保的语言景观为对象的毕业设计。让普通人轻松发现、记录街头文字，同时为研究者保留完整的采集流程。\n照片与记录保存在本机，可随时导出。';
+  }
+
+  @override
+  String get quickLangPrompt => '出现了哪些语言？（可选）';
+
+  @override
+  String get quickHint => '有照片和地点就够了，详细信息可以之后在「我的」里补充。';
+
+  @override
+  String get quickSave => '保存';
+
+  @override
+  String get statusRawTag => '待补充';
+
+  @override
+  String get statusSubmittedTag => '已提交';
+
+  @override
+  String get colorRed => '红';
+
+  @override
+  String get colorOrange => '橙';
+
+  @override
+  String get colorYellow => '黄';
+
+  @override
+  String get colorGreen => '绿';
+
+  @override
+  String get colorBlue => '蓝';
+
+  @override
+  String get colorPurple => '紫';
+
+  @override
+  String get colorPink => '粉';
+
+  @override
+  String get colorBrown => '棕';
+
+  @override
+  String get colorWhite => '白';
+
+  @override
+  String get colorGray => '灰';
+
+  @override
+  String get colorBlack => '黑';
+
+  @override
+  String get langJa => '日语';
+
+  @override
+  String get langEn => '英语';
+
+  @override
+  String get langZh => '中文';
+
+  @override
+  String get langKo => '韩语';
+
+  @override
+  String get langVi => '越南语';
+
+  @override
+  String get langNe => '尼泊尔语';
+
+  @override
+  String get langOther => '其他';
+
+  @override
+  String get langNone => '无语言';
+
+  @override
+  String get theme1Title => '中文招牌的红';
+
+  @override
+  String get theme1Sub => '中文为主、以红色为代表色';
+
+  @override
+  String get theme2Title => '手写的街道';
+
+  @override
+  String get theme2Sub => '手作的告示与招牌';
+
+  @override
+  String get theme3Title => '临时与季节';
+
+  @override
+  String get theme3Sub => '限时出现的海报和旗帜';
+
+  @override
+  String get theme4Title => '规约与禁止';
+
+  @override
+  String get theme4Sub => '「请勿」「禁止」的语言';
+
+  @override
+  String get theme5Title => '逐字逐句的翻译';
+
+  @override
+  String get theme5Sub => '复制型多语招牌';
+
+  @override
+  String get theme6Title => '越南语与尼泊尔语';
+
+  @override
+  String get theme6Sub => '新大久保的另一些声音';
+
+  @override
+  String get theme7Title => '最鲜艳的招牌';
+
+  @override
+  String get theme7Sub => '鲜艳度最高的一群';
+
+  @override
+  String get theme8Title => '黑底的招牌';
+
+  @override
+  String get theme8Sub => '深色背景上的文字';
+
+  @override
+  String get theme9Title => '贴纸与便签';
+
+  @override
+  String get theme9Sub => '贴在任何地方的小纸片';
+
+  @override
+  String get viewFeed => '瀑布流';
+
+  @override
+  String get viewCanvas => '漫游';
+
+  @override
+  String get layoutWall => '照片墙';
+
+  @override
+  String get layoutGroup => '分组';
+
+  @override
+  String get layoutWheel => '色轮';
+
+  @override
+  String get layoutHueLight => '色相×明度';
+
+  @override
+  String get groupBy => '分组依据';
+
+  @override
+  String get canvasHint => '双指缩放 · 拖动漫游 · 点照片查看详情';
+
+  @override
+  String get exploreNext => '接下来探索什么？';
+
+  @override
+  String get relColorName => '颜色相近';
+
+  @override
+  String get relSceneName => '同一画面';
+
+  @override
+  String get relNearName => '就在附近';
+
+  @override
+  String get relLangName => '相同语言组合';
+
+  @override
+  String get relTypeName => '相同话语与载体';
+
+  @override
+  String get relContrastName => '颜色反差';
+
+  @override
+  String relColorSub(int count) {
+    return '色板最接近的 $count 张';
+  }
+
+  @override
+  String relSceneSub(int count) {
+    return '同一张街景里的另外 $count 块';
+  }
+
+  @override
+  String relNearSub(int meters, int count) {
+    return '方圆 $meters 米内的 $count 张';
+  }
+
+  @override
+  String relLangTitle(String langs) {
+    return '同为 $langs';
+  }
+
+  @override
+  String relLangSub(int count) {
+    return '语言组合完全相同的 $count 张';
+  }
+
+  @override
+  String relTypeSub(int count) {
+    return '同类话语、同种载体的 $count 张';
+  }
+
+  @override
+  String relContrastSub(String lang) {
+    return '同样是$lang，颜色截然不同';
+  }
+
+  @override
+  String get nextChooseLangs => '下一步：选择语言';
+
+  @override
+  String get manageShort => '管理';
 }

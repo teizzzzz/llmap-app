@@ -49,8 +49,8 @@ void main() {
 
     // 2件の座標ありマーカー
     expect(find.byType(MapPin), findsNWidgets(2));
-    // 座標なし警告（ja: 「座標なし 1 件は非表示」）
-    expect(find.textContaining('座標なし 1 件'), findsOneWidget);
+    // 座標なし警告（ja: 「座標のない 1 件は表示していません」）
+    expect(find.textContaining('座標のない 1 件'), findsOneWidget);
 
     // マーカータップで詳情カード
     await tester.tap(find.byType(MapPin).first);

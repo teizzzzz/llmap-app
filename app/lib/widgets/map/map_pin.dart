@@ -1,8 +1,11 @@
-/// 地図ピン（白縁＋淡い影の円ドット）。選択時は拡大し suffix を表示。
-/// mapv2.0/index.html と同じ見た目。MapScreen / 地図主体Home で共用。
+/// 地図ピン（白縁の小さな円ドット）。選択時は拡大し suffix を表示。
+/// 共有写真の点（CircleLayer）より一回り大きく、自分の記録だと分かる大きさ。
+/// MapScreen / 地図主体Home で共用。
 library;
 
 import 'package:flutter/material.dart';
+
+import '../../theme/tokens.dart';
 
 class MapPin extends StatelessWidget {
   final Color color;
@@ -17,10 +20,10 @@ class MapPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = selected ? 24.0 : 16.0;
+    final size = selected ? 24.0 : 13.0;
     return Center(
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: const Duration(milliseconds: 140),
         width: size,
         height: size,
         alignment: Alignment.center,
@@ -28,19 +31,19 @@ class MapPin extends StatelessWidget {
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-              color: selected ? const Color(0xFF2F3032) : Colors.white,
-              width: 2),
+              color: selected ? AppColors.textPrimary : Colors.white,
+              width: selected ? 2.5 : 2),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x402F3032), blurRadius: 7, offset: Offset(0, 2)),
+                color: Color(0x26000000), blurRadius: 3, offset: Offset(0, 1)),
           ],
         ),
         child: selected
             ? Text(label,
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold))
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600))
             : null,
       ),
     );

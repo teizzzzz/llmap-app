@@ -103,7 +103,7 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
                     value: (_index + 1) / total,
                     minHeight: 4,
                     backgroundColor: AppColors.muted,
-                    color: AppColors.accentTerracotta,
+                    color: AppColors.primary,
                   ),
                 )
               : null,
@@ -206,10 +206,10 @@ class _StandardFieldsScreenState extends State<StandardFieldsScreen> {
                 label: Text(o),
                 selected: selected.contains(o),
                 visualDensity: VisualDensity.compact,
-                selectedColor: AppColors.accentTerracotta.withValues(
+                selectedColor: AppColors.primary.withValues(
                   alpha: 0.18,
                 ),
-                checkmarkColor: AppColors.accentTerracotta,
+                checkmarkColor: AppColors.primary,
                 onSelected: (_) {
                   setState(() {
                     final next = [...selected];

@@ -1,14 +1,17 @@
-import 'dart:typed_data';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../albums.dart';
-import '../api.dart';
 import '../capture.dart';
 import '../capture_mode.dart';
+import '../explore/dataset.dart';
+import '../explore/photo_item.dart';
+import '../explore/relations.dart';
 import '../export_flow.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
@@ -16,26 +19,35 @@ import '../record_ops.dart';
 import '../settings.dart';
 import '../store.dart';
 import '../theme/tokens.dart';
-import '../version.dart';
+import '../widgets/explore/photo_detail.dart';
+import '../widgets/explore/relations_section.dart';
 import '../widgets/ll/ll.dart';
-import '../widgets/ll_sign_card.dart';
-import '../widgets/map/ll_map_detail_card.dart';
-import '../widgets/map/ll_map_legend.dart';
 import '../widgets/map/ll_map_view.dart';
 import 'crop_screen.dart';
 import 'edit_sign_screen.dart';
+import 'explore_tab.dart';
 import 'gallery_screen.dart';
+import 'my_records_tab.dart';
 
-/// 採集ホーム（地図主体）。_signs の状態オーナー。地図表示・採集入口・
-/// 記録パネル・导出・設定・本地保存の中核フローを担う。
+/// アプリの外枠：底部ナビ「地図 ｜ 拍照（大）｜ 探索」。我的は探索の中の Tab。
+/// _signs（端末の記録）と探索データの状態オーナーで、採集・保存・削除・
+/// 导出・設定の中核フローもここに残す（各タブは表示と操作の委譲だけ）。
+/// 起動時は地図タブ（従来どおり地図から入る）。
 class HomeScreen extends StatefulWidget {
-  final BackendApi api;
   final AppSchema schema;
-  const HomeScreen({super.key, required this.api, required this.schema});
+  const HomeScreen({super.key, required this.schema});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
+/// 地図抽屉の高さ（画面に対する割合）。
+const double _sheetMin = 0.16;
+const double _sheetMid = 0.5;
+const double _sheetMax = 0.92;
+
+/// 抽屉の「範囲内」一覧に並べる上限（多すぎると一覧が重くなる）。
+const int _inViewCap = 240;
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final List<Sign> _signs = [];
@@ -44,12 +56,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _opening = false; // 二重起動防止
   AiConfig _ai = AiConfig();
   String _collector = ''; // 採集者ID（設定で自動生成/自定义）。SignID に入る。
-  CaptureMode _mode = CaptureMode.standard; // 採集モード（既定 standard）
+  CaptureMode _mode = CaptureMode.quick; // 採集モード（既定 = デフォルトモード）
 
-  // 地図主体首页の表示状態
+  // 外枠
+  int _tab = 0; // 0=地図 1=探索（我的は探索ページ内の Tab）
+
+  // 探索データ（llmap-view の公開データ。読み取り専用）
+  String _exploreUrl = '';
+  ExploreLoad _exploreLoad = ExploreLoad.none;
+  String? _exploreError;
+  ExploreDataset? _dataset;
+  List<PhotoItem> _shared = const []; // records と同じ並び
+  RelationIndex? _rel; // 「接下来探索」の関連（探索データ単位）
+
+  // 地図タブの表示状態
   final _map = MapController();
-  Sign? _selected;
+  final _sheet = DraggableScrollableController();
   LLMapLayer _layer = LLMapLayer.map;
+  LatLngBounds? _view; // いまの地図範囲（抽屉一覧の対象）
+  PhotoItem? _focus; // 抽屉で详情を出している写真
+  ({LatLng center, double zoom})? _beforeFocus; // 详情に入る前の地図位置
   // 起動時の現在地センタリング用。
   Future<({double lat, double lng})?>? _initialGps;
   bool _centeredOnce = false;
@@ -70,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _initialGps = currentGps(); // 起動と同時に現在地取得を開始
     _loadSaved();
     _recoverLostData();
+    _initExplore();
   }
 
   /// 地図準備完了時：現在地へ移動（取得不可なら記録範囲）。1回だけ。
@@ -89,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _sheet.dispose();
     super.dispose();
   }
 
@@ -103,10 +131,57 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   LatLng get _center {
     final pts = _located;
-    if (pts.isEmpty) return const LatLng(35.6021, 139.7011);
+    if (pts.isEmpty) return const LatLng(35.7010, 139.7003); // 新大久保
     final lat = pts.map((s) => s.lat!).reduce((a, b) => a + b) / pts.length;
     final lng = pts.map((s) => s.lng!).reduce((a, b) => a + b) / pts.length;
     return LatLng(lat, lng);
+  }
+
+  /// 自分の記録を新しい順に（探索の代替・我的・地図抽屉で共用）。
+  List<PhotoItem> get _mineItems =>
+      [for (final s in _signs.reversed) PhotoItem.fromSign(s)];
+
+  // ── 探索データ ──
+  Future<void> _initExplore() async {
+    _exploreUrl = await loadExploreUrl();
+    await _loadExplore();
+  }
+
+  Future<void> _loadExplore() async {
+    if (normalizeExploreUrl(_exploreUrl).isEmpty) {
+      if (mounted) {
+        setState(() {
+          _exploreLoad = ExploreLoad.none;
+          _dataset = null;
+          _shared = const [];
+          _rel = null;
+        });
+      }
+      return;
+    }
+    setState(() {
+      _exploreLoad = ExploreLoad.loading;
+      _exploreError = null;
+    });
+    try {
+      final ds = await fetchExploreDataset(_exploreUrl);
+      if (!mounted) return;
+      setState(() {
+        _dataset = ds;
+        _shared = [for (final r in ds.records) PhotoItem.fromRecord(ds, r)];
+        _rel = RelationIndex(ds);
+        _exploreLoad = ExploreLoad.ready;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _exploreLoad = ExploreLoad.failed;
+        _exploreError = '$e';
+        _dataset = null;
+        _shared = const [];
+        _rel = null;
+      });
+    }
   }
 
   // ── データ復元・永続化（不変の中核フロー） ──
@@ -137,6 +212,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _signs
         ..clear()
         ..addAll(remaining);
+      if (_focus?.sign != null && del.contains(_focus!.sign)) _focus = null;
     });
     await _persist(); // 先に記録を確定してから写真を消す（途中断でも参照切れ側に倒す）
     await LocalStore.instance.deletePhotos(orphans);
@@ -153,6 +229,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _openCrop(bytes, x.name);
   }
 
+  /// 全ページ共通の拍照ボタン：拍照 / 相册から取り込みを選んで採集へ。
   Future<void> _startCapture() async {
     if (_opening) return;
     final shot = await capturePhoto(context);
@@ -169,7 +246,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         context,
         MaterialPageRoute(
           builder: (_) => CropScreen(
-            api: widget.api,
             schema: widget.schema,
             imageBytes: bytes,
             fileName: fileName,
@@ -197,8 +273,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _showSavedDialog() {
     final t = AppLocalizations.of(context);
-    // 保存メッセージは採集モードで変える（quick=後で補完可 / standard=提交済 /
-    // research=研究記録として保存）。
+    // 保存メッセージは採集モードで変える（default=後で補完可 / expert=研究記録）。
     final message = switch (_mode) {
       CaptureMode.quick => t.savedQuick,
       CaptureMode.standard => t.savedStandard,
@@ -210,13 +285,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       iconColor: AppColors.success,
       title: t.savedTitle,
       message: message,
-      primaryLabel: t.backToMap,
+      primaryLabel: t.ok,
     );
   }
 
   /// Dataset Package の導出（Step 14: 範囲選択つき）。
-  /// 入口は従来どおりメニューの「データをエクスポート」だが、押した直後に
-  /// 範囲（全部 / 未分類 / 分類済み / 相册指定）を選ぶ。実行は export_flow。
+  /// 入口は我的の「更多 → データをエクスポート」。押した直後に範囲
+  /// （全部 / 未分類 / 分類済み / 相册指定）を選ぶ。実行は export_flow。
   /// 表示中の Gallery 筛选・選択・相册の導出は Gallery 側の入口が担う。
   Future<void> _export() async {
     if (_signs.isEmpty) return;
@@ -287,42 +362,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openSettings() async {
-    final result = await Navigator.push<
-        ({
-          String baseUrl,
-          AiConfig ai,
-          String collectorId,
-          CaptureMode captureMode,
-        })>(
+    final result = await Navigator.push<SettingsResult>(
       context,
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
-          baseUrl: widget.api.baseUrl,
           ai: _ai,
           collectorId: _collector,
           captureMode: _mode,
+          exploreUrl: _exploreUrl,
         ),
       ),
     );
     if (result == null) return;
-    await saveBaseUrl(result.baseUrl);
     await saveAiConfig(result.ai);
     await saveCollectorId(result.collectorId);
     await saveCaptureMode(result.captureMode);
-    widget.api.baseUrl = result.baseUrl;
+    await saveExploreUrl(result.exploreUrl);
+    final exploreChanged = result.exploreUrl.trim() != _exploreUrl.trim();
     if (mounted) {
       setState(() {
         _ai = result.ai;
         _collector = result.collectorId;
         _mode = result.captureMode;
+        _exploreUrl = result.exploreUrl;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
       );
+      if (exploreChanged) _loadExplore();
     }
   }
 
-  /// 采集档案（画廊）を開く。HomeScreen が状態オーナーのまま編集/削除を委譲。
+  /// 相册と一括管理（旧「采集档案」）。HomeScreen が状態オーナーのまま委譲。
   void _openGallery() {
     Navigator.push(
       context,
@@ -351,7 +422,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (r == 'deleted') {
       await _deleteSigns([sign]);
     } else if (r == 'saved') {
-      setState(() {});
+      setState(() {
+        // 抽屉の详情を最新の内容で描き直す。
+        if (_focus?.sign == sign) _focus = PhotoItem.fromSign(sign);
+      });
       _persist();
     }
   }
@@ -382,6 +456,111 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() => _area = v.trim());
       _persist();
     }
+  }
+
+  // ── 照片详情（探索・我的からは全画面、地図では抽屉） ──
+
+  /// 详情の末尾に置く「接下来探索」。探索データの写真は 6 種の関連、
+  /// 自分の記録は位置があれば「就在附近」（探索データの近い写真）だけ。
+  /// [inMap] のとき、関連一覧から選んだ写真は地図抽屉の详情で開く。
+  Widget? _relationsFor(PhotoItem item, {bool inMap = false}) {
+    final rel = _rel;
+    if (rel == null) return null;
+    final List<Relation> rels;
+    if (item.record != null) {
+      rels = rel.of(item.record!.index);
+    } else if (item.hasLocation) {
+      final near = rel.nearby(item.lat!, item.lng!);
+      rels = near == null ? const [] : [near];
+    } else {
+      rels = const [];
+    }
+    if (rels.isEmpty) return null;
+    final t = AppLocalizations.of(context);
+    return RelationsSection(
+      relations: rels,
+      shared: _shared,
+      onOpen: (r) => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => ThemeScreen(
+            title: relTitle(t, r),
+            subtitle: relSubtitle(t, r),
+            items: [for (final j in r.items) _shared[j]],
+            schema: widget.schema,
+            onOpen: inMap
+                ? (p) {
+                    Navigator.pop(ctx);
+                    _focusOnMap(p);
+                  }
+                : _openDetail,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openDetail(PhotoItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => PhotoDetailScreen(
+          item: item,
+          schema: widget.schema,
+          footer: _relationsFor(item),
+          onShowOnMap: () {
+            Navigator.pop(ctx);
+            _showOnMap(item);
+          },
+          onEdit: item.sign == null
+              ? null
+              : () {
+                  Navigator.pop(ctx);
+                  _editSign(item.sign!);
+                },
+        ),
+      ),
+    );
+  }
+
+  /// 「在地图上看」：地図タブへ切り替え、その写真を抽屉の详情で開く。
+  void _showOnMap(PhotoItem item) {
+    setState(() => _tab = 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnMap(item));
+  }
+
+  /// 地図の点／抽屉の写真をタップ：同じ抽屉を详情に切り替え、地図で強調する。
+  void _focusOnMap(PhotoItem item) {
+    if (!mounted) return;
+    final cam = _map.camera;
+    _beforeFocus ??= (center: cam.center, zoom: cam.zoom);
+    setState(() => _focus = item);
+    if (item.hasLocation) {
+      final point = LatLng(item.lat!, item.lng!);
+      final zoom = math.max(cam.zoom, 17.0);
+      _map.move(point, zoom);
+      // 抽屉（画面の下半分）に隠れないよう、点を画面の上寄りに置く。
+      final moved = _map.camera;
+      final size = moved.nonRotatedSize;
+      final center = moved.pointToLatLng(
+          math.Point(size.x / 2, size.y / 2 + size.y * 0.2));
+      _map.move(center, zoom);
+    }
+    if (_sheet.isAttached && _sheet.size < _sheetMid - 0.01) {
+      _sheet.animateTo(_sheetMid,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic);
+    }
+  }
+
+  /// 详情 → 一覧。地図位置も详情に入る前へ戻す。
+  void _backToList() {
+    final before = _beforeFocus;
+    setState(() {
+      _focus = null;
+      _beforeFocus = null;
+    });
+    if (before != null) _map.move(before.center, before.zoom);
   }
 
   /// 当前位置へ移動。GPS取得不可なら記録範囲にフィット。
@@ -416,258 +595,259 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ));
   }
 
-  void _showInfoMenu() {
-    final t = AppLocalizations.of(context);
-    showLLBottomSheet(context, title: t.menu, children: [
-      LLSheetTile(
-          icon: Icons.info_outline,
-          label: t.aboutApp,
-          onTap: () {
-            Navigator.pop(context);
-            _showAbout();
-          }),
-      LLSheetTile(
-          icon: Icons.school_outlined,
-          label: t.tutorial,
-          onTap: () {
-            Navigator.pop(context);
-            _showTodo(t.tutorial);
-          }),
-      LLSheetTile(
-          icon: Icons.lightbulb_outline,
-          label: t.tips,
-          onTap: () {
-            Navigator.pop(context);
-            _showTodo(t.tips);
-          }),
-      LLSheetTile(
-          icon: Icons.tune,
-          label: t.projectSettings,
-          onTap: () {
-            Navigator.pop(context);
-            _openSettings();
-          }),
-      LLSheetTile(
-          icon: Icons.download_outlined,
-          label: t.exportData,
-          onTap: () {
-            Navigator.pop(context);
-            _export();
-          }),
-      LLSheetTile(
-          icon: Icons.close,
-          label: t.cancel,
-          color: AppColors.textSecondary,
-          showChevron: false,
-          onTap: () => Navigator.pop(context)),
-    ]);
-  }
-
-  void _showAbout() {
-    final t = AppLocalizations.of(context);
-    showLLDialog(
-      context,
-      icon: Icons.travel_explore,
-      title: t.aboutApp,
-      message: t.aboutBody(kAppVersion),
-      primaryLabel: t.ok,
-    );
-  }
-
-  void _showTodo(String name) => showLLDialog(
-        context,
-        icon: Icons.construction_outlined,
-        title: name,
-        message: AppLocalizations.of(context).comingSoon,
-        primaryLabel: AppLocalizations.of(context).ok,
-      );
+  // ── 画面 ──
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final media = MediaQuery.of(context);
-    final located = _located;
-    final topInset = media.padding.top;
-    final collapsedPx = media.size.height * 0.12;
-
+    final mine = _mineItems;
     return Scaffold(
-      body: Stack(
+      backgroundColor: AppColors.background,
+      body: _FadeIndexedStack(
+        index: _tab,
         children: [
-          // ① 地図主体
-          LLMapView(
-            controller: _map,
-            signs: located,
+          _mapPage(mine),
+          ExploreTab(
             schema: widget.schema,
-            layer: _layer,
-            selected: _selected,
-            initialCenter: _center,
-            initialZoom: located.isEmpty ? 12 : 16,
-            onMapReady: _onMapReady,
-            onMarkerTap: (s) {
-              setState(() => _selected = s);
-              _map.move(LatLng(s.lat!, s.lng!), _map.camera.zoom);
-            },
-            onMapTap: () => setState(() => _selected = null),
-          ),
-
-          // ② 上部ヘッダ
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
-              child: LLAppHeader(
-                title: 'LLMap',
-                trailingIcon: Icons.menu,
-                onTrailing: _showInfoMenu,
-              ),
+            load: _exploreLoad,
+            loadError: _exploreError,
+            dataset: _dataset,
+            sharedItems: _shared,
+            mineItems: mine,
+            onOpen: _openDetail,
+            onOpenSettings: _openSettings,
+            onRetry: _loadExplore,
+            mineView: MyRecordsTab(
+              schema: widget.schema,
+              items: mine,
+              onOpen: _openDetail,
+              onManage: _openGallery,
+              onExport: _export,
+              onEditArea: _editArea,
+              areaLabel: '$_area #$_nextSeq',
             ),
-          ),
-
-          // ③ 地図制御層（Map/Satellite ＋ 現在地）
-          Positioned(
-            top: topInset + 66,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: LLSegmentedControl<LLMapLayer>(
-                segments: [
-                  LLSegment(LLMapLayer.map, t.layerMap),
-                  LLSegment(LLMapLayer.satellite, t.layerSatellite),
-                ],
-                selected: _layer,
-                activeColor: _layer == LLMapLayer.satellite
-                    ? AppColors.accentViolet
-                    : AppColors.accentMustard,
-                activeTextColor: _layer == LLMapLayer.satellite
-                    ? Colors.white
-                    : AppColors.textPrimary,
-                onChanged: (v) => setState(() => _layer = v),
-              ),
-            ),
-          ),
-          Positioned(
-            top: topInset + 66,
-            right: AppSpacing.lg,
-            child: LLIconButton(
-                icon: Icons.my_location,
-                tooltip: t.currentLocation,
-                onPressed: _locate),
-          ),
-          if (widget.schema.languageColors.isNotEmpty)
-            Positioned(
-              top: topInset + 124,
-              left: AppSpacing.lg,
-              child: LLMapLegend(schema: widget.schema),
-            ),
-
-          // ④ 詳情カード（選択時、追加ボタンの上）
-          if (_selected != null)
-            Positioned(
-              left: AppSpacing.lg,
-              right: AppSpacing.lg,
-              bottom: collapsedPx + 12 + 54 + 10,
-              child: LLMapDetailCard(
-                sign: _selected!,
-                schema: widget.schema,
-                onClose: () => setState(() => _selected = null),
-              ),
-            ),
-
-          // ⑤ 主アクション「新增采集」（記録パネルの上に浮く）
-          Positioned(
-            left: AppSpacing.lg,
-            right: AppSpacing.lg,
-            bottom: collapsedPx + 12,
-            child: LLPrimaryButton(
-              label: t.newCollection,
-              icon: Icons.add_a_photo_outlined,
-              onPressed: _startCapture,
-            ),
-          ),
-
-          // ⑥ 採集記録パネル（常駐ドラッグ抽屉）
-          DraggableScrollableSheet(
-            minChildSize: 0.12,
-            initialChildSize: 0.12,
-            maxChildSize: 0.9,
-            snap: true,
-            snapSizes: const [0.12, 0.5, 0.9],
-            builder: (ctx, scroll) => _recordsPanel(scroll),
           ),
         ],
       ),
+      bottomNavigationBar: _NavDock(
+        index: _tab,
+        onSelect: (i) => setState(() => _tab = i),
+        onCapture: _startCapture,
+      ),
     );
   }
 
-  Widget _recordsPanel(ScrollController scroll) {
+  Widget _mapPage(List<PhotoItem> mine) {
     final t = AppLocalizations.of(context);
-    // 表示は新しい順（Gallery の既定排序と揃える）。_signs 自体は採集順のまま。
-    final ordered = _signs.reversed.toList();
-    // builder で遅延構築する（記録が数百件でも抽屉が固まらないように）。
-    // 行構成: [0]=ヘッダ / [1..n]=記録（空なら空状態1行）/ 末尾=余白。
-    final rowCount = 1 + (ordered.isEmpty ? 1 : ordered.length) + 1;
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceIvory,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        boxShadow: AppShadows.floating,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ListView.builder(
-        controller: scroll,
-        padding: EdgeInsets.zero,
-        itemCount: rowCount,
-        itemBuilder: (context, row) {
-          if (row == 0) return _panelHeader(t);
-          if (row == rowCount - 1) return const SizedBox(height: AppSpacing.xl);
-          if (ordered.isEmpty) return _emptyRecords();
-          final s = ordered[row - 1];
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
-            child: Dismissible(
-              key: ValueKey('${s.id}-${identityHashCode(s)}'),
-              direction: DismissDirection.endToStart,
-              background: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.danger,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
+    final topInset = MediaQuery.of(context).padding.top;
+    final located = _located;
+    return Stack(
+      children: [
+        LLMapView<int>(
+          controller: _map,
+          signs: located,
+          schema: widget.schema,
+          layer: _layer,
+          selected: _focus?.sign,
+          initialCenter: _center,
+          initialZoom: located.isEmpty ? 15 : 16,
+          onMapReady: _onMapReady,
+          dots: [
+            for (final p in _shared)
+              if (p.hasLocation)
+                LLMapDot<int>(
+                  LatLng(p.lat!, p.lng!),
+                  // 共有写真は灰の小点（自分の記録＝黒のピンと見分ける）。
+                  AppColors.textSecondary,
+                  p.record!.index,
                 ),
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: AppSpacing.xl),
-                child: const Icon(Icons.delete_outline, color: Colors.white),
-              ),
-              confirmDismiss: (_) => showLLDialog<bool>(
-                context,
-                icon: Icons.delete_outline,
-                iconColor: AppColors.danger,
-                title: t.deleteRecordTitle,
-                message: t.deleteRecordConfirm(s.displayId),
-                primaryLabel: t.delete,
-                onPrimary: () => Navigator.pop(context, true),
-                secondaryLabel: t.cancel,
-                onSecondary: () => Navigator.pop(context, false),
-              ),
-              onDismissed: (_) => _deleteSigns([s]),
-              child: LLSignCard(
-                  sign: s,
-                  // 番号は採集順を保つ（最新 = 最大番号が先頭に来る）。
-                  index: _signs.length - row,
-                  onTap: () => _editSign(s)),
+          ],
+          onDotTap: (i) => _focusOnMap(_shared[i]),
+          highlight: _focus != null && _focus!.hasLocation && !_focus!.mine
+              ? LatLng(_focus!.lat!, _focus!.lng!)
+              : null,
+          onCameraIdle: (cam) => setState(() => _view = cam.visibleBounds),
+          onMarkerTap: (s) => _focusOnMap(PhotoItem.fromSign(s)),
+        ),
+
+        // 地図制御（Map/Satellite ＋ 現在地）
+        Positioned(
+          top: topInset + AppSpacing.md,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: LLSegmentedControl<LLMapLayer>(
+              segments: [
+                LLSegment(LLMapLayer.map, t.layerMap),
+                LLSegment(LLMapLayer.satellite, t.layerSatellite),
+              ],
+              selected: _layer,
+              onChanged: (v) => setState(() => _layer = v),
             ),
-          );
-        },
-      ),
+          ),
+        ),
+        Positioned(
+          top: topInset + AppSpacing.md,
+          right: AppSpacing.lg,
+          child: LLIconButton(
+              icon: Icons.my_location,
+              tooltip: t.currentLocation,
+              onPressed: _locate),
+        ),
+
+        // 下部抽屉：範囲内の写真一覧 ⇄ 写真详情（同じ抽屉で切替）
+        DraggableScrollableSheet(
+          controller: _sheet,
+          minChildSize: _sheetMin,
+          initialChildSize: _sheetMin,
+          maxChildSize: _sheetMax,
+          snap: true,
+          snapSizes: const [_sheetMin, _sheetMid, _sheetMax],
+          builder: (ctx, scroll) => Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+              boxShadow: AppShadows.floating,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _focus == null
+                ? _inViewList(t, scroll, mine)
+                : PopScope(
+                    // 地図タブ表示中の戻る操作は「详情 → 一覧」に使う
+                    // （アプリを閉じない）。他タブ表示中は通常どおり。
+                    canPop: _tab != 0,
+                    onPopInvokedWithResult: (didPop, _) {
+                      if (!didPop) _backToList();
+                    },
+                    child: PhotoDetailView(
+                      key: ValueKey(_focus!.key),
+                      item: _focus!,
+                      schema: widget.schema,
+                      controller: scroll,
+                      maxImageHeight: 300,
+                      header: Column(
+                        children: [
+                          const _Handle(),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.xs, 0, AppSpacing.lg, 0),
+                            child: Row(
+                              children: [
+                                TextButton.icon(
+                                  onPressed: _backToList,
+                                  icon: const Icon(Icons.chevron_left),
+                                  label: Text(t.backToList),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      onEdit: _focus!.sign == null
+                          ? null
+                          : () => _editSign(_focus!.sign!),
+                      footer: _relationsFor(_focus!, inMap: true),
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
-  /// 抽屉ヘッダ（ハンドル＋タイトル行）。
-  Widget _panelHeader(AppLocalizations t) {
-    return Column(
-      children: [
-        const SizedBox(height: 10),
-        Center(
+  /// 抽屉の一覧：いまの地図範囲に入っている写真（自分の記録が先）。
+  Widget _inViewList(
+      AppLocalizations t, ScrollController scroll, List<PhotoItem> mine) {
+    final view = _view;
+    bool inView(PhotoItem p) =>
+        p.hasLocation &&
+        (view == null || view.contains(LatLng(p.lat!, p.lng!)));
+    final sharedIn = _shared.where(inView).toList()
+      ..sort((a, b) => b.time.compareTo(a.time));
+    final all = [...mine.where(inView), ...sharedIn];
+    final shown = all.take(_inViewCap).toList();
+    return CustomScrollView(
+      controller: scroll,
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _Handle(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, 2, AppSpacing.lg, AppSpacing.sm),
+                child: Text(t.mapInView(all.length),
+                    style: AppText.sectionTitle().copyWith(fontSize: 16)),
+              ),
+              if (all.length > shown.length)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
+                  child: Text(t.mapInViewCapped(shown.length),
+                      style: AppText.caption()),
+                ),
+            ],
+          ),
+        ),
+        if (shown.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Text(t.mapInViewEmpty,
+                  textAlign: TextAlign.center, style: AppText.caption()),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
+            sliver: SliverGrid.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 6,
+                crossAxisSpacing: 6,
+              ),
+              itemCount: shown.length,
+              itemBuilder: (_, i) => _thumb(shown[i]),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _thumb(PhotoItem p) {
+    final img = p.image;
+    return GestureDetector(
+      onTap: () => _focusOnMap(p),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: p.placeholder.withValues(alpha: 0.55)),
+            if (img != null)
+              Image(
+                image: ResizeImage(img, width: 260,
+                    policy: ResizeImagePolicy.fit),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Handle extends StatelessWidget {
+  const _Handle();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 8),
+        child: Center(
           child: Container(
             width: 44,
             height: 5,
@@ -677,69 +857,232 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
-          child: Row(
-            children: [
-              Text(t.recordsTitle, style: AppText.sectionTitle()),
-              const SizedBox(width: AppSpacing.sm),
-              Text(t.recordsCount(_signs.length), style: AppText.caption()),
-              const Spacer(),
-              if (_signs.isNotEmpty)
-                IconButton(
-                  onPressed: _openGallery,
-                  icon: const Icon(Icons.grid_view_outlined, size: 20),
-                  color: AppColors.accentTerracotta,
-                  tooltip: t.archiveTooltip,
-                  visualDensity: VisualDensity.compact,
-                ),
-              // 現在の採集モード（設定で切替。タップで設定へ）。
-              InkWell(
-                onTap: _openSettings,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: LLTagChip(
-                  label: _mode.label(t),
-                  color: switch (_mode) {
-                    CaptureMode.quick => AppColors.accentMustard,
-                    CaptureMode.standard => AppColors.accentBlue,
-                    CaptureMode.research => AppColors.accentViolet,
-                  },
+      );
+}
+
+/// 地図／探索の切替：同じ位置で重ね、選んだ方をふわっと出す（フェード＋
+/// わずかな拡大）。IndexedStack と同じく両方の状態（地図の位置・一覧の
+/// スクロール）は保持し、見えていない方は操作・アニメーションを止める。
+class _FadeIndexedStack extends StatelessWidget {
+  final int index;
+  final List<Widget> children;
+  const _FadeIndexedStack({required this.index, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        for (var i = 0; i < children.length; i++)
+          IgnorePointer(
+            ignoring: i != index,
+            child: ExcludeSemantics(
+              excluding: i != index,
+              child: AnimatedOpacity(
+                opacity: i == index ? 1 : 0,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                child: AnimatedScale(
+                  scale: i == index ? 1 : 0.985,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  child: TickerMode(enabled: i == index, child: children[i]),
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              LLTagChip(
-                  label: '$_area #$_nextSeq', color: AppColors.accentBlue),
-              IconButton(
-                onPressed: _editArea,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                color: AppColors.textSecondary,
-                tooltip: t.areaCodeTooltip,
-                visualDensity: VisualDensity.compact,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 底部ナビ（iOS のタブバー風）：画面幅いっぱいの白い帯＋上端の細い区切り線、
+/// アイコンの下に小さなラベル、選択中は黒・それ以外は灰。
+/// 並びは「地図 ｜ 拍照 ｜ 探索」で、真ん中の拍照だけ大きな黒い円。
+/// 帯の中に収めるので、写真・地図操作・抽屉には重ならない。
+/// 動き：タブは選ばれた瞬間にアイコンが小さく弾み（輪郭→塗り）、色がなめらかに
+/// 変わる。拍照は押している間だけ縮み、離すと戻る。どちらも軽い触覚フィードバック。
+class _NavDock extends StatelessWidget {
+  final int index; // 0=地図 1=探索
+  final ValueChanged<int> onSelect;
+  final VoidCallback onCapture;
+
+  const _NavDock({
+    required this.index,
+    required this.onSelect,
+    required this.onCapture,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    void select(int i) {
+      if (i != index) HapticFeedback.selectionClick();
+      onSelect(i);
+    }
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          top: BorderSide(color: Color(0x1F000000), width: 0.5),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 74,
+          child: Row(
+            children: [
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.map_outlined,
+                  selectedIcon: Icons.map,
+                  label: t.navMap,
+                  selected: index == 0,
+                  onTap: () => select(0),
+                ),
+              ),
+              _ShutterButton(label: t.newCollection, onTap: onCapture),
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.explore_outlined,
+                  selectedIcon: Icons.explore,
+                  label: t.navExplore,
+                  selected: index == 1,
+                  onTap: () => select(1),
+                ),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
+}
 
-  Widget _emptyRecords() {
-    final t = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-      child: Column(
-        children: [
-          const Icon(Icons.add_a_photo_outlined,
-              size: 40, color: AppColors.accentTerracotta),
-          const SizedBox(height: AppSpacing.md),
-          Text(t.emptyTitle, style: AppText.sectionTitle()),
-          const SizedBox(height: AppSpacing.xs),
-          Text(t.emptyBody,
-              textAlign: TextAlign.center,
-              style: AppText.body().copyWith(color: AppColors.textSecondary)),
-        ],
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  static const _on = AppColors.textPrimary;
+  static const _off = Color(0xFF999999);
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: TweenAnimationBuilder<Color?>(
+          tween: ColorTween(end: selected ? _on : _off),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          builder: (context, color, _) => Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 選ばれた瞬間だけ 0.8 → 1 に弾む（key が変わると最初から再生）。
+              TweenAnimationBuilder<double>(
+                key: ValueKey(selected),
+                tween: Tween(begin: selected ? 0.8 : 1, end: 1),
+                duration: const Duration(milliseconds: 420),
+                curve: Curves.elasticOut,
+                builder: (context, s, child) =>
+                    Transform.scale(scale: s, child: child),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, a) =>
+                      FadeTransition(opacity: a, child: child),
+                  child: Icon(
+                    selected ? selectedIcon : icon,
+                    key: ValueKey(selected),
+                    size: 25,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  height: 1,
+                  color: color,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 真ん中の拍照ボタン：押している間だけ少し縮み、離すとばねのように戻る。
+class _ShutterButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _ShutterButton({required this.label, required this.onTap});
+
+  @override
+  State<_ShutterButton> createState() => _ShutterButtonState();
+}
+
+class _ShutterButtonState extends State<_ShutterButton> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: GestureDetector(
+        onTapDown: (_) => _set(true),
+        onTapCancel: () => _set(false),
+        onTapUp: (_) => _set(false),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          widget.onTap();
+        },
+        child: AnimatedScale(
+          scale: _down ? 0.88 : 1,
+          duration: Duration(milliseconds: _down ? 90 : 320),
+          curve: _down ? Curves.easeOut : Curves.easeOutBack,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              color: _down ? AppColors.charcoal : AppColors.primary,
+              shape: BoxShape.circle,
+              boxShadow: _down ? null : AppShadows.card,
+            ),
+            child: const Icon(
+              Icons.photo_camera,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ),
       ),
     );
   }

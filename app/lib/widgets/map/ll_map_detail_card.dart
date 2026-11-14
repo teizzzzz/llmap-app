@@ -29,7 +29,7 @@ class LLMapDetailCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceIvory,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: AppShadows.floating,
       ),
@@ -47,7 +47,7 @@ class LLMapDetailCard extends StatelessWidget {
                   backgroundColor: Colors.white,
                   child: Text(suffix,
                       style: TextStyle(
-                          color: color, fontWeight: FontWeight.bold)),
+                          color: color, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -57,7 +57,7 @@ class LLMapDetailCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         fontSize: 16),
                   ),
                 ),

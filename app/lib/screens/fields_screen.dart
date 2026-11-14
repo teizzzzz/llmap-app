@@ -169,7 +169,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
                     value: (_index + 1) / total,
                     minHeight: 4,
                     backgroundColor: AppColors.muted,
-                    color: AppColors.accentTerracotta,
+                    color: AppColors.primary,
                   ),
                 )
               : null,
@@ -210,7 +210,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
                 right: AppSpacing.sm,
                 child: LLTagChip(
                   label: t.recognizing,
-                  color: AppColors.accentBlue,
+                  color: AppColors.link,
                   icon: Icons.auto_awesome,
                 ),
               ),

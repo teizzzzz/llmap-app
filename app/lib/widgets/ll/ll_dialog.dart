@@ -23,10 +23,10 @@ Future<T?> showLLDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
     builder: (ctx) => Dialog(
-      backgroundColor: AppColors.surfaceIvory,
+      backgroundColor: AppColors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.lg),
@@ -35,15 +35,16 @@ Future<T?> showLLDialog<T>(
           children: [
             if (icon != null) ...[
               Container(
-                width: 72,
-                height: 72,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: (iconColor ?? AppColors.accentMustard)
-                      .withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  color: iconColor == null
+                      ? AppColors.muted
+                      : iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(icon,
-                    size: 36, color: iconColor ?? AppColors.accentTerracotta),
+                    size: 28, color: iconColor ?? AppColors.textPrimary),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

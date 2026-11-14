@@ -1,4 +1,4 @@
-/// 角丸アイボリーカード（design tokens 参照）。
+/// 白い角丸カード（淡い 1px の縁。design tokens 参照）。
 library;
 
 import 'package:flutter/material.dart';
@@ -19,7 +19,7 @@ class LLCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.onTap,
     this.onLongPress,
-    this.radius = AppRadius.lg,
+    this.radius = AppRadius.md,
     this.color,
     this.shadow = true,
   });
@@ -30,8 +30,9 @@ class LLCard extends StatelessWidget {
     final content = Padding(padding: padding, child: child);
     return Container(
       decoration: BoxDecoration(
-        color: color ?? AppColors.surfaceIvory,
+        color: color ?? AppColors.surface,
         borderRadius: r,
+        border: Border.all(color: AppColors.borderSubtle),
         boxShadow: shadow ? AppShadows.card : null,
       ),
       clipBehavior: Clip.antiAlias,
@@ -58,8 +59,7 @@ class LLTagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
@@ -67,7 +67,7 @@ class LLTagChip extends StatelessWidget {
         children: [
           if (icon != null) ...[Icon(icon, size: 13, color: color), const SizedBox(width: 4)],
           Text(label,
-              style: AppText.caption().copyWith(color: color, fontWeight: FontWeight.w700)),
+              style: AppText.caption().copyWith(color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );

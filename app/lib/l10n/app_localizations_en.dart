@@ -241,11 +241,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveChanges => 'Save changes';
 
   @override
-  String get aiAuto => 'AI auto-recognition';
+  String get aiAuto => 'AI recognition';
 
   @override
   String get aiAutoSub =>
-      'When on, fields are auto-recognized as you open each boxed sign.';
+      'Lets AI suggest fields; you can edit the results. Works in expert mode for now; default mode will follow once the OCR approach is decided.';
 
   @override
   String get provider => 'Provider';
@@ -377,13 +377,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get captureModeNote =>
-      'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.';
+      'Decides what you fill in after taking a photo. Both modes share the same data and can be switched anytime.';
 
   @override
-  String get modeQuick => 'Quick mode';
+  String get modeQuick => 'Default mode';
 
   @override
-  String get modeQuickDesc => 'Save right after boxing; fill fields later';
+  String get modeQuickDesc =>
+      'Photo and location first; box signs if you like, languages are optional';
 
   @override
   String get modeStandard => 'Standard mode';
@@ -393,11 +394,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Just pick the languages on the sign (default)';
 
   @override
-  String get modeResearch => 'Research mode';
+  String get modeResearch => 'Expert mode';
 
   @override
   String get modeResearchDesc =>
-      'Full research field form for formal annotation';
+      'Box each sign and fill in the full research fields';
 
   @override
   String get fieldScheme => 'Field scheme';
@@ -409,7 +410,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fieldSchemeCustom => 'Custom fields';
 
   @override
-  String get savedQuick => 'Record saved. You can add fields later.';
+  String get savedQuick => 'Saved. You can add details later in Mine.';
 
   @override
   String get savedStandard => 'Record submitted.';
@@ -691,4 +692,335 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fieldPlacement => 'Placement';
+
+  @override
+  String get navExplore => 'Explore';
+
+  @override
+  String get navMap => 'Map';
+
+  @override
+  String get navMine => 'Mine';
+
+  @override
+  String get tabFeed => 'Photos';
+
+  @override
+  String get tabThemes => 'Themes';
+
+  @override
+  String get toolLanguage => 'Language';
+
+  @override
+  String get toolColor => 'Color';
+
+  @override
+  String get searchHint => 'Search ID or notes';
+
+  @override
+  String photosCount(int count) {
+    return '$count photos';
+  }
+
+  @override
+  String get exploreNoSourceTitle => 'Explore data not connected';
+
+  @override
+  String get exploreNoSourceBody =>
+      'Add the explore data address in Settings to browse the shared photo collection. Showing your own records for now.';
+
+  @override
+  String get exploreLoading => 'Loading explore data…';
+
+  @override
+  String exploreLoadFailed(String error) {
+    return 'Couldn\'t load explore data: $error';
+  }
+
+  @override
+  String get goToSettings => 'Open settings';
+
+  @override
+  String get themesNeedSource =>
+      'Themes are built from the explore data. Add its address in Settings.';
+
+  @override
+  String mapInView(int count) {
+    return '$count photos in the current map view';
+  }
+
+  @override
+  String mapInViewCapped(int count) {
+    return 'Showing the first $count. Zoom in to see more.';
+  }
+
+  @override
+  String get mapInViewEmpty => 'No photos here. Move or zoom out the map.';
+
+  @override
+  String get backToList => 'Back to list';
+
+  @override
+  String get showOnMap => 'Show on map';
+
+  @override
+  String get editRecord => 'Add details';
+
+  @override
+  String get sourceMine => 'Mine';
+
+  @override
+  String get sourceShared => 'Shared';
+
+  @override
+  String get capturedAt => 'Captured';
+
+  @override
+  String get locationLabel => 'Location';
+
+  @override
+  String get noLocation => 'No location';
+
+  @override
+  String get languagesLabel => 'Languages';
+
+  @override
+  String get myRecordsTitle => 'My records';
+
+  @override
+  String get manageArchive => 'Albums & batch actions';
+
+  @override
+  String get moreActions => 'More';
+
+  @override
+  String get exploreDataUrl => 'Explore data address';
+
+  @override
+  String get exploreDataUrlNote =>
+      'Address of an llmap-view folder (on a NAS or your PC). Leave empty to explore only your own records.';
+
+  @override
+  String get advanced => 'Advanced';
+
+  @override
+  String get aboutUs => 'About';
+
+  @override
+  String aboutUsBody(String version) {
+    return 'LLMap · $version\nA graduation project on the linguistic landscape of Shin-Ōkubo, Tokyo. It helps anyone discover and record writing on the street, while keeping a full collection workflow for researchers.\nPhotos and records stay on this device and can be exported at any time.';
+  }
+
+  @override
+  String get quickLangPrompt => 'Which languages appear? (optional)';
+
+  @override
+  String get quickHint =>
+      'A photo and a location are enough. You can add details later in Mine.';
+
+  @override
+  String get quickSave => 'Save';
+
+  @override
+  String get statusRawTag => 'To complete';
+
+  @override
+  String get statusSubmittedTag => 'Submitted';
+
+  @override
+  String get colorRed => 'Red';
+
+  @override
+  String get colorOrange => 'Orange';
+
+  @override
+  String get colorYellow => 'Yellow';
+
+  @override
+  String get colorGreen => 'Green';
+
+  @override
+  String get colorBlue => 'Blue';
+
+  @override
+  String get colorPurple => 'Purple';
+
+  @override
+  String get colorPink => 'Pink';
+
+  @override
+  String get colorBrown => 'Brown';
+
+  @override
+  String get colorWhite => 'White';
+
+  @override
+  String get colorGray => 'Gray';
+
+  @override
+  String get colorBlack => 'Black';
+
+  @override
+  String get langJa => 'Japanese';
+
+  @override
+  String get langEn => 'English';
+
+  @override
+  String get langZh => 'Chinese';
+
+  @override
+  String get langKo => 'Korean';
+
+  @override
+  String get langVi => 'Vietnamese';
+
+  @override
+  String get langNe => 'Nepali';
+
+  @override
+  String get langOther => 'Other';
+
+  @override
+  String get langNone => 'No text language';
+
+  @override
+  String get theme1Title => 'The red of Chinese signs';
+
+  @override
+  String get theme1Sub => 'Chinese-led, with red as the main color';
+
+  @override
+  String get theme2Title => 'A handwritten street';
+
+  @override
+  String get theme2Sub => 'Handmade notices and signs';
+
+  @override
+  String get theme3Title => 'Temporary and seasonal';
+
+  @override
+  String get theme3Sub => 'Posters and banners that come and go';
+
+  @override
+  String get theme4Title => 'Rules and prohibitions';
+
+  @override
+  String get theme4Sub => 'The language of \"please don\'t\" and \"no\"';
+
+  @override
+  String get theme5Title => 'Word-for-word translation';
+
+  @override
+  String get theme5Sub => 'Multilingual signs that copy each other';
+
+  @override
+  String get theme6Title => 'Vietnamese and Nepali';
+
+  @override
+  String get theme6Sub => 'Other voices of Shin-Ōkubo';
+
+  @override
+  String get theme7Title => 'The most vivid signs';
+
+  @override
+  String get theme7Sub => 'The most colorful group';
+
+  @override
+  String get theme8Title => 'Signs on black';
+
+  @override
+  String get theme8Sub => 'Text on dark backgrounds';
+
+  @override
+  String get theme9Title => 'Stickers and notes';
+
+  @override
+  String get theme9Sub => 'Little papers stuck anywhere';
+
+  @override
+  String get viewFeed => 'Feed';
+
+  @override
+  String get viewCanvas => 'Roam';
+
+  @override
+  String get layoutWall => 'Wall';
+
+  @override
+  String get layoutGroup => 'Groups';
+
+  @override
+  String get layoutWheel => 'Color wheel';
+
+  @override
+  String get layoutHueLight => 'Hue × lightness';
+
+  @override
+  String get groupBy => 'Group by';
+
+  @override
+  String get canvasHint => 'Pinch to zoom · drag to roam · tap a photo to open';
+
+  @override
+  String get exploreNext => 'What to explore next?';
+
+  @override
+  String get relColorName => 'Similar colors';
+
+  @override
+  String get relSceneName => 'Same scene';
+
+  @override
+  String get relNearName => 'Nearby';
+
+  @override
+  String get relLangName => 'Same languages';
+
+  @override
+  String get relTypeName => 'Discourse & carrier';
+
+  @override
+  String get relContrastName => 'Color contrast';
+
+  @override
+  String relColorSub(int count) {
+    return 'The $count with the closest palettes';
+  }
+
+  @override
+  String relSceneSub(int count) {
+    return '$count more signs from the same street photo';
+  }
+
+  @override
+  String relNearSub(int meters, int count) {
+    return '$count within $meters m';
+  }
+
+  @override
+  String relLangTitle(String langs) {
+    return 'Also $langs';
+  }
+
+  @override
+  String relLangSub(int count) {
+    return '$count with exactly the same language mix';
+  }
+
+  @override
+  String relTypeSub(int count) {
+    return '$count with the same discourse and carrier';
+  }
+
+  @override
+  String relContrastSub(String lang) {
+    return 'Also $lang, but in completely different colors';
+  }
+
+  @override
+  String get nextChooseLangs => 'Next: languages';
+
+  @override
+  String get manageShort => 'Manage';
 }

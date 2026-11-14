@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../theme/tokens.dart';
 
 class CropPreview extends StatefulWidget {
   final Uint8List imageBytes;
@@ -42,7 +43,7 @@ class _CropPreviewState extends State<CropPreview> {
       height: widget.height,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFece7df),
+        color: AppColors.muted,
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,

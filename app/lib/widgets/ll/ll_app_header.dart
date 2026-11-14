@@ -32,7 +32,7 @@ class LLAppHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
           decoration: BoxDecoration(
-            color: AppColors.surfaceIvory,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             boxShadow: AppShadows.floating,
           ),

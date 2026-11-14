@@ -284,7 +284,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
     // 戻り値: Album=既存相册を選択 / '_new_'=新規作成 / null=シートを閉じた。
     final picked = await showModalBottomSheet<Object>(
       context: context,
-      backgroundColor: AppColors.surfaceIvory,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
@@ -306,10 +306,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
               ),
             ListTile(
               leading: const Icon(Icons.add,
-                  color: AppColors.accentTerracotta),
+                  color: AppColors.primary),
               title: Text(t.newAlbum,
                   style: AppText.body()
-                      .copyWith(color: AppColors.accentTerracotta)),
+                      .copyWith(color: AppColors.primary)),
               onTap: () => Navigator.pop(ctx, '_new_'),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -429,7 +429,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         LLSheetTile(
           icon: _sort == value ? Icons.check : icon,
           label: label,
-          color: _sort == value ? AppColors.accentTerracotta : null,
+          color: _sort == value ? AppColors.primary : null,
           showChevron: false,
           onTap: () {
             Navigator.pop(context);
@@ -445,7 +445,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceIvory,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
@@ -664,8 +664,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   LLSegment(AlbumStatusFilter.filed, t.filed),
                 ],
                 selected: _albumStatus,
-                activeColor: AppColors.accentTerracotta,
-                activeTextColor: AppColors.surfaceIvory,
+                activeColor: AppColors.primary,
+                activeTextColor: AppColors.surface,
                 onChanged: (v) => setState(() => _albumStatus = v),
               ),
             ),
@@ -774,8 +774,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
               child: Text(
                 t.clearFilters,
                 style: AppText.caption().copyWith(
-                    color: AppColors.accentTerracotta,
-                    fontWeight: FontWeight.w700),
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600),
               ),
             ),
         ],
@@ -791,11 +791,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accentTerracotta : AppColors.surfaceIvory,
+          color: selected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
               color: selected
-                  ? AppColors.accentTerracotta
+                  ? AppColors.primary
                   : AppColors.borderSubtle),
         ),
         child: Row(
@@ -813,9 +813,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
             Text(label,
                 style: AppText.caption().copyWith(
                     color: selected
-                        ? AppColors.surfaceIvory
+                        ? AppColors.surface
                         : AppColors.textSecondary,
-                    fontWeight: FontWeight.w700)),
+                    fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -860,7 +860,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.body()
-                          .copyWith(fontSize: 14, fontWeight: FontWeight.w800)),
+                          .copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(s.shortLabel,
                       maxLines: 1,
@@ -897,7 +897,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border:
-                      Border.all(color: AppColors.accentTerracotta, width: 2.5),
+                      Border.all(color: AppColors.primary, width: 2.5),
                 ),
               ),
             ),
@@ -916,7 +916,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 selected ? Icons.check_circle : Icons.circle_outlined,
                 size: 22,
                 color: selected
-                    ? AppColors.accentTerracotta
+                    ? AppColors.primary
                     : AppColors.borderSubtle,
               ),
             ),
@@ -964,7 +964,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
           const SizedBox(width: 4),
           Text(lang,
               style: AppText.caption()
-                  .copyWith(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
+                  .copyWith(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
         ],
       ),
     );

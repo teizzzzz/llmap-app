@@ -7,11 +7,10 @@ import '../models.dart';
 import '../theme/tokens.dart';
 import '../widgets/ll/ll.dart';
 import '../widgets/map/ll_map_detail_card.dart';
-import '../widgets/map/ll_map_legend.dart';
 import '../widgets/map/ll_map_view.dart';
 
 /// 地図预览。保存済み sign を言語別色のピンで表示し、タップで詳情。
-/// 再利用部品 LLMapView / LLMapLegend / LLMapDetailCard を用いる。
+/// 再利用部品 LLMapView / LLMapDetailCard を用いる（言語凡例は出さない）。
 class MapScreen extends StatefulWidget {
   final List<Sign> signs;
   final AppSchema schema;
@@ -93,12 +92,6 @@ class _MapScreenState extends State<MapScreen> {
                   LLSegment(LLMapLayer.satellite, t.layerSatellite),
                 ],
                 selected: _layer,
-                activeColor: _layer == LLMapLayer.satellite
-                    ? AppColors.accentViolet
-                    : AppColors.accentMustard,
-                activeTextColor: _layer == LLMapLayer.satellite
-                    ? Colors.white
-                    : AppColors.textPrimary,
                 onChanged: (v) => setState(() => _layer = v),
               ),
             ),
@@ -122,11 +115,6 @@ class _MapScreenState extends State<MapScreen> {
                   color: AppColors.warning,
                   icon: Icons.info_outline),
             ),
-          Positioned(
-            left: AppSpacing.md,
-            bottom: AppSpacing.md,
-            child: LLMapLegend(schema: widget.schema),
-          ),
           if (_selected != null)
             Positioned(
               left: AppSpacing.md,

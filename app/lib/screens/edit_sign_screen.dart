@@ -165,7 +165,7 @@ class _EditSignScreenState extends State<EditSignScreen> {
               AppSpacing.md + 2, 0, AppSpacing.md + 2, AppSpacing.md),
           title: Text(s.shortLabel,
               style: AppText.body()
-                  .copyWith(fontSize: 15, fontWeight: FontWeight.w800)),
+                  .copyWith(fontSize: 15, fontWeight: FontWeight.w600)),
           subtitle: Text(s.id,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

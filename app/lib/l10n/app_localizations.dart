@@ -517,13 +517,13 @@ abstract class AppLocalizations {
   /// No description provided for @aiAuto.
   ///
   /// In en, this message translates to:
-  /// **'AI auto-recognition'**
+  /// **'AI recognition'**
   String get aiAuto;
 
   /// No description provided for @aiAutoSub.
   ///
   /// In en, this message translates to:
-  /// **'When on, fields are auto-recognized as you open each boxed sign.'**
+  /// **'Lets AI suggest fields; you can edit the results. Works in expert mode for now; default mode will follow once the OCR approach is decided.'**
   String get aiAutoSub;
 
   /// No description provided for @provider.
@@ -757,19 +757,19 @@ abstract class AppLocalizations {
   /// No description provided for @captureModeNote.
   ///
   /// In en, this message translates to:
-  /// **'Controls the flow after photo & box selection. All modes share the same data structure and can be switched anytime.'**
+  /// **'Decides what you fill in after taking a photo. Both modes share the same data and can be switched anytime.'**
   String get captureModeNote;
 
   /// No description provided for @modeQuick.
   ///
   /// In en, this message translates to:
-  /// **'Quick mode'**
+  /// **'Default mode'**
   String get modeQuick;
 
   /// No description provided for @modeQuickDesc.
   ///
   /// In en, this message translates to:
-  /// **'Save right after boxing; fill fields later'**
+  /// **'Photo and location first; box signs if you like, languages are optional'**
   String get modeQuickDesc;
 
   /// No description provided for @modeStandard.
@@ -787,13 +787,13 @@ abstract class AppLocalizations {
   /// No description provided for @modeResearch.
   ///
   /// In en, this message translates to:
-  /// **'Research mode'**
+  /// **'Expert mode'**
   String get modeResearch;
 
   /// No description provided for @modeResearchDesc.
   ///
   /// In en, this message translates to:
-  /// **'Full research field form for formal annotation'**
+  /// **'Box each sign and fill in the full research fields'**
   String get modeResearchDesc;
 
   /// No description provided for @fieldScheme.
@@ -817,7 +817,7 @@ abstract class AppLocalizations {
   /// No description provided for @savedQuick.
   ///
   /// In en, this message translates to:
-  /// **'Record saved. You can add fields later.'**
+  /// **'Saved. You can add details later in Mine.'**
   String get savedQuick;
 
   /// No description provided for @savedStandard.
@@ -1323,6 +1323,612 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Placement'**
   String get fieldPlacement;
+
+  /// No description provided for @navExplore.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get navExplore;
+
+  /// No description provided for @navMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get navMap;
+
+  /// No description provided for @navMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get navMine;
+
+  /// No description provided for @tabFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get tabFeed;
+
+  /// No description provided for @tabThemes.
+  ///
+  /// In en, this message translates to:
+  /// **'Themes'**
+  String get tabThemes;
+
+  /// No description provided for @toolLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get toolLanguage;
+
+  /// No description provided for @toolColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get toolColor;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search ID or notes'**
+  String get searchHint;
+
+  /// No description provided for @photosCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} photos'**
+  String photosCount(int count);
+
+  /// No description provided for @exploreNoSourceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore data not connected'**
+  String get exploreNoSourceTitle;
+
+  /// No description provided for @exploreNoSourceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the explore data address in Settings to browse the shared photo collection. Showing your own records for now.'**
+  String get exploreNoSourceBody;
+
+  /// No description provided for @exploreLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading explore data…'**
+  String get exploreLoading;
+
+  /// No description provided for @exploreLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load explore data: {error}'**
+  String exploreLoadFailed(String error);
+
+  /// No description provided for @goToSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get goToSettings;
+
+  /// No description provided for @themesNeedSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Themes are built from the explore data. Add its address in Settings.'**
+  String get themesNeedSource;
+
+  /// No description provided for @mapInView.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} photos in the current map view'**
+  String mapInView(int count);
+
+  /// No description provided for @mapInViewCapped.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the first {count}. Zoom in to see more.'**
+  String mapInViewCapped(int count);
+
+  /// No description provided for @mapInViewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No photos here. Move or zoom out the map.'**
+  String get mapInViewEmpty;
+
+  /// No description provided for @backToList.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to list'**
+  String get backToList;
+
+  /// No description provided for @showOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on map'**
+  String get showOnMap;
+
+  /// No description provided for @editRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Add details'**
+  String get editRecord;
+
+  /// No description provided for @sourceMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get sourceMine;
+
+  /// No description provided for @sourceShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get sourceShared;
+
+  /// No description provided for @capturedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Captured'**
+  String get capturedAt;
+
+  /// No description provided for @locationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get locationLabel;
+
+  /// No description provided for @noLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'No location'**
+  String get noLocation;
+
+  /// No description provided for @languagesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Languages'**
+  String get languagesLabel;
+
+  /// No description provided for @myRecordsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My records'**
+  String get myRecordsTitle;
+
+  /// No description provided for @manageArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Albums & batch actions'**
+  String get manageArchive;
+
+  /// No description provided for @moreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get moreActions;
+
+  /// No description provided for @exploreDataUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore data address'**
+  String get exploreDataUrl;
+
+  /// No description provided for @exploreDataUrlNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Address of an llmap-view folder (on a NAS or your PC). Leave empty to explore only your own records.'**
+  String get exploreDataUrlNote;
+
+  /// No description provided for @advanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get advanced;
+
+  /// No description provided for @aboutUs.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get aboutUs;
+
+  /// No description provided for @aboutUsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'LLMap · {version}\nA graduation project on the linguistic landscape of Shin-Ōkubo, Tokyo. It helps anyone discover and record writing on the street, while keeping a full collection workflow for researchers.\nPhotos and records stay on this device and can be exported at any time.'**
+  String aboutUsBody(String version);
+
+  /// No description provided for @quickLangPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Which languages appear? (optional)'**
+  String get quickLangPrompt;
+
+  /// No description provided for @quickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A photo and a location are enough. You can add details later in Mine.'**
+  String get quickHint;
+
+  /// No description provided for @quickSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get quickSave;
+
+  /// No description provided for @statusRawTag.
+  ///
+  /// In en, this message translates to:
+  /// **'To complete'**
+  String get statusRawTag;
+
+  /// No description provided for @statusSubmittedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get statusSubmittedTag;
+
+  /// No description provided for @colorRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get colorRed;
+
+  /// No description provided for @colorOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Orange'**
+  String get colorOrange;
+
+  /// No description provided for @colorYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get colorYellow;
+
+  /// No description provided for @colorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get colorGreen;
+
+  /// No description provided for @colorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get colorBlue;
+
+  /// No description provided for @colorPurple.
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get colorPurple;
+
+  /// No description provided for @colorPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get colorPink;
+
+  /// No description provided for @colorBrown.
+  ///
+  /// In en, this message translates to:
+  /// **'Brown'**
+  String get colorBrown;
+
+  /// No description provided for @colorWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get colorWhite;
+
+  /// No description provided for @colorGray.
+  ///
+  /// In en, this message translates to:
+  /// **'Gray'**
+  String get colorGray;
+
+  /// No description provided for @colorBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get colorBlack;
+
+  /// No description provided for @langJa.
+  ///
+  /// In en, this message translates to:
+  /// **'Japanese'**
+  String get langJa;
+
+  /// No description provided for @langEn.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get langEn;
+
+  /// No description provided for @langZh.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get langZh;
+
+  /// No description provided for @langKo.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
+  String get langKo;
+
+  /// No description provided for @langVi.
+  ///
+  /// In en, this message translates to:
+  /// **'Vietnamese'**
+  String get langVi;
+
+  /// No description provided for @langNe.
+  ///
+  /// In en, this message translates to:
+  /// **'Nepali'**
+  String get langNe;
+
+  /// No description provided for @langOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get langOther;
+
+  /// No description provided for @langNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No text language'**
+  String get langNone;
+
+  /// No description provided for @theme1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'The red of Chinese signs'**
+  String get theme1Title;
+
+  /// No description provided for @theme1Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese-led, with red as the main color'**
+  String get theme1Sub;
+
+  /// No description provided for @theme2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'A handwritten street'**
+  String get theme2Title;
+
+  /// No description provided for @theme2Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Handmade notices and signs'**
+  String get theme2Sub;
+
+  /// No description provided for @theme3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary and seasonal'**
+  String get theme3Title;
+
+  /// No description provided for @theme3Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Posters and banners that come and go'**
+  String get theme3Sub;
+
+  /// No description provided for @theme4Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules and prohibitions'**
+  String get theme4Title;
+
+  /// No description provided for @theme4Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'The language of \"please don\'t\" and \"no\"'**
+  String get theme4Sub;
+
+  /// No description provided for @theme5Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Word-for-word translation'**
+  String get theme5Title;
+
+  /// No description provided for @theme5Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Multilingual signs that copy each other'**
+  String get theme5Sub;
+
+  /// No description provided for @theme6Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Vietnamese and Nepali'**
+  String get theme6Title;
+
+  /// No description provided for @theme6Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Other voices of Shin-Ōkubo'**
+  String get theme6Sub;
+
+  /// No description provided for @theme7Title.
+  ///
+  /// In en, this message translates to:
+  /// **'The most vivid signs'**
+  String get theme7Title;
+
+  /// No description provided for @theme7Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'The most colorful group'**
+  String get theme7Sub;
+
+  /// No description provided for @theme8Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Signs on black'**
+  String get theme8Title;
+
+  /// No description provided for @theme8Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Text on dark backgrounds'**
+  String get theme8Sub;
+
+  /// No description provided for @theme9Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Stickers and notes'**
+  String get theme9Title;
+
+  /// No description provided for @theme9Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Little papers stuck anywhere'**
+  String get theme9Sub;
+
+  /// No description provided for @viewFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Feed'**
+  String get viewFeed;
+
+  /// No description provided for @viewCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Roam'**
+  String get viewCanvas;
+
+  /// No description provided for @layoutWall.
+  ///
+  /// In en, this message translates to:
+  /// **'Wall'**
+  String get layoutWall;
+
+  /// No description provided for @layoutGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get layoutGroup;
+
+  /// No description provided for @layoutWheel.
+  ///
+  /// In en, this message translates to:
+  /// **'Color wheel'**
+  String get layoutWheel;
+
+  /// No description provided for @layoutHueLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Hue × lightness'**
+  String get layoutHueLight;
+
+  /// No description provided for @groupBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Group by'**
+  String get groupBy;
+
+  /// No description provided for @canvasHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinch to zoom · drag to roam · tap a photo to open'**
+  String get canvasHint;
+
+  /// No description provided for @exploreNext.
+  ///
+  /// In en, this message translates to:
+  /// **'What to explore next?'**
+  String get exploreNext;
+
+  /// No description provided for @relColorName.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar colors'**
+  String get relColorName;
+
+  /// No description provided for @relSceneName.
+  ///
+  /// In en, this message translates to:
+  /// **'Same scene'**
+  String get relSceneName;
+
+  /// No description provided for @relNearName.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby'**
+  String get relNearName;
+
+  /// No description provided for @relLangName.
+  ///
+  /// In en, this message translates to:
+  /// **'Same languages'**
+  String get relLangName;
+
+  /// No description provided for @relTypeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Discourse & carrier'**
+  String get relTypeName;
+
+  /// No description provided for @relContrastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Color contrast'**
+  String get relContrastName;
+
+  /// No description provided for @relColorSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The {count} with the closest palettes'**
+  String relColorSub(int count);
+
+  /// No description provided for @relSceneSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more signs from the same street photo'**
+  String relSceneSub(int count);
+
+  /// No description provided for @relNearSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} within {meters} m'**
+  String relNearSub(int meters, int count);
+
+  /// No description provided for @relLangTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Also {langs}'**
+  String relLangTitle(String langs);
+
+  /// No description provided for @relLangSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} with exactly the same language mix'**
+  String relLangSub(int count);
+
+  /// No description provided for @relTypeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} with the same discourse and carrier'**
+  String relTypeSub(int count);
+
+  /// No description provided for @relContrastSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Also {lang}, but in completely different colors'**
+  String relContrastSub(String lang);
+
+  /// No description provided for @nextChooseLangs.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: languages'**
+  String get nextChooseLangs;
+
+  /// No description provided for @manageShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manageShort;
 }
 
 class _AppLocalizationsDelegate

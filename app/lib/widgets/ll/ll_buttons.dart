@@ -27,20 +27,20 @@ class LLPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = foreground ?? AppColors.surfaceIvory;
+    final fg = foreground ?? AppColors.surface;
     return SizedBox(
       width: expand ? double.infinity : null,
-      height: 54,
+      height: 52,
       child: FilledButton(
         onPressed: busy ? null : onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: color ?? AppColors.accentTerracotta,
+          backgroundColor: color ?? AppColors.primary,
           foregroundColor: fg,
           disabledBackgroundColor:
-              (color ?? AppColors.accentTerracotta).withValues(alpha: 0.5),
+              (color ?? AppColors.primary).withValues(alpha: 0.28),
+          disabledForegroundColor: fg.withValues(alpha: 0.9),
           elevation: 0,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg)),
+          shape: const StadiumBorder(),
           textStyle: AppText.button(),
         ),
         child: busy
@@ -79,17 +79,17 @@ class LLSecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: expand ? double.infinity : null,
-      height: 50,
+      height: 48,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 19),
         label: Text(label),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.outline),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg)),
-          textStyle: AppText.button().copyWith(fontSize: 15),
+          backgroundColor: AppColors.surface,
+          side: const BorderSide(color: AppColors.borderSubtle),
+          shape: const StadiumBorder(),
+          textStyle: AppText.button().copyWith(fontSize: 14.5),
         ),
       ),
     );
@@ -120,8 +120,9 @@ class LLIconButton extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: background ?? AppColors.surfaceIvory,
+        color: background ?? AppColors.surface,
         shape: BoxShape.circle,
+        border: Border.all(color: AppColors.borderSubtle),
         boxShadow: AppShadows.floating,
       ),
       child: Material(

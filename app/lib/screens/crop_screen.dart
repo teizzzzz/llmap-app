@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../api.dart';
 import '../capture.dart';
 import '../capture_mode.dart';
 import '../imaging.dart';
@@ -18,13 +17,15 @@ import '../theme/tokens.dart';
 import '../widgets/box_selector.dart';
 import '../widgets/ll/ll.dart';
 import 'fields_screen.dart';
+import 'quick_lang_screen.dart';
 import 'select_location_screen.dart';
 import 'standard_fields_screen.dart';
 
-/// 框选画面：1枚の写真から複数 sign を矩形で切り出す（②）。
-/// 「完了」で backend /extract を呼び、字段入力画面へ。
+/// 撮影後の框选画面：1枚の写真から複数 sign を矩形で切り出す（框选しなければ
+/// 写真全体が 1 sign）。次の画面は採集モードで分岐する:
+/// - デフォルトモード: 標識ごとに「出现了哪些语言」を任意で選んで保存（QuickLangScreen）。
+/// - エキスパートモード: 完全な研究字段表単（FieldsScreen）。
 class CropScreen extends StatefulWidget {
-  final BackendApi api;
   final AppSchema schema;
   final Uint8List imageBytes;
   final String fileName;
@@ -36,7 +37,6 @@ class CropScreen extends StatefulWidget {
 
   const CropScreen({
     super.key,
-    required this.api,
     required this.schema,
     required this.imageBytes,
     required this.fileName,
@@ -44,7 +44,7 @@ class CropScreen extends StatefulWidget {
     required this.seq,
     required this.collector,
     required this.aiConfig,
-    this.mode = CaptureMode.standard,
+    this.mode = CaptureMode.quick,
   });
 
   @override
@@ -58,6 +58,7 @@ class _CropScreenState extends State<CropScreen> {
   Future<({double lat, double lng})?>? _gpsFuture;
   // 手動微調整した位置（あれば自動GPSより優先）。
   ({double lat, double lng})? _manualGps;
+  bool get _isQuick => widget.mode == CaptureMode.quick;
 
   @override
   void initState() {
@@ -74,16 +75,19 @@ class _CropScreenState extends State<CropScreen> {
       final signs = await _extractLocal(gps);
       if (!mounted) return;
 
-      // 採集モードで框选後のフローを分岐する（首页・データ構造は共通）。
-      if (widget.mode == CaptureMode.quick) {
-        // quick: 表単を出さず直接保存（字段は後で Gallery/編集から補完）。
-        Navigator.pop(context, signs);
-        return;
-      }
+      // 採集モードで框选後のフローを分岐する（データ構造は共通）。
       final result = await Navigator.push<List<Sign>>(
         context,
         MaterialPageRoute(
-          builder: (_) => widget.mode == CaptureMode.research
+          builder: (_) => _isQuick
+              // デフォルト: 標識ごとに言語を任意で選ぶだけ。
+              ? QuickLangScreen(
+                  schema: widget.schema,
+                  imageBytes: widget.imageBytes,
+                  signs: signs,
+                  regions: _regions,
+                )
+              : widget.mode == CaptureMode.research
               // research: 完全な研究字段表単（AI下書も可）。
               ? FieldsScreen(
                   schema: widget.schema,
@@ -208,7 +212,7 @@ class _CropScreenState extends State<CropScreen> {
               child: Row(
                 children: [
                   const Icon(Icons.crop_free,
-                      size: 18, color: AppColors.accentTerracotta),
+                      size: 18, color: AppColors.primary),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -240,13 +244,10 @@ class _CropScreenState extends State<CropScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: LLPrimaryButton(
-            // quick は框选で完了（表単に進まない）ためラベルも「完了」。
-            label: widget.mode == CaptureMode.quick
-                ? t.done
-                : (_regions.isEmpty ? t.nextWholeImage : t.nextFillFields),
-            icon: widget.mode == CaptureMode.quick
-                ? Icons.check
-                : Icons.arrow_forward,
+            label: _regions.isEmpty
+                ? t.nextWholeImage
+                : (_isQuick ? t.nextChooseLangs : t.nextFillFields),
+            icon: Icons.arrow_forward,
             busy: _busy,
             onPressed: _busy ? null : _next,
           ),
@@ -273,7 +274,7 @@ class _CropScreenState extends State<CropScreen> {
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 8)),
               child: Text(action, style: AppText.caption()
-                  .copyWith(color: AppColors.accentBlue)),
+                  .copyWith(color: AppColors.link)),
             ),
           ],
         ),
@@ -282,7 +283,7 @@ class _CropScreenState extends State<CropScreen> {
 
     if (_manualGps != null) {
       return row(Icons.edit_location_alt, t.gpsAdjusted,
-          AppColors.accentBlue, t.gpsReadjust);
+          AppColors.link, t.gpsReadjust);
     }
     return FutureBuilder<({double lat, double lng})?>(
       future: _gpsFuture,

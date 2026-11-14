@@ -21,7 +21,7 @@ class LLProgressDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.surfaceIvory,
+      backgroundColor: AppColors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl)),
@@ -49,7 +49,7 @@ class LLProgressDialog extends StatelessWidget {
                         backgroundColor: AppColors.muted,
                         color: finished
                             ? AppColors.success
-                            : AppColors.accentTerracotta,
+                            : AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
