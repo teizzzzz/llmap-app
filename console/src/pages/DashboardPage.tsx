@@ -1,50 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   API_BASE_URL, ApiError, IS_DESKTOP, getRecords, getStatsSummary,
 } from '../api/client';
 import type { StatsSummary } from '../api/types';
-import StatusBadge from '../components/database/StatusBadge';
+import { useCanvasSlot } from '../components/explore/ExploreContext';
+import useSharedFilters from '../hooks/useSharedFilters';
 import { enumLabel } from '../lib/enumLabels';
 import { CANONICAL_BY_CODE, LANG_COLOR, MAIN_LANGS, langCode } from '../lib/langColors';
 import { PENDING_STATUSES } from '../reviewStatus';
 
-const DATA_STATUS_ORDER = ['reviewed', 'needs_review', 'verified', 'submitted', 'raw', 'ai_drafted', 'rejected'];
-
-function Kpi({ label, value, to, accent }: {
-  label: string; value: number | string; to?: string; accent?: boolean;
-}) {
-  const body = (
-    <>
-      <div className="kpi-label">{label}</div>
-      <div className="kpi-value">{value}</div>
-    </>
-  );
-  const cls = `kpi${accent ? ' accent' : ''}`;
-  return to ? <Link className={cls} to={to}>{body}</Link> : <div className={cls}>{body}</div>;
-}
-
-/** 区块見出し＋「名称 … 数」の点線行。 */
-function Rows({ title, rows }: {
-  title: string;
-  rows: { key: string; label: React.ReactNode; n: number; muted?: boolean }[];
-}) {
-  return (
-    <div className="dash-block">
-      <h3>{title}</h3>
-      {rows.map((r) => (
-        <div key={r.key} className={`dash-row${r.muted ? ' muted' : ''}`}>
-          <span>{r.label}</span>
-          <span className="mono">{r.n}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const shared = useSharedFilters();
+  const slotRef = useCanvasSlot('themes');
   const [stats, setStats] = useState<StatsSummary | null>(null);
   const [withGps, setWithGps] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,28 +73,72 @@ export default function DashboardPage() {
   const byCount = (o: Record<string, number>) => Object.entries(o).sort((a, b) => b[1] - a[1]);
   const missing = stats.missingPhotoCount + stats.missingSourcePhotoCount;
 
+  const done = (ds.reviewed ?? 0) + (ds.verified ?? 0);
+  const total = stats.recordCount || 1;
+  const progress = [
+    { key: 'verified', n: ds.verified ?? 0, cls: 'p-verified' },
+    { key: 'reviewed', n: ds.reviewed ?? 0, cls: 'p-reviewed' },
+    { key: 'waiting', n: waiting, cls: 'p-waiting' },
+    { key: 'rejected', n: ds.rejected ?? 0, cls: 'p-rejected' },
+  ].filter((x) => x.n > 0);
+  const members = byCount(stats.collectorCounts);
+  const memberMax = Math.max(1, ...members.map(([, n]) => n));
+  const openMember = (id: string) => {
+    if (id === 'unknown' || id === 'legacy') return;
+    shared.replace({ collectorId: id });
+    navigate('/database');
+  };
+
   return (
-    <div className="dash">
-      <section className="dash-hero">
-        <div className="dash-head">
-          <div className="dash-num">{stats.recordCount}</div>
-          <h1 className="dash-title">{t('dashboard.headline')}</h1>
-          <i className="dash-rule" />
+    <div className="ov">
+      {/* 上: いまの状態と次の一手（home） */}
+      <section className="ov-hero">
+        <img className="ov-logo" src="logo.png" alt="" />
+        <div className="ov-hero-t">
+          <h1><b>{stats.recordCount}</b> {t('dashboard.headline')}</h1>
+        </div>
+        <div className="ov-hero-actions">
+          <Link className="btn" to="/database">{t('dashboard.openDatabase')}</Link>
+          <Link className="btn primary" to="/review">{t('dashboard.continueReview')}</Link>
         </div>
       </section>
 
-      <div className="kpi-row">
-        <Kpi label={t('dashboard.totalRecords')} value={stats.recordCount} to="/database" />
-        <Kpi label={t('dashboard.withGps')} value={withGps ?? '—'} to="/map" />
-        <Kpi label={t('dashboard.waitingReview')} value={waiting} to="/review" accent />
-        <Kpi label={t('dashboard.reviewed')} value={ds.reviewed ?? 0} />
-        <Kpi label={t('dashboard.verified')} value={ds.verified ?? 0} />
-        <Kpi label={t('dashboard.sourcePhotos')} value={stats.sourcePhotoCount} />
-      </div>
+      <section className="ov-card ov-progress">
+        <div className="ov-card-h">
+          <span />
+          <span className="mono muted">{t('dashboard.progressDone', { done, total: stats.recordCount, pct: Math.round((done / total) * 100) })}</span>
+        </div>
+        <div className="ov-bar">
+          {progress.map((x) => <span key={x.key} className={x.cls} style={{ flex: x.n }} title={`${t(`dashboard.p.${x.key}`)} ${x.n}`} />)}
+        </div>
+        <div className="ov-legend">
+          {progress.map((x) => (
+            <span key={x.key}><i className={x.cls} />{t(`dashboard.p.${x.key}`)}<b className="mono">{x.n}</b></span>
+          ))}
+        </div>
+        <div className="ov-facts">
+          <Link to="/database?view=map"><b>{withGps ?? '—'}</b>{t('dashboard.withGps')}</Link>
+          <div><b>{stats.photoCount}</b>{t('dashboard.photos')}</div>
+          <div><b>{stats.sourcePhotoCount}</b>{t('dashboard.sourcePhotos')}</div>
+          <div className={missing ? 'warn' : ''}><b>{missing}</b>{t('dashboard.missingShort')}</div>
+        </div>
+      </section>
 
-      <div className="dash-cols">
-        <div className="dash-block">
-          <h3>{t('dashboard.byMainLanguage')}</h3>
+      {/* 主题: 一組の資料への入口（開くと資料庫の範囲になる）。下に関係画布への入口。 */}
+      <section className="ov-themes">
+        <div className="canvas-slot themes-slot" ref={slotRef} />
+        <button type="button" className="more-card" onClick={() => navigate('/canvas')}>
+          <span className="more-card-t">
+            <b>{t('themes.moreTitle')} · {t('canvasPage.title')}</b>
+          </span>
+          <span className="more-card-go" aria-hidden="true">→</span>
+        </button>
+      </section>
+
+      <div className="ov-cols">
+        {/* 下左: 資料の構成 */}
+        <section className="ov-card">
+          <div className="ov-card-h"><h2>{t('dashboard.byMainLanguage')}</h2></div>
           <div className="stack-bar">
             {langRows.map((r) => (
               <span key={r.code} style={{ flex: r.n, background: LANG_COLOR[r.code] }} />
@@ -139,38 +154,36 @@ export default function DashboardPage() {
               <span className="mono">{r.n}</span>
             </div>
           ))}
-        </div>
-
-        <div>
-          <Rows
-            title={t('dashboard.byDataStatus')}
-            rows={DATA_STATUS_ORDER.filter((k) => ds[k]).map((k) => ({
-              key: k, label: <StatusBadge value={k} />, n: ds[k],
-            }))}
-          />
-          <Rows
-            title={t('dashboard.byEntryMode')}
-            rows={byCount(stats.entryModeCounts).map(([k, n]) => ({
-              key: k,
-              label: k === 'unknown' ? t('dashboard.unrecorded') : t(`status.${k}`, { defaultValue: k }),
-              n,
-              muted: k === 'unknown',
-            }))}
-          />
-        </div>
-
-        <div>
-          <Rows
-            title={t('dashboard.byCollector')}
-            rows={byCount(stats.collectorCounts).map(([k, n]) => ({
-              key: k, label: named(k), n, muted: k === 'unknown',
-            }))}
-          />
-          <div className={`dash-flag${missing ? ' warn' : ''}`}>
-            <i />
-            {t('dashboard.missingFiles', { n: missing })}
+          <div className="ov-sub">
+            <h3>{t('dashboard.byEntryMode')}</h3>
+            <div className="ov-pills">
+              {byCount(stats.entryModeCounts).map(([k, n]) => (
+                <span key={k}>{k === 'unknown' ? t('dashboard.unrecorded') : t(`status.${k}`, { defaultValue: k })}<b className="mono">{n}</b></span>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* 下右: チーム（採集者ごとの件数。クリックでその人の資料へ） */}
+        <section className="ov-card">
+          <div className="ov-card-h">
+            <h2>{t('dashboard.team')}</h2>
+            <span className="mono muted">{t('dashboard.teamCount', { n: members.length })}</span>
+          </div>
+          <div className="ov-team">
+            {members.map(([k, n]) => (
+              <button key={k} type="button" className="ov-member" onClick={() => openMember(k)}
+                disabled={k === 'unknown' || k === 'legacy'} title={t('dashboard.openMember')}>
+                <span className="ov-avatar">{named(k).slice(0, 2).toUpperCase()}</span>
+                <span className="ov-member-t">
+                  <span className="ov-member-n">{named(k)}</span>
+                  <span className="ov-member-bar"><i style={{ width: `${(n / memberMax) * 100}%` }} /></span>
+                </span>
+                <span className="ov-member-c mono">{n}<em>{((n / total) * 100).toFixed(0)}%</em></span>
+              </button>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

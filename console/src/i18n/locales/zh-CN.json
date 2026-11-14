@@ -12,10 +12,11 @@
     "export": "导出",
     "settings": "设置",
     "overview": "概览",
-    "mode": "工作模式",
-    "research": "研究",
-    "explore": "探索",
-    "exploreNote": "点开照片，可「在研究台中打开」查看和编辑这条记录。"
+    "themes": "主题",
+    "canvas": "关系画布",
+    "fold": "收起侧栏",
+    "unfold": "展开侧栏",
+    "home": "首页"
   },
   "topbar": {
     "checking": "正在检查 backend…",
@@ -238,7 +239,21 @@
     "otherLanguages": "其他 · 不明",
     "unrecorded": "未记录",
     "legacy": "旧版数据",
-    "missingFiles": "缺失文件 {{n}}"
+    "missingFiles": "缺失文件 {{n}}",
+    "heroSub": "{{datasets}} 个数据集 · {{members}} 位采集者 · {{langs}} 种语言",
+    "continueReview": "继续审核",
+    "progress": "整理进度",
+    "progressDone": "已完成 {{done}} / {{total}}（{{pct}}%）",
+    "p": {
+      "verified": "已确认",
+      "reviewed": "已审核",
+      "waiting": "待审核",
+      "rejected": "已拒绝"
+    },
+    "missingShort": "缺失文件",
+    "team": "团队",
+    "teamCount": "{{n}} 位采集者",
+    "openMember": "查看这位采集者的资料"
   },
   "database": {
     "title": "资料库",
@@ -272,9 +287,9 @@
     "openRecord": "查看记录详情",
     "zoom": "放大查看照片",
     "scopeMenu": "当前结果 · {{n}} 条",
-    "scopeReview": "审核当前筛选的 {{n}} 条",
-    "scopeAi": "AI 处理当前筛选的 {{n}} 条",
-    "scopeExport": "导出当前筛选的 {{n}} 条",
+    "scopeReview": "审核当前结果的 {{n}} 条",
+    "scopeAi": "AI 处理当前结果的 {{n}} 条",
+    "scopeExport": "导出当前结果的 {{n}} 条",
     "albumNoPhotoNote": "照片视图只显示有照片的 {{shown}} 条，另有 {{missing}} 条没有照片。",
     "showNoPhoto": "在表格中查看无照片的记录",
     "selectPage": "选择本页全部",
@@ -285,8 +300,23 @@
     "selReview": "审核选中的 {{n}} 条",
     "selAi": "AI 处理选中的 {{n}} 条",
     "selExport": "导出选中的 {{n}} 条",
-    "scopeExplore": "探索当前筛选的 {{n}} 条",
-    "selExplore": "探索选中的 {{n}} 条"
+    "views": {
+      "album": "照片",
+      "table": "表格",
+      "map": "地图",
+      "cloud": "照片云",
+      "color": "色彩"
+    },
+    "countTable": "{{n}} 条",
+    "countAlbum": "{{n}} 张照片",
+    "countMap": "有位置的 {{n}} / {{total}} 条",
+    "countCanvas": "显示 {{shown}} / {{n}} 张",
+    "scopeMenuCanvas": "当前显示 · {{n}} 条",
+    "canvasCondsNote": "画布上的探索条件会先保存为记录集合，再交给审核、AI 或导出。",
+    "canvasNoPhotoNote": "画布只显示有照片的记录；当前范围另有 {{missing}} 条没有照片。",
+    "selOnly": "只看选中的 {{n}} 条",
+    "bulkMenu": "批量操作",
+    "bulkTarget": "对象：当前结果 {{n}} 条"
   },
   "table": {
     "area": "地区",
@@ -309,7 +339,35 @@
     "saving": "保存中…",
     "saveFailed": "保存失败。",
     "updated": "更新于 {{time}}",
-    "detail": "记录详情"
+    "detail": "记录详情",
+    "viewSource": "查看原图",
+    "noSource": "没有原图",
+    "place": "地点",
+    "editFields": "编辑字段",
+    "exploreSection": "色彩与关联",
+    "unsavedHint": "有未保存的修改",
+    "outOfScope": "已保存。这条记录已不符合当前范围，关闭详情后会从结果中移除。",
+    "toReview": "进入审核",
+    "select": "选中记录",
+    "selected": "已选中 ✓",
+    "export": "导出",
+    "ai": "AI 处理",
+    "continueRelations": "继续关联探索",
+    "noExplore": "这条记录没有可分析的照片。",
+    "repColor": "代表色",
+    "colorfulness": "鲜艳度",
+    "lightness": "明度",
+    "relations": "关联照片（全资料库）",
+    "viewRelation": "查看这组 {{n}} 张",
+    "open": "打开记录",
+    "mismatch": "正在显示的记录已切换，未保存。请重新打开后再保存。",
+    "more": "更多",
+    "relWithin": "当前范围内",
+    "relWhole": "来自全部资料库",
+    "relScopedNote": "关联在全部资料库中查找；可以只看当前范围内的。",
+    "relWholeNote": "关联在全部资料库中查找。",
+    "viewRelationAll": "查看全部 {{n}} 张",
+    "viewRelationIn": "只看范围内 {{n}} 张"
   },
   "import": {
     "title": "导入 Dataset Package",
@@ -529,7 +587,11 @@
     "runPhotos": "导出照片 ZIP（{{n}} 个文件）",
     "runCsv": "下载 CSV（{{n}} 条）",
     "geoDesc": "把有坐标的记录导出为 GeoJSON 点位，可用于 QGIS 等地图软件。",
-    "runGeo": "下载 GeoJSON"
+    "runGeo": "下载 GeoJSON",
+    "formatLabel": "导出格式",
+    "stepHow": "分类方式",
+    "stepPreview": "分组预览",
+    "willMake": "将生成 {{zips}} 组、{{files}} 个文件"
   },
   "ai": {
     "title": "AI 处理",
@@ -540,9 +602,9 @@
     "rule2": "AI 不确定（返回空值）的字段一律不写入。",
     "rule3": "状态只会 pending → ai 升级，不会把 human-reviewed / final 降级。",
     "rule4": "逐条保存——取消或中断也会保留已完成部分（重复执行不会重复追加）。",
-    "batchSelection": "1 · 选择对象",
-    "taskType": "2 · 任务",
-    "previewRun": "3 · 预览 / 执行",
+    "batchSelection": "选择对象",
+    "taskType": "任务",
+    "previewRun": "执行",
     "match": "{{n}} 条符合",
     "loadError": "无法加载符合的记录。",
     "selectedBatch": "当前批次: {{n}} 条",
@@ -577,12 +639,13 @@
     "offTitle": "AI 功能已关闭",
     "offBody": "在设置中关闭了 AI，相关入口已隐藏。已有的 AI 结果和 API 密钥都会保留，已在运行的任务也不受影响。",
     "offGoSettings": "前往设置",
-    "offRunning": "仍在运行的 AI 任务：{{done}} / {{total}}（关闭 AI 不会中止它）"
+    "offRunning": "仍在运行的 AI 任务：{{done}} / {{total}}（关闭 AI 不会中止它）",
+    "model": "模型"
   },
   "settings": {
     "title": "设置",
     "subtitle": "Console 配置。保持最小化——无账户、无权限。",
-    "language": "语言 (Language)",
+    "language": "语言",
     "languageDesc": "界面语言会立即切换，并保存在本设备上。",
     "languageNote": "数据本身不会被翻译——字段键、CSV 表头、API 与内部状态值保持不变。",
     "exportDir": "导出目录",
@@ -595,7 +658,7 @@
     "current": "当前",
     "backendHelpPrefix": "在 Web/开发模式下修改时，请设置",
     "backendHelpSuffix": "并重启 npm run dev。桌面版会在启动时自动注入 URL。",
-    "aiTitle": "AI（批量处理）",
+    "aiTitle": "AI",
     "aiDesc": "AI 处理页使用的提供商与 API 密钥。密钥只保存在本机 settings.json，读取接口不会返回。",
     "aiProvider": "提供商",
     "aiClaudeKey": "Claude 密钥",
@@ -654,30 +717,93 @@
     "fromDatabase": "资料库当前筛选",
     "count": "{{n}} 条",
     "reset": "改为全部记录",
-    "selectedN": "手动选中的 {{n}} 条"
+    "selectedN": "手动选中的 {{n}} 条",
+    "recordSet": "记录集合",
+    "single": "单条记录 {{id}}",
+    "backAll": "全部资料",
+    "backFiltered": "之前的筛选",
+    "themeLabel": "「{{title}}」",
+    "relationLabel": "{{name}}",
+    "exploreLabel": "探索条件",
+    "selectionLabel": "选中的 {{n}} 条",
+    "back": "返回{{label}}",
+    "backTitle": "恢复之前的范围、视图和浏览位置",
+    "origin": {
+      "theme": "主题",
+      "relation": "关联",
+      "explore": "",
+      "selection": ""
+    },
+    "removeSet": "移除这个记录集合（回到研究筛选）",
+    "canvasConds": "探索条件",
+    "clearConds": "清除条件",
+    "materialize": "设为记录集合（{{n}} 条）",
+    "materializeTitle": "把画布上显示的记录保存为记录集合：照片、表格、地图和审核、导出都使用这些记录"
   },
   "explore": {
-    "scope": "范围",
-    "scopeAll": "全部记录",
-    "scopeDb": "资料库当前筛选",
-    "scopeSel": "已选 {{n}} 条",
-    "noFilter": "资料库中还没有设定筛选条件",
-    "count": "{{n}} 张照片",
     "phase": {
       "analyse": "分析照片色彩 {{done}}/{{total}}",
       "layout": "计算布局…",
       "atlas": "生成缩略图集 {{done}}/{{total}}"
     },
     "failed": "探索数据生成失败",
-    "preparing": "正在本地生成探索数据…",
     "loading": "正在载入…",
     "firstTimeHint": "首次分析全部照片约需 1 分钟，之后会使用缓存，几秒即可完成。",
     "rebuilding": "正在为新范围生成…",
     "empty": "该范围内没有带照片的记录。",
-    "view": {
-      "explore": "照片探索",
-      "themes": "主题",
-      "chain": "接龙"
-    }
+    "notReady": "色彩与关联数据还在生成",
+    "canvas": "探索画布"
+  },
+  "canvas": {
+    "group": "分组",
+    "sort": "排序",
+    "groups": {
+      "none": "不分组（照片墙）",
+      "cn": "代表色",
+      "lang": "主要语言",
+      "rel": "多语言关系",
+      "dis": "话语类型",
+      "car": "载体类型",
+      "pos": "放置位置",
+      "tmp": "时间性",
+      "q": "制作品质",
+      "day": "采集日"
+    },
+    "sorts": {
+      "spec": "色谱",
+      "light": "明度",
+      "cf": "鲜艳度",
+      "time": "采集时间",
+      "lang": "主要语言"
+    },
+    "modes": {
+      "wheel": "色轮",
+      "hl": "色相×明度"
+    },
+    "hint": "滚轮缩放 · 拖动平移 · 点照片看详情",
+    "panel": "颜色与字段筛选",
+    "fit": "复位视图",
+    "full": "全屏",
+    "exitFull": "退出全屏",
+    "groupsLabel": "分组",
+    "overview": "全貌",
+    "enterGroup": "进入「{{name}}」"
+  },
+  "canvasPage": {
+    "title": "关系画布",
+    "hint": "点击节点展开关联 · 双击查看详情 · 右侧切换关联方式"
+  },
+  "themes": {
+    "title": "主题",
+    "sub": "每个主题是一组资料的入口。打开后会显示它采用的条件和结果数量，可以用照片、地图、照片云等方式查看。",
+    "moreTitle": "探索更多",
+    "canvasDesc": "从一张照片出发，沿着颜色、位置、语言和类型一路走下去，分出岔路。"
+  },
+  "guard": {
+    "title": "有未保存的修改",
+    "body": "离开前要保存这条记录的修改吗？",
+    "save": "保存并继续",
+    "discard": "放弃修改",
+    "cancel": "取消"
   }
 }

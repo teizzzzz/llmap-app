@@ -179,8 +179,8 @@ export default function SettingsPage() {
   );
 
   return (
-    <>
-      <div className="page-head">
+    <div className="settings-page">
+      <div className="page-head compact">
         <h1>{t('settings.title')}</h1>
       </div>
 
@@ -198,8 +198,6 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
-        <p className="muted" style={{ margin: '0 0 4px' }}>{t('settings.languageDesc')}</p>
-        <p className="muted" style={{ margin: 0 }}>{t('settings.languageNote')}</p>
       </div>
 
       {/* ストレージ（Step 15）: 使用量の可視化と旧導入遺留の清掃。 */}
@@ -226,12 +224,12 @@ export default function SettingsPage() {
               {cat(t('storage.diskFree'), storage.diskFree)}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-              <span className="muted">
-                {t('storage.reclaimable')}:{' '}
-                <b>{storage.reclaimableBytes > 0
-                  ? fmtBytes(storage.reclaimableBytes)
-                  : t('storage.nothingToClean')}</b>
-              </span>
+              {/* 回収できるものがあるときだけ、その大きさを出す。 */}
+              {storage.reclaimableBytes > 0 && (
+                <span className="muted">
+                  {t('storage.reclaimable')}: <b>{fmtBytes(storage.reclaimableBytes)}</b>
+                </span>
+              )}
               <span className="spacer" />
               <button className="btn" onClick={loadStorage}>{t('common.refresh')}</button>
               <button
@@ -299,9 +297,6 @@ export default function SettingsPage() {
       {config && (
         <div className="card" style={{ marginBottom: 14 }}>
           <h3 style={{ marginTop: 0 }}>{t('settings.exportDir')}</h3>
-          <p className="muted" style={{ margin: '0 0 10px' }}>
-            {t('settings.exportDirDesc')}
-          </p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', maxWidth: 640 }}>
             <input
               type="text"
@@ -436,11 +431,7 @@ export default function SettingsPage() {
         <p>
           {t('settings.current')}: <code>{API_BASE_URL}</code>
         </p>
-        <p className="muted">
-          {t('settings.backendHelpPrefix')} <code>console/.env</code> ·{' '}
-          <code>VITE_API_BASE_URL=http://host:port</code> {t('settings.backendHelpSuffix')}
-        </p>
       </div>
-    </>
+    </div>
   );
 }

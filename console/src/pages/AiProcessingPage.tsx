@@ -9,6 +9,7 @@ import type {
   AiJobStatus, AiLogEntry, AiPreview, AiStatus, RecordsQuery,
 } from '../api/types';
 import ScopeBanner from '../components/ScopeBanner';
+import useExplore from '../components/explore/ExploreContext';
 import { forgetJob, recallJob, rememberJob } from '../hooks/jobMemory';
 import useFilterOptions from '../hooks/useFilterOptions';
 import useAiEnabled from '../hooks/useAiEnabled';
@@ -23,7 +24,9 @@ const DATA_STATUSES = ['raw', 'submitted', 'ai_drafted', 'needs_review', 'review
 const AI_SLOT = 'ai';
 
 /** バッチ AI ジョブ 1 本の管理（進捗ポーリング・取消・実時ログの増分蓄積）。 */
-function useAiJob() {
+function useAiJob(onFinished: () => void) {
+  const finished = useRef(onFinished);
+  finished.current = onFinished;
   const [job, setJob] = useState<AiJobStatus | null>(null);
   const [logs, setLogs] = useState<AiLogEntry[]>([]);
   const [starting, setStarting] = useState(false);
@@ -50,7 +53,11 @@ function useAiJob() {
           // 表示は直近 1000 行に抑える（DOM を無限に増やさない）
           setLogs((prev) => [...prev, ...st.logs].slice(-1000));
         }
-        if (st.status !== 'running') stopPolling();
+        if (st.status !== 'running') {
+          stopPolling();
+          // AI が書き込んだ記録を、資料庫の各視図・照片云・関連にも反映（共通の更新）。
+          finished.current();
+        }
       } catch {
         // backend の再起動などでジョブが無い → 忘れる
         stopPolling();
@@ -98,10 +105,13 @@ export default function AiProcessingPage() {
   const [params, setParams] = useSearchParams();
   const shared = useSharedFilters();
   // 範囲: db = 資料庫の筛选結果（空なら全部の記録）、sel = 手動選択。
-  const [fromDb, setFromDb] = useState(() => ['db', 'sel'].includes(params.get('scope') ?? ''));
+  const [fromDb, setFromDb] = useState(() => ['db', 'sel', 'rec'].includes(params.get('scope') ?? ''));
+  const [single] = useState(() => (params.get('scope') === 'rec' ? params.get('record') : null));
   const [filters, setFilters] = useState<RecordsQuery>(() => {
     const s = params.get('scope');
     if (s === 'db' || s === 'sel') return scopeQuery(s, shared.filters, shared.selection);
+    // 记录详情の「AI 处理」: その 1 件。
+    if (s === 'rec' && params.get('record')) return scopeQuery('rec', shared.filters, shared.selection, Number(params.get('record')));
     return { dataStatus: 'raw' };
   });
   const [aiOn] = useAiEnabled();
@@ -114,7 +124,8 @@ export default function AiProcessingPage() {
   const [preview, setPreview] = useState<AiPreview | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const { schema, datasets, areas } = useFilterOptions();
-  const jc = useAiJob();
+  const ex = useExplore();
+  const jc = useAiJob(() => ex.recordsChanged());
 
   useEffect(() => {
     getAiStatus().then(setAi).catch(() => {});
@@ -247,7 +258,7 @@ export default function AiProcessingPage() {
   }
 
   return (
-    <>
+    <div className="ai-page">
       <div className="page-head compact">
         <h1>{t('ai.title')}</h1>
       </div>
@@ -263,19 +274,9 @@ export default function AiProcessingPage() {
             setFilters({ dataStatus: 'raw' });
           }}
           resetLabel={t('ai.scopeReset')}
+          single={single ? `#${single}` : undefined}
         />
       )}
-
-      {/* v6 の 2 大規則（実装済みの併合動作の説明 — 必須表示） */}
-      <div className="warn-box" style={{ marginBottom: 14 }}>
-        <strong>{t('ai.safetyTitle')}</strong>
-        <ul>
-          <li>{t('ai.rule1')}</li>
-          <li>{t('ai.rule2')}</li>
-          <li>{t('ai.rule3')}</li>
-          <li>{t('ai.rule4')}</li>
-        </ul>
-      </div>
 
       {/* 1. Batch selection */}
       <h3 className="detail-section">{t('ai.batchSelection')}</h3>
@@ -325,8 +326,8 @@ export default function AiProcessingPage() {
       {/* 2. Task（v6 の 13 維度起草 — 唯一の実タスク） */}
       <h3 className="detail-section">{t('ai.taskType')}</h3>
       <div className="card">
-        <div className="format-head">
-          <strong>{t('ai.task.title')}</strong>
+        <div className="ai-model">
+          <span className="muted">{t('ai.model')}</span>
           {ai && (
             <span className={`badge ${ai.enabled ? 'solid' : 'faint'}`}>
               {ai.enabled
@@ -335,9 +336,6 @@ export default function AiProcessingPage() {
             </span>
           )}
         </div>
-        <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
-          {t('ai.task.desc')}
-        </p>
         {ai && !ai.enabled && (
           <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>
             {ai.message} {t('ai.goSettings')}
@@ -447,6 +445,6 @@ export default function AiProcessingPage() {
           </ul>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, getRecords, photoUrl } from '../../api/client';
 import type { RecordItem, RecordsQuery } from '../../api/types';
-import { dbBrowse, photoRatios } from '../../lib/browseMemory';
+import { browseState, photoRatios, saveBrowse } from '../../lib/browseMemory';
 import { copyImageToClipboard } from '../../lib/copyImage';
 import LangTags from '../LangTags';
 import PhotoLightbox, { type LightboxItem } from '../PhotoLightbox';
@@ -39,6 +39,10 @@ export function useThumbSize(): [number, (v: number) => void] {
   }, [thumb]);
   return [thumb, setThumb];
 }
+
+/** 読み直す枚数を 1 ページ（PAGE）の倍数に揃える（backend の上限 500 以内）。
+    こうすると次に読むページ（size / PAGE + 1）がちょうど続きの先頭になる。 */
+const alignedSize = (n: number) => Math.min(Math.floor(500 / PAGE) * PAGE, Math.ceil(n / PAGE) * PAGE);
 
 export default function RecordsMasonry({
   filters,
@@ -80,54 +84,78 @@ export default function RecordsMasonry({
   const ratios = useRef(photoRatios);
   const [ratioVer, bump] = useState(0);
 
+  // 読み込みは最後に始めたものだけを使う（復元・続き・読み直しが重なっても混ざらない）。
+  const seq = useRef(0);
+  const pending = useRef(0);
   const loadPage = useCallback((p: number) => {
+    // 同じ続きのページを二重に頼まない（哨兵が続けて反応したとき）。
+    if (p > 1 && pending.current === p) return;
+    pending.current = p;
+    const my = ++seq.current;
     setLoading(true);
     setError(null);
     getRecords({ ...filters, hasPhoto: true, page: p, pageSize: PAGE })
       .then((res) => {
-        setItems((prev) => (p === 1 ? res.items : [...prev, ...res.items]));
+        if (my !== seq.current) return;
+        setItems((prev) => {
+          if (p === 1) return res.items;
+          // 念のため重複を除く（読み直しと続きの読み込みが重なったとき）。
+          const seen = new Set(prev.map((r) => r.id));
+          return [...prev, ...res.items.filter((r) => !seen.has(r.id))];
+        });
         setTotal(res.total);
         onTotal(res.total);
         setPage(p);
       })
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
-      .finally(() => setLoading(false));
+      .catch((e: unknown) => { if (my === seq.current) setError(e instanceof ApiError ? e.message : String(e)); })
+      .finally(() => {
+        if (pending.current === p) pending.current = 0;
+        if (my === seq.current) setLoading(false);
+      });
   }, [filters, onTotal]);
   // 初回だけ: 前回と同じ範囲なら、読込済みだった枚数ぶんを一度に読む（続きから見られる）。
   // 復元点は最初の描画で取っておく（下の dbBrowse.albumLoaded の更新より前に）。
   const restoreFrom = useRef(
-    restoreKey != null && dbBrowse.key === restoreKey ? dbBrowse.albumLoaded : 0);
+    restoreKey != null ? browseState(restoreKey)?.albumLoaded ?? 0 : 0);
   useEffect(() => {
     const n = restoreFrom.current;
-    restoreFrom.current = 0;
     if (n <= PAGE) { loadPage(1); return; }
-    const size = Math.min(600, n);
+    // ページの境目に揃えて読む（続きは次のページの先頭から。途中を飛ばさない）。
+    const size = alignedSize(n);
+    const my = ++seq.current;
     setLoading(true);
     getRecords({ ...filters, hasPhoto: true, page: 1, pageSize: size })
       .then((res) => {
+        if (my !== seq.current) return;
+        restoreFrom.current = 0; // 復元は 1 回だけ（以後の範囲変更は 1 ページ目から）
         setItems(res.items);
         setTotal(res.total);
         onTotal(res.total);
-        setPage(Math.ceil(res.items.length / PAGE));
+        setPage(size / PAGE);
       })
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
-      .finally(() => setLoading(false));
+      .catch((e: unknown) => { if (my === seq.current) setError(e instanceof ApiError ? e.message : String(e)); })
+      .finally(() => { if (my === seq.current) setLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPage]);
   // 详情で保存した後: 読込済みの枚数ぶんを読み直して表示を更新（位置は保つ）。
   const loadedRef = useRef(0);
   loadedRef.current = items.length;
   // 読込済み枚数を記録（空の初回描画では上書きしない —— 復元中に 0 にしないため）。
-  if (items.length > 0) dbBrowse.albumLoaded = items.length;
+  if (items.length > 0 && restoreKey != null) saveBrowse(restoreKey, { albumLoaded: items.length });
+  // 表示した時点の値では読み直さない（復元の読み込みを上書きしないため）。変わったときだけ。
+  const reloadAtMount = useRef(reloadKey);
   useEffect(() => {
-    if (!reloadKey) return;
-    const size = Math.min(500, Math.max(PAGE, loadedRef.current));
+    if (!reloadKey || reloadKey === reloadAtMount.current) return;
+    reloadAtMount.current = undefined;
+    const size = alignedSize(Math.max(PAGE, loadedRef.current));
+    const my = ++seq.current;
     getRecords({ ...filters, hasPhoto: true, page: 1, pageSize: size })
       .then((res) => {
+        if (my !== seq.current) return;
         setItems(res.items);
         setTotal(res.total);
         onTotal(res.total);
-        setPage(Math.ceil(res.items.length / PAGE));
+        setPage(size / PAGE);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -5,6 +5,13 @@ llmap-view（静的サイト）の tools/build_demo_data.py を本地 DB 向け�
 data_dir/explore/ にキャッシュし、範囲（全記録・資料庫の筛选・手動選択）ごとの
 バンドル（data.js ＋ atlas.webp）はキャッシュから素早く組み立てる。
 
+バンドルは「見た目」と「中身」を分ける:
+  - 見た目（visual.json ＋ atlas.webp）: 色・配置・近い写真・縮略図。記録の集まりと
+    写真が同じなら作り直さない（key = 記録 id ＋写真名）。研究字段を編集しても
+    色の再計算は起きない。縮略図 1 枚ごとのキャッシュ（tiles/）から atlas を組む。
+  - 中身（言語・研究字段・審核状態・位置）: data.js を返すたびに DB から読む。
+    編集は /explore/meta で取り直して開いている探索へ差し込む（読み直し不要）。
+
 依存は numpy と Pillow のみ（scipy は使わない）:
   - k-means は numpy で実装（kmeans++ 初期化・固定 seed）。
   - 色轮・色相×明度の格子割当は llmap-view の最適割当（Hungarian）の代わりに
@@ -27,7 +34,7 @@ import numpy as np
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import FileResponse, Response
 from PIL import Image, ImageDraw
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from .database import data_dir, get_engine, photos_dir
 from .db_models import SignRecord
@@ -36,7 +43,7 @@ from .schema import split_multi
 
 router = APIRouter(tags=["explore"])
 
-BUNDLE_VERSION = 1      # 形式を変えたら上げる（キャッシュの作り直し）
+BUNDLE_VERSION = 2      # 形式を変えたら上げる（キャッシュの作り直し）
 FEATURE_VERSION = 1
 K = 5                   # 写真ごとの k-means の色数
 MIN_PROP = 0.03         # これ未満の面積の色は調色板から外す
@@ -357,13 +364,26 @@ _JOBS: dict[str, ExploreJob] = {}
 
 
 def _bundle_key(recs: list[SignRecord]) -> str:
+    """見た目の key: 記録と写真だけで決まる（研究字段・状態の編集では変わらない）。"""
     h = hashlib.sha1(f"v{BUNDLE_VERSION}".encode())
     for r in recs:
-        h.update(f"{r.id}:{r.photo_file_name}:{r.updated_at}|".encode())
+        h.update(f"{r.id}:{r.photo_file_name}|".encode())
     return h.hexdigest()[:16]
 
 
-def _record_payload(rec: SignRecord, it: dict) -> dict:
+def _tiles_dir():
+    d = explore_dir() / "tiles"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _tile_path(rec: SignRecord, d=None):
+    h = hashlib.sha1(rec.photo_file_name.encode()).hexdigest()[:10]
+    return (d or _tiles_dir()) / f"{rec.id}-{h}.png"
+
+
+def record_meta(rec: SignRecord) -> dict:
+    """探索の 1 記録の「中身」（DB から毎回作る。色・配置は含まない）。"""
     data = json.loads(rec.data_json)
     out = {
         "id": rec.sign_id, "rid": rec.id, "d": rec.display_id or rec.sign_id,
@@ -372,6 +392,7 @@ def _record_payload(rec: SignRecord, it: dict) -> dict:
         "aux": lang_codes(data.get("補助言語", "")),
         "f": {k: norm_value(data.get(col, "")) for k, col in FIELDS.items()},
         "note": data.get("備考", ""),
+        "st": rec.status or "",
     }
     if rec.latitude is not None and rec.longitude is not None:
         out["lat"], out["lon"] = rec.latitude, rec.longitude
@@ -392,7 +413,11 @@ def _build(job: ExploreJob, filters: dict) -> None:
     job.count = len(recs)
     key = _bundle_key(recs)
     out = explore_dir() / "bundles" / key
-    if (out / "data.js").is_file() and (out / "atlas.webp").is_file():
+    if (out / "visual.json").is_file() and (out / "atlas.webp").is_file():
+        try:  # 壊れた写真を外した数（範囲の件数ではなく、実際に並ぶ枚数）
+            job.count = len(json.loads((out / "visual.json").read_text(encoding="utf-8"))["records"])
+        except (OSError, ValueError, KeyError):
+            pass
         job.key, job.done, job.status = key, job.total, "done"
         return
     if not recs:
@@ -411,24 +436,39 @@ def _build(job: ExploreJob, filters: dict) -> None:
     tile_mask = big.resize((TILE, TILE), Image.LANCZOS)
     info: list[dict] = []
     kept: list[SignRecord] = []
+    tiles = _tiles_dir()
     changed = False
     for n_done, rec in enumerate(recs, 1):
         job.done = n_done
-        try:
-            img = open_small(photos_dir() / rec.photo_file_name, max(SAMPLE_PX, TILE))
-        except Exception:  # noqa: BLE001 — 壊れた写真 1 枚で全体を止めない（その記録だけ外す）
-            continue
-        i = len(kept)
-        kept.append(rec)
         fk = f"{rec.id}:{rec.photo_file_name}"
         it = feats.get(fk)
-        if it is None:
-            it = analyse(img, seed=rec.id)
-            feats[fk] = it
-            changed = True
+        tp = _tile_path(rec, tiles)
+        tile = None
+        if it is not None and tp.is_file():
+            # 色も縮略図もキャッシュ済み: 写真を開かない（取り込み後の作り直しが速い）。
+            try:
+                tile = Image.open(tp).convert("RGBA")
+            except Exception:  # noqa: BLE001
+                tile = None
+        if tile is None:
+            try:
+                img = open_small(photos_dir() / rec.photo_file_name, max(SAMPLE_PX, TILE))
+            except Exception:  # noqa: BLE001 — 壊れた写真 1 枚で全体を止めない（その記録だけ外す）
+                continue
+            if it is None:
+                it = analyse(img, seed=rec.id)
+                feats[fk] = it
+                changed = True
+            tile = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+            tile.paste(center_square(img).resize((TILE, TILE), Image.LANCZOS), (0, 0), tile_mask)
+            try:
+                tile.save(tp, "PNG")
+            except OSError:
+                pass
+        i = len(kept)
+        kept.append(rec)
         info.append(it)
-        tile = center_square(img).resize((TILE, TILE), Image.LANCZOS)
-        atlas.paste(tile, ((i % ATLAS_COLS) * TILE, (i // ATLAS_COLS) * TILE), tile_mask)
+        atlas.paste(tile, ((i % ATLAS_COLS) * TILE, (i // ATLAS_COLS) * TILE), tile)
     if changed:
         with _FEAT_LOCK:
             merged = _load_features()
@@ -469,7 +509,7 @@ def _build(job: ExploreJob, filters: dict) -> None:
     records = []
     for i, (rec, it) in enumerate(zip(recs, info)):
         rep = it["palette"][it["rep"]]
-        r = _record_payload(rec, it)
+        r = {"rid": rec.id, "ph": rec.photo_file_name}
         r.update({
             "pal": [[q["hex"], q["p"], *q["lab"], q["name"]] for q in it["palette"]],
             "rep": it["rep"],
@@ -492,18 +532,15 @@ def _build(job: ExploreJob, filters: dict) -> None:
     buf = io.BytesIO()
     atlas.save(buf, "WEBP", quality=82, method=4)
     (out / "atlas.webp").write_bytes(buf.getvalue())
-    used = sorted({c for r in records for c in r["main"] + r["aux"]})
-    bundle = {
+    visual = {
         "records": records,
-        "langs": {c: {"name": LANG_NAMES.get(c, c)} for c in used},
         "atlas": {"file": "atlas.webp", "tile": TILE, "cols": ATLAS_COLS},
         "colorNames": COLOR_NAMES,
         "built": time.strftime("%Y-%m-%d %H:%M"),
     }
-    tmp = out / "data.js.part"
-    tmp.write_text("window.LLV_DATA = " + json.dumps(bundle, ensure_ascii=False) + ";",
-                   encoding="utf-8")
-    tmp.replace(out / "data.js")
+    tmp = out / "visual.json.part"
+    tmp.write_text(json.dumps(visual, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(out / "visual.json")
     job.key = key
     job.status = "done"
 
@@ -537,7 +574,7 @@ def explore_job(job_id: str):
 
 
 def _bundle_file(key: str, name: str):
-    if not key.isalnum() or name not in ("data.js", "atlas.webp"):
+    if not key.isalnum() or name not in ("visual.json", "atlas.webp"):
         raise HTTPException(400, "不正な指定です")
     p = explore_dir() / "bundles" / key / name
     if not p.is_file():
@@ -545,11 +582,50 @@ def _bundle_file(key: str, name: str):
     return p
 
 
+def _metas(session: Session, ids: list[int]) -> dict[int, dict]:
+    out: dict[int, dict] = {}
+    for k in range(0, len(ids), 900):  # SQLite の変数上限を避けて分割
+        chunk = ids[k:k + 900]
+        for rec in session.exec(select(SignRecord).where(col(SignRecord.id).in_(chunk))).all():
+            out[rec.id] = record_meta(rec)
+    return out
+
+
 @router.get("/explore/bundles/{key}/data.js")
 def bundle_data(key: str):
-    p = _bundle_file(key, "data.js")
-    return Response(p.read_bytes(), media_type="application/javascript; charset=utf-8",
+    """見た目（キャッシュ）＋中身（今の DB）を合わせて返す。編集はここで常に最新。
+    削除された記録は gone（atlas の並びを保つため配列からは外さない）。"""
+    visual = json.loads(_bundle_file(key, "visual.json").read_text(encoding="utf-8"))
+    recs = visual["records"]
+    with Session(get_engine()) as session:
+        metas = _metas(session, [r["rid"] for r in recs])
+    for r in recs:
+        m = metas.get(r["rid"])
+        if m is None:
+            r.update({"id": f"gone-{r['rid']}", "d": "", "t": "", "main": [], "aux": [],
+                      "f": {k: "未标注" for k in FIELDS}, "note": "", "st": "",
+                      "lat": None, "lon": None, "x": -40.0, "y": -40.0, "gone": True})
+        else:
+            r.update(m)
+    used = sorted({c for r in recs for c in r["main"] + r["aux"]})
+    visual["langs"] = {c: {"name": LANG_NAMES.get(c, c)} for c in used}
+    body = "window.LLV_DATA = " + json.dumps(visual, ensure_ascii=False) + ";"
+    return Response(body.encode("utf-8"), media_type="application/javascript; charset=utf-8",
                     headers={"Cache-Control": "no-cache"})
+
+
+@router.post("/explore/meta")
+def explore_meta(payload: dict = Body(default={})):
+    """記録の中身（言語・研究字段・状態）を取り直す。編集後に開いている探索へ差し込む。"""
+    ids = []
+    for x in payload.get("ids") or []:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    with Session(get_engine()) as session:
+        metas = _metas(session, ids)
+    return {"records": [metas[i] for i in ids if i in metas]}
 
 
 @router.get("/explore/bundles/{key}/atlas.webp")

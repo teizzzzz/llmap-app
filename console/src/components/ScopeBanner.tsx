@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { Dataset, RecordsQuery } from '../api/types';
+import useSharedFilters from '../hooks/useSharedFilters';
 import { filterChips } from './database/RecordsFilters';
 
 /** 操作の対象範囲を明示する帯（資料庫 → 審核 / AI / 導出 の引き継ぎ用）。
@@ -12,6 +13,7 @@ export default function ScopeBanner({
   countLabel,
   onReset,
   resetLabel,
+  single,
 }: {
   filters: RecordsQuery;
   datasets: Dataset[];
@@ -21,13 +23,24 @@ export default function ScopeBanner({
   countLabel?: string;
   onReset?: () => void;
   resetLabel?: string;
+  /** 記録 1 件だけ（详情の「进入审核」「导出」から来たとき）。 */
+  single?: string;
 }) {
   const { t } = useTranslation();
-  const chips = filterChips(filters, datasets, t);
+  const { scopeSet } = useSharedFilters();
+  // 記録集合（主题・関連・探索の条件）は名前と条件で示す（id の羅列にしない）。
+  const setLabel = filters.setKey
+    ? (scopeSet?.key === filters.setKey
+      ? [scopeSet.label, ...scopeSet.conds].join(' · ')
+      : t('scope.recordSet'))
+    : undefined;
+  const chips = filterChips(filters, datasets, t, setLabel);
   return (
     <div className="scope-banner">
       <span className="scope-k">{t('scope.label')}</span>
-      {chips.length === 0
+      {single
+        ? <span className="scope-v"><span className="scope-chip">{t('scope.single', { id: single })}</span></span>
+        : chips.length === 0
         ? <span className="scope-v">{t('scope.all')}</span>
         : filters.ids?.length
           // 手動選択は筛选とは別物 —— 「選んだ記録」とだけ示す。

@@ -125,7 +125,6 @@ export default function LanguageRoleSelector({
       title={extra?.title}
       onClick={onClick}
     >
-      {extra?.color && <i className="sw" style={{ background: extra.color }} />}
       {label}
       {extra?.removable && <span className="lang-sel-x" aria-hidden="true"> ✕</span>}
     </button>

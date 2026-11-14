@@ -20,7 +20,7 @@ from .schema import (
 )
 from . import (
     ai_jobs, config_api, explore_api, export_api, export_jobs, import_dataset,
-    records_api, stats_api, storage_api,
+    record_sets, records_api, stats_api, storage_api,
 )
 
 
@@ -41,6 +41,7 @@ app.include_router(storage_api.router)
 app.include_router(config_api.router)
 app.include_router(ai_jobs.router)
 app.include_router(explore_api.router)
+app.include_router(record_sets.router)
 
 # 単人ローカル開発のため全許可。多人化時に絞る。
 app.add_middleware(

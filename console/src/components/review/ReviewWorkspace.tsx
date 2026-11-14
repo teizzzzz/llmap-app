@@ -9,6 +9,8 @@ import {
   type ReviewActionDef,
 } from '../../reviewStatus';
 import { groupedResearchFields } from '../../lib/researchFields';
+import { useEditorGuard } from '../../lib/unsavedGuard';
+import useExplore from '../explore/ExploreContext';
 import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from '../database/FieldEditor';
 import StatusBadge from '../database/StatusBadge';
@@ -49,6 +51,7 @@ export default function ReviewWorkspace({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const ex = useExplore();
   const [detail, setDetail] = useState<RecordDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -68,15 +71,19 @@ export default function ReviewWorkspace({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // 前の記録の応答が後から届いても使わない（素早く J/K で進めたとき）。
   useEffect(() => {
+    let stale = false;
     setDetail(null);
     setError(null);
     setDraft({});
     setActionError(null);
     getRecord(recordId)
-      .then(setDetail)
-      .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.message : String(e)));
+      .then((d) => { if (!stale && d.id === recordId) setDetail(d); })
+      .catch((e: unknown) => {
+        if (!stale) setError(e instanceof ApiError ? e.message : String(e));
+      });
+    return () => { stale = true; };
   }, [recordId]);
 
   const current = (f: string) => draft[f] ?? detail?.data[f] ?? '';
@@ -114,21 +121,34 @@ export default function ReviewWorkspace({
     extra: Record<string, string>,
     busyKey: string,
     advance: boolean,
-  ) => {
-    if (!detail) return;
+  ): Promise<boolean> => {
+    if (!detail) return false;
+    // 保存の直前に、表示中の記録と选中の記録が同じかを確かめる。
+    if (detail.id !== recordId) { setActionError(t('record.mismatch')); return false; }
     setBusy(busyKey);
     setActionError(null);
     try {
       const updated = await updateRecord(detail.id, { ...changed, ...extra });
       setDetail(updated);
       setDraft({});
+      // 共通の更新: 資料庫の各視図・照片云・関連にも反映（色は再計算しない）。
+      ex.recordsChanged([detail.id]);
       onActioned(detail.id, advance);
+      return true;
     } catch (e: unknown) {
       setActionError(e instanceof ApiError ? e.message : String(e));
+      return false;
     } finally {
       setBusy(null);
     }
   };
+  // 未保存の保護（侧栏・筛选・記録の切替・窓を閉じる）。保存は字段の変更だけ。
+  useEditorGuard({
+    kind: 'page',
+    isDirty: () => dirty,
+    save: () => (dirty ? patch({}, 'save', false) : Promise.resolve(true)),
+    discard: () => setDraft({}),
+  });
 
   keyHandler.current = null; // 読込中・エラー中は旧記録へ誤操作しない
   if (error) {

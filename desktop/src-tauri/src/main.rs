@@ -40,6 +40,22 @@ fn kill_backend(mut child: Child) {
     println!("[llmap-desktop] backend stopped.");
 }
 
+/// 窓を閉じる前に研究台へ未保存の確認を求めるための状態。
+/// allowed: 研究台が「閉じてよい」と返した。last_ask: 直前に尋ねた時刻
+/// （4 秒以内にもう一度 × を押したら、応答の無い画面でも閉じられるようにする）。
+#[derive(Default)]
+struct CloseGate {
+    allowed: std::sync::atomic::AtomicBool,
+    last_ask: Mutex<Option<std::time::Instant>>,
+}
+
+/// 研究台（console）から: 未保存の確認が済んだので窓を閉じる。
+#[tauri::command]
+fn llmap_confirm_close(app: tauri::AppHandle, window: tauri::Window) {
+    app.state::<CloseGate>().allowed.store(true, std::sync::atomic::Ordering::SeqCst);
+    let _ = window.close();
+}
+
 /// state から backend を取り出して回収する（多重呼び出しは no-op）。
 fn shutdown_backend(app: &tauri::AppHandle) {
     if let Some(child) = app.state::<BackendChild>().0.lock().unwrap().take() {
@@ -257,6 +273,8 @@ window.__LLMAP_API_BASE_URL__ = 'http://127.0.0.1:{port}';
 fn main() {
     tauri::Builder::default()
         .manage(BackendChild(Mutex::new(None)))
+        .manage(CloseGate::default())
+        .invoke_handler(tauri::generate_handler![llmap_confirm_close])
         .setup(|app| {
             let handle = app.handle();
             let port = find_free_port();
@@ -356,9 +374,30 @@ fn main() {
             //    でも先に回収しておく — その後の描画層の異常終了でも残留させない。
             match event {
                 RunEvent::WindowEvent {
-                    event: WindowEvent::CloseRequested { .. },
+                    label,
+                    event: WindowEvent::CloseRequested { api, .. },
                     ..
-                } => shutdown_backend(app),
+                } => {
+                    // 研究台に未保存の変更があれば先に確認する（保存して閉じる／破棄／キャンセル）。
+                    // 研究台は確認後に llmap_confirm_close を呼ぶ。古い画面・応答の無い画面でも
+                    // 閉じられるよう、4 秒以内の 2 回目の × はそのまま閉じる。
+                    let gate = app.state::<CloseGate>();
+                    let now = std::time::Instant::now();
+                    let mut last = gate.last_ask.lock().unwrap();
+                    let again = last.map_or(false, |t| now.duration_since(t) < Duration::from_secs(4));
+                    if !gate.allowed.load(std::sync::atomic::Ordering::SeqCst) && !again {
+                        if let Some(w) = app.get_webview_window(&label) {
+                            *last = Some(now);
+                            api.prevent_close();
+                            let _ = w.eval(
+                                "(window.__llmapRequestClose ? window.__llmapRequestClose()                                  : window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke('llmap_confirm_close'))",
+                            );
+                            return;
+                        }
+                    }
+                    drop(last);
+                    shutdown_backend(app)
+                }
                 RunEvent::ExitRequested { .. } | RunEvent::Exit => shutdown_backend(app),
                 _ => {}
             }

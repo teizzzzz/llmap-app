@@ -11,6 +11,8 @@ import type {
   ExportJobStatus,
   ImportDatasetResult,
   MapQuery,
+  ExploreMeta,
+  RecordSetCreated,
   MapRecord,
   PhotosExportPreview,
   PhotosSplitPreview,
@@ -308,3 +310,24 @@ export const startExploreBuild = (filters: RecordsQuery = {}) =>
 
 export const getExploreJob = (jobId: string) =>
   request<ExploreJob>(`/explore/jobs/${jobId}`);
+
+/** 記録の中身（言語・研究字段・状態）を取り直す（編集を探索へ差し込む）。 */
+export const getExploreMeta = (ids: number[]) =>
+  request<{ records: ExploreMeta[] }>('/explore/meta', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+
+/** 記録集合を登録する（同じ id 群なら同じ key）。 */
+export const createRecordSet = (ids: number[]) =>
+  request<RecordSetCreated>('/record-sets', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+
+/** 範囲（筛选）に合う記録 id の一覧（探索の範囲マスク用）。 */
+export const getRecordIds = (filters: RecordsQuery = {}) =>
+  request<{ ids: number[]; count: number }>('/records/ids', {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });

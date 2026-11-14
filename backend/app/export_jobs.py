@@ -90,6 +90,8 @@ def _filters_kwargs(payload: dict) -> dict:
         field_filters=payload.get("fields"),
         # 手動選択（記録 id の配列）。他の条件と AND。
         record_ids=payload.get("ids"),
+        # 記録集合（探索の主题・関連などの明確な記録の集まり）。
+        set_key=payload.get("setKey") or None,
     )
 
 

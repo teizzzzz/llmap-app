@@ -88,13 +88,8 @@ export interface MapRecord {
 }
 
 /** GET /map/records の筛选（/records と同じ命名） */
-export interface MapQuery {
-  mainLanguage?: string;
-  areaCode?: string;
-  entryMode?: string;
-  dataStatus?: string;
-  datasetId?: number;
-}
+/** /map/records の筛选（資料庫と同じ RecordsQuery。分页は使わない）。 */
+export type MapQuery = Omit<RecordsQuery, 'page' | 'pageSize'>;
 
 /** GET /ai/status — AI バッチ処理の設定状態（scaffold） */
 export interface AiStatus {
@@ -253,6 +248,34 @@ export interface RecordsQuery {
   fields?: Record<string, string>;
   /** 手動で選んだ記録の id（資料庫の批量選択）。他の条件と AND。GET では "1,5,9"。 */
   ids?: number[];
+  /** 記録集合の key（探索の主题・関連・色の条件など、SQL にできない範囲）。他の条件と AND。 */
+  setKey?: string;
+}
+
+/** POST /record-sets */
+export interface RecordSetCreated { key: string; count: number }
+
+/** 探索の 1 記録の中身（/explore/meta）。色・配置は含まない。 */
+export interface ExploreMeta { rid: number; [k: string]: unknown }
+
+/** 探索側が計算する、記録详情の「探索」区（色板・色の情報・6 種の関連）。 */
+export interface ExploreDescribe {
+  rid: number;
+  pal: { hex: string; p: number; name: string }[];
+  rep: { hex: string; name: string };
+  cf: number;
+  L: number;
+  chr: boolean;
+  /** 研究台の範囲が資料庫の一部（関連は全資料庫から。範囲内の数は inScope）。 */
+  scoped: boolean;
+  relations: {
+    key: string; name: string; title: string; sub: string;
+    /** 先頭は起点の記録、続いて関連の記録（全資料庫から）。 */
+    rids: number[];
+    /** 関連のうち、いまの範囲に入っている記録。 */
+    inScope: number[];
+    items: { rid: number; ph: string; tag: string }[];
+  }[];
 }
 
 /** POST /export/photos/split/preview — 字段別分包の事前集計 */

@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, getRecord, photoUrl, updateRecord } from '../../api/client';
 import type { RecordDetail, SchemaInfo } from '../../api/types';
 import { groupedResearchFields } from '../../lib/researchFields';
+import { useEditorGuard } from '../../lib/unsavedGuard';
+import LangTags from '../LangTags';
 import PhotoLightbox from '../PhotoLightbox';
 import FieldEditor from './FieldEditor';
 import PhotoThumb from './PhotoThumb';
@@ -18,21 +20,40 @@ const IDENTITY_FIELDS = [
   'EntryMode', 'DataStatus', 'SchemaVersion', 'AppVersion',
 ];
 
-/** 詳情面板: 写真＋識別情報（只読）＋研究字段の編集（dirty/Save/Cancel）。 */
+const SECTIONS_KEY = 'llmap.detailSections';
+type SectionKey = 'research' | 'explore' | 'system';
+const loadSections = (): Record<SectionKey, boolean> => {
+  try {
+    return { research: true, explore: true, system: false, ...JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}') };
+  } catch { return { research: true, explore: true, system: false }; }
+};
+
+/** 記録の详情（どの視図から開いても同じもの）。層に分けて並べる:
+    主（写真・言語・地点・編号・審核状態）→ 研究字段（編集）→ 探索（色板・関連）→ 系統情報。
+    操作は明確な動詞で（编辑字段・进入审核・选中记录・导出・继续关联探索）。 */
 export default function RecordDetailPanel({
   recordId,
   schema,
   onSaved,
   onClose,
   onDirtyChange,
+  actions,
+  explore,
+  notice,
 }: {
   recordId: number;
   schema: SchemaInfo | null;
-  onSaved: () => void;
-  /** 指定時は見出しに閉じるボタンを出す（資料庫の抽屉）。 */
+  onSaved: (detail: RecordDetail) => void;
+  /** 指定時は見出しに閉じるボタンを出す（抽屉）。 */
   onClose?: () => void;
   /** 未保存の変更の有無を親へ（閉じる・切替時の確認用）。 */
   onDirtyChange?: (dirty: boolean) => void;
+  /** 操作の動詞（进入审核・选中记录・导出・继续关联探索）。编辑字段 はここで出す。 */
+  actions?: ReactNode;
+  /** 探索の区（色板・色の情報・関連）。 */
+  explore?: ReactNode;
+  /** 保存後の知らせ（例: 範囲に合わなくなった）。 */
+  notice?: ReactNode;
 }) {
   const { t } = useTranslation();
   const [detail, setDetail] = useState<RecordDetail | null>(null);
@@ -41,18 +62,30 @@ export default function RecordDetailPanel({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<'crop' | 'source' | null>(null);
+  const [sections, setSections] = useState(loadSections);
+  const researchRef = useRef<HTMLDetailsElement>(null);
+  const toggleSection = (k: SectionKey, open: boolean) => setSections((s) => {
+    if (s[k] === open) return s;
+    const next = { ...s, [k]: open };
+    try { localStorage.setItem(SECTIONS_KEY, JSON.stringify(next)); } catch { /* 表示は切替わる */ }
+    return next;
+  });
 
-  const load = (id: number) => {
+  // 記録を読む。素早く切り替えたとき、前の記録の応答が後から届いても使わない
+  // （開いている記録と編集中の記録が食い違わないように）。
+  useEffect(() => {
+    let stale = false;
     setDetail(null);
     setError(null);
     setDraft({});
     setSaveError(null);
-    getRecord(id)
-      .then(setDetail)
-      .catch((e: unknown) =>
-        setError(e instanceof ApiError ? e.message : String(e)));
-  };
-  useEffect(() => load(recordId), [recordId]);
+    getRecord(recordId)
+      .then((d) => { if (!stale && d.id === recordId) setDetail(d); })
+      .catch((e: unknown) => {
+        if (!stale) setError(e instanceof ApiError ? e.message : String(e));
+      });
+    return () => { stale = true; };
+  }, [recordId]);
 
   const current = (field: string): string =>
     draft[field] ?? detail?.data[field] ?? '';
@@ -67,21 +100,40 @@ export default function RecordDetailPanel({
   }, [draft, detail]);
   const dirty = Object.keys(changed).length > 0;
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
-  const save = async () => {
-    if (!detail || !dirty) return;
+  const save = async (): Promise<boolean> => {
+    if (!detail || !dirty) return true;
+    // 保存の直前にも、表示中の記録と開いている記録が同じかを確かめる。
+    if (detail.id !== recordId) { setSaveError(t('record.mismatch')); return false; }
     setSaving(true);
     setSaveError(null);
     try {
       const updated = await updateRecord(detail.id, changed);
-      setDetail(updated);
-      setDraft({});
-      onSaved(); // 表格側の行も更新する
+      if (updated.id === recordId) {
+        setDetail(updated);
+        setDraft({});
+      }
+      onSaved(updated); // 一覧・地図・画布も更新する
+      return true;
     } catch (e: unknown) {
       setSaveError(e instanceof ApiError ? e.message : String(e));
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+  // 未保存の保護（記録の切替・閉じる・窓を閉じる）。
+  useEditorGuard({ kind: 'drawer', isDirty: () => dirty, save, discard: () => setDraft({}) });
+
+  /** 「编辑字段」: 研究字段の区を開いて最初の入力へ。 */
+  const editFields = () => {
+    toggleSection('research', true);
+    requestAnimationFrame(() => {
+      const el = researchRef.current;
+      el?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      el?.querySelector<HTMLElement>('input, select, textarea, button.dd-trigger, [tabindex="0"]')?.focus({ preventScroll: true });
+    });
   };
 
   // 字段の表示ラベル: 翻訳があれば使い、なければ字段キーをそのまま出す。
@@ -100,9 +152,15 @@ export default function RecordDetailPanel({
       return next;
     });
 
+  // 読込中・失敗でも閉じられるように（Esc だけに頼らない）。
+  const closeBtn = onClose && (
+    <button type="button" className="btn ghost icon" onClick={onClose}
+      title={t('common.close')} aria-label={t('common.close')}>✕</button>
+  );
   if (error) {
     return (
       <div className="detail-panel card">
+        <div className="detail-head"><span />{closeBtn}</div>
         <div className="error-box">
           <strong>{t('record.loadError')}</strong>
           <div className="hint">{error}</div>
@@ -111,19 +169,27 @@ export default function RecordDetailPanel({
     );
   }
   if (!detail) {
-    return <div className="detail-panel card muted">{t('record.loading')}</div>;
+    return (
+      <div className="detail-panel card">
+        <div className="detail-head"><span className="muted">{t('record.loading')}</span>{closeBtn}</div>
+      </div>
+    );
   }
 
+  const lat = detail.data['緯度'];
+  const lng = detail.data['経度'];
+  const place = [detail.data['地区コード'], lat && lng ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : '']
+    .filter(Boolean).join(' · ');
+
   return (
-    <div className="detail-panel card">
+    <div className="detail-panel card dp">
       <div className="detail-head">
         <div>
           <div className="detail-title">{detail.DisplayID || detail.SignID}</div>
           <div className="muted mono" style={{ fontSize: 11.5 }}>{detail.SignID}</div>
         </div>
         <div className="detail-badges">
-          <StatusBadge value={detail.EntryMode} />
-          <StatusBadge value={current('DataStatus')} />
+          <StatusBadge value={detail.data['DataStatus'] || ''} />
           {onClose && (
             <button type="button" className="btn ghost icon" onClick={onClose}
               title={t('common.close')} aria-label={t('common.close')}>✕</button>
@@ -131,24 +197,20 @@ export default function RecordDetailPanel({
         </div>
       </div>
 
-      {/* 写真（裁切図＋元写真）。クリックで統一ビューアを開く。 */}
-      <div className="photo-pair">
-        <figure
-          style={{ cursor: detail.photoUrl ? 'zoom-in' : 'default' }}
-          title={t('record.openFull')}
-          onClick={() => detail.photoUrl && setLightbox('crop')}
-        >
-          <PhotoThumb src={photoUrl(detail.photoUrl)} size={170} alt="crop" />
-          <figcaption className="muted">{t('record.crop')}</figcaption>
-        </figure>
-        <figure
-          style={{ cursor: detail.sourcePhotoUrl ? 'zoom-in' : 'default' }}
-          title={t('record.openFull')}
-          onClick={() => detail.sourcePhotoUrl && setLightbox('source')}
-        >
-          <PhotoThumb src={photoUrl(detail.sourcePhotoUrl)} size={170} alt="source" />
-          <figcaption className="muted">{t('record.source')}</figcaption>
-        </figure>
+      {/* 主: 裁切図を大きく（クリックで拡大・ドラッグ・復位。原図へも切替可）。 */}
+      <div className="dp-photo">
+        <button type="button" className="dp-photo-main" disabled={!detail.photoUrl}
+          title={t('record.openFull')} onClick={() => setLightbox('crop')}>
+          <PhotoThumb src={photoUrl(detail.photoUrl)} size={400} alt="crop" />
+        </button>
+        <div className="dp-photo-row">
+          <span className="muted">{t('record.crop')}</span>
+          <span className="spacer" />
+          <button type="button" className="link-btn" disabled={!detail.sourcePhotoUrl}
+            onClick={() => setLightbox('source')}>
+            {detail.sourcePhotoUrl ? t('record.viewSource') : t('record.noSource')}
+          </button>
+        </div>
       </div>
 
       {lightbox && (
@@ -164,8 +226,72 @@ export default function RecordDetailPanel({
         />
       )}
 
-      {/* 識別情報（ファイル名・版本など）は低頻度なので折りたたむ。 */}
-      <details className="detail-meta">
+      <dl className="dp-facts">
+        <dt>{fieldLabel('主要言語')}</dt><dd><LangTags value={current('主要言語')} /></dd>
+        <dt>{fieldLabel('補助言語')}</dt><dd><LangTags value={current('補助言語')} /></dd>
+        <dt>{t('record.place')}</dt><dd className="mono">{place || '—'}</dd>
+        <dt>{fieldLabel('採集日時')}</dt><dd className="mono">{detail.data['採集日時'] || '—'}</dd>
+        <dt>{fieldLabel('_status')}</dt><dd>{t(`status.${detail.data['_status']}`, { defaultValue: detail.data['_status'] || '—' })}</dd>
+      </dl>
+
+      <div className="dp-actions">
+        <button type="button" className="btn sm" onClick={editFields}>{t('record.editFields')}</button>
+        {actions}
+      </div>
+
+      {notice}
+
+      <details ref={researchRef} className="dp-section" open={sections.research}
+        onToggle={(e) => toggleSection('research', (e.target as HTMLDetailsElement).open)}>
+        <summary>
+          {t('record.researchFields')}
+          {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
+        </summary>
+        {/* v6 定義表と同じ区分・順序。字段リストは schema から派生（ハードコードしない）。 */}
+        {groupedResearchFields(schema).map((g) => (
+          <div key={g.key}>
+            <div className="dp-group">{t(`fields.group.${g.key}`)}</div>
+            <div className="edit-grid">
+              {g.fields.map((f) => (
+                <label key={f} className="edit-row">
+                  <span className="k">{fieldLabel(f)}</span>
+                  <FieldEditor
+                    field={f}
+                    value={current(f)}
+                    schema={schema}
+                    textType={current('文字性')}
+                    onChange={(v) => applyField(f, v)}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+        {/* 状態は 1 つだけ（v6 D 区の末尾）。DataStatus は backend が自動同期。 */}
+        <div className="edit-grid" style={{ marginTop: 10 }}>
+          <label className="edit-row">
+            <span className="k">{fieldLabel('_status')}</span>
+            <FieldEditor
+              field="_status"
+              value={current('_status')}
+              schema={schema}
+              onChange={(v) => setDraft((d) => ({ ...d, _status: v }))}
+            />
+          </label>
+        </div>
+      </details>
+
+      {explore && (
+        <details className="dp-section" open={sections.explore}
+          onToggle={(e) => toggleSection('explore', (e.target as HTMLDetailsElement).open)}>
+          <summary>{t('record.exploreSection')}</summary>
+          {sections.explore && explore}
+        </details>
+      )}
+
+      {/* 系統情報（ファイル名・版本など）は低頻度なので畳む。 */}
+      <details className="dp-section" open={sections.system}
+        onToggle={(e) => toggleSection('system', (e.target as HTMLDetailsElement).open)}>
         <summary>{t('record.identity')}</summary>
         <div className="identity-grid">
           {IDENTITY_FIELDS.map((f) => (
@@ -177,45 +303,6 @@ export default function RecordDetailPanel({
         </div>
       </details>
 
-      <h3 className="detail-section">
-        {t('record.researchFields')}{' '}
-        {dirty && <span className="dirty-flag">{t('record.unsaved')}</span>}
-      </h3>
-      {/* v6 定義表と同じ区分・順序。字段リストは schema から派生（ハードコードしない）。 */}
-      {groupedResearchFields(schema).map((g) => (
-        <div key={g.key}>
-          <div className="muted" style={{ margin: '10px 0 4px', fontSize: 12, fontWeight: 600 }}>
-            {t(`fields.group.${g.key}`)}
-          </div>
-          <div className="edit-grid">
-            {g.fields.map((f) => (
-              <label key={f} className="edit-row">
-                <span className="k">{fieldLabel(f)}</span>
-                <FieldEditor
-                  field={f}
-                  value={current(f)}
-                  schema={schema}
-                  textType={current('文字性')}
-                  onChange={(v) => applyField(f, v)}
-                />
-              </label>
-            ))}
-          </div>
-        </div>
-      ))}
-      {/* 状態は 1 つだけ（v6 D 区の末尾）。DataStatus は backend が自動同期。 */}
-      <div className="edit-grid" style={{ marginTop: 10 }}>
-        <label className="edit-row">
-          <span className="k">{fieldLabel('_status')}</span>
-          <FieldEditor
-            field="_status"
-            value={current('_status')}
-            schema={schema}
-            onChange={(v) => setDraft((d) => ({ ...d, _status: v }))}
-          />
-        </label>
-      </div>
-
       {saveError && (
         <div className="error-box" style={{ marginTop: 10 }}>
           <strong>{t('record.saveFailed')}</strong>
@@ -223,8 +310,8 @@ export default function RecordDetailPanel({
         </div>
       )}
 
-      <div className="detail-actions">
-        <button className="btn primary" disabled={!dirty || saving} onClick={save}>
+      <div className="detail-actions dp-save">
+        <button className="btn primary" disabled={!dirty || saving} onClick={() => void save()}>
           {saving ? t('record.saving') : t('record.save')}
         </button>
         <button className="btn" disabled={!dirty || saving} onClick={() => setDraft({})}>
@@ -232,7 +319,7 @@ export default function RecordDetailPanel({
         </button>
         <span className="spacer" />
         <span className="muted" style={{ fontSize: 11.5 }}>
-          {t('record.updated', { time: detail.updatedAt.slice(0, 19).replace('T', ' ') })}
+          {dirty ? t('record.unsavedHint') : t('record.updated', { time: detail.updatedAt.slice(0, 19).replace('T', ' ') })}
         </span>
       </div>
     </div>

@@ -12,10 +12,11 @@
     "export": "エクスポート",
     "settings": "設定",
     "overview": "概要",
-    "mode": "モード",
-    "research": "研究",
-    "explore": "探索",
-    "exploreNote": "写真を開いて「研究台で開く」を押すと、その記録を確認・編集できます。"
+    "themes": "テーマ",
+    "canvas": "関係キャンバス",
+    "fold": "サイドバーを畳む",
+    "unfold": "サイドバーを開く",
+    "home": "ホーム"
   },
   "topbar": {
     "checking": "backend 確認中…",
@@ -234,11 +235,25 @@
     "openMap": "地図を開く",
     "exportData": "データをエクスポート",
     "importDataset": "データセットを取り込む",
-    "headline": "件の街なかのことば",
+    "headline": "件の街なかの文字",
     "otherLanguages": "その他・不明",
     "unrecorded": "未記録",
     "legacy": "旧データ",
-    "missingFiles": "欠損ファイル {{n}}"
+    "missingFiles": "欠損ファイル {{n}}",
+    "heroSub": "データセット {{datasets}} · 採集者 {{members}} 人 · {{langs}} 言語",
+    "continueReview": "レビューを続ける",
+    "progress": "整理の進み具合",
+    "progressDone": "完了 {{done}} / {{total}}（{{pct}}%）",
+    "p": {
+      "verified": "確定済み",
+      "reviewed": "レビュー済み",
+      "waiting": "未処理",
+      "rejected": "却下"
+    },
+    "missingShort": "欠落ファイル",
+    "team": "チーム",
+    "teamCount": "採集者 {{n}} 人",
+    "openMember": "この採集者の資料を見る"
   },
   "database": {
     "title": "ライブラリ",
@@ -272,9 +287,9 @@
     "openRecord": "記録の詳細を見る",
     "zoom": "写真を拡大表示",
     "scopeMenu": "現在の結果 · {{n}} 件",
-    "scopeReview": "現在の絞り込み {{n}} 件を審査",
-    "scopeAi": "現在の絞り込み {{n}} 件を AI 処理",
-    "scopeExport": "現在の絞り込み {{n}} 件を書き出す",
+    "scopeReview": "現在の結果 {{n}} 件を審査",
+    "scopeAi": "現在の結果 {{n}} 件を AI 処理",
+    "scopeExport": "現在の結果 {{n}} 件を書き出し",
     "albumNoPhotoNote": "写真表示には写真のある {{shown}} 件だけが並びます。ほかに写真のない記録が {{missing}} 件あります。",
     "showNoPhoto": "写真のない記録を表で見る",
     "selectPage": "このページをすべて選択",
@@ -285,8 +300,23 @@
     "selReview": "選んだ {{n}} 件を審査",
     "selAi": "選んだ {{n}} 件を AI 処理",
     "selExport": "選んだ {{n}} 件を書き出す",
-    "scopeExplore": "現在の絞り込み {{n}} 件を探索",
-    "selExplore": "選択中の {{n}} 件を探索"
+    "views": {
+      "album": "写真",
+      "table": "表",
+      "map": "地図",
+      "cloud": "写真クラウド",
+      "color": "色彩"
+    },
+    "countTable": "{{n}} 件",
+    "countAlbum": "写真 {{n}} 枚",
+    "countMap": "位置あり {{n}} / {{total}} 件",
+    "countCanvas": "表示 {{shown}} / {{n}} 枚",
+    "scopeMenuCanvas": "表示中 · {{n}} 件",
+    "canvasCondsNote": "キャンバス上の探索条件は、先に記録セットとして保存してから審査・AI・書き出しへ渡します。",
+    "canvasNoPhotoNote": "キャンバスには写真のある記録だけを表示します（この範囲には写真のない記録が {{missing}} 件あります）。",
+    "selOnly": "選択した {{n}} 件だけ表示",
+    "bulkMenu": "一括操作",
+    "bulkTarget": "対象：現在の結果 {{n}} 件"
   },
   "table": {
     "area": "地区",
@@ -309,7 +339,35 @@
     "saving": "保存中…",
     "saveFailed": "保存に失敗しました。",
     "updated": "更新: {{time}}",
-    "detail": "記録の詳細"
+    "detail": "記録の詳細",
+    "viewSource": "元写真を見る",
+    "noSource": "元写真なし",
+    "place": "地点",
+    "editFields": "フィールドを編集",
+    "exploreSection": "色彩と関連",
+    "unsavedHint": "未保存の変更があります",
+    "outOfScope": "保存しました。この記録は現在の範囲に合わなくなったため、詳細を閉じると結果から外れます。",
+    "toReview": "審査へ",
+    "select": "記録を選択",
+    "selected": "選択中 ✓",
+    "export": "書き出し",
+    "ai": "AI 処理",
+    "continueRelations": "関連をたどる",
+    "noExplore": "この記録には分析できる写真がありません。",
+    "repColor": "代表色",
+    "colorfulness": "鮮やかさ",
+    "lightness": "明度",
+    "relations": "関連する写真（資料庫全体）",
+    "viewRelation": "この {{n}} 枚を見る",
+    "open": "記録を開く",
+    "mismatch": "表示中の記録が切り替わったため保存していません。開き直してから保存してください。",
+    "more": "その他",
+    "relWithin": "現在の範囲内",
+    "relWhole": "資料庫全体から",
+    "relScopedNote": "関連は資料庫全体から探します。現在の範囲内だけを見ることもできます。",
+    "relWholeNote": "関連は資料庫全体から探します。",
+    "viewRelationAll": "すべての {{n}} 枚を見る",
+    "viewRelationIn": "範囲内の {{n}} 枚だけ"
   },
   "import": {
     "title": "Dataset Package を取り込む",
@@ -529,7 +587,11 @@
     "runPhotos": "写真 ZIP を書き出す（{{n}} ファイル）",
     "runCsv": "CSV をダウンロード（{{n}} 件）",
     "geoDesc": "座標のある記録を GeoJSON の地点として書き出します（QGIS などで使えます）。",
-    "runGeo": "GeoJSON をダウンロード"
+    "runGeo": "GeoJSON をダウンロード",
+    "formatLabel": "書き出し形式",
+    "stepHow": "分類の方法",
+    "stepPreview": "グループの見込み",
+    "willMake": "{{zips}} グループ・{{files}} ファイルを作成"
   },
   "ai": {
     "title": "AI処理",
@@ -540,9 +602,9 @@
     "rule2": "AI が不確実（空値）を返した字段は書き込みません。",
     "rule3": "状態は pending → ai の昇格のみ。human-reviewed / final を AI 再実行で降格させません。",
     "rule4": "記録ごとに保存するため、取消・中断しても完了分は残ります（再実行しても二重追記されません）。",
-    "batchSelection": "1 · 対象の選択",
-    "taskType": "2 · タスク",
-    "previewRun": "3 · プレビュー / 実行",
+    "batchSelection": "対象の選択",
+    "taskType": "タスク",
+    "previewRun": "実行",
     "match": "{{n}} 件が該当",
     "loadError": "該当する記録を読み込めませんでした。",
     "selectedBatch": "選択中のバッチ: {{n}} 件",
@@ -577,12 +639,13 @@
     "offTitle": "AI 機能はオフです",
     "offBody": "設定で AI をオフにしているため、関連する入口を隠しています。既存の AI の結果と API キーはそのまま残り、実行中のジョブにも影響しません。",
     "offGoSettings": "設定を開く",
-    "offRunning": "実行中の AI タスク：{{done}} / {{total}}（AI をオフにしても止まりません）"
+    "offRunning": "実行中の AI タスク：{{done}} / {{total}}（AI をオフにしても止まりません）",
+    "model": "モデル"
   },
   "settings": {
     "title": "設定",
     "subtitle": "Console の設定。アカウント・権限なしの最小構成です。",
-    "language": "言語 (Language)",
+    "language": "言語",
     "languageDesc": "表示言語は即時に切り替わり、この端末に保存されます。",
     "languageNote": "データ本体は翻訳されません — 項目キー・CSV ヘッダー・API・内部状態値はそのままです。",
     "exportDir": "エクスポート先フォルダ",
@@ -595,7 +658,7 @@
     "current": "現在",
     "backendHelpPrefix": "Web/開発モードで変更するには",
     "backendHelpSuffix": "を設定して npm run dev を再起動してください。デスクトップ版では起動時に URL が自動注入されます。",
-    "aiTitle": "AI（バッチ処理）",
+    "aiTitle": "AI",
     "aiDesc": "AI 処理ページで使うプロバイダと API キー。キーはこの PC の settings.json にのみ保存され、読み出し API では返しません。",
     "aiProvider": "プロバイダ",
     "aiClaudeKey": "Claude キー",
@@ -654,30 +717,93 @@
     "fromDatabase": "ライブラリの現在の絞り込み",
     "count": "{{n}} 件",
     "reset": "すべての記録に戻す",
-    "selectedN": "手動で選んだ {{n}} 件"
+    "selectedN": "手動で選んだ {{n}} 件",
+    "recordSet": "記録セット",
+    "single": "記録 1 件 {{id}}",
+    "backAll": "すべての記録",
+    "backFiltered": "前の絞り込み",
+    "themeLabel": "「{{title}}」",
+    "relationLabel": "{{name}}",
+    "exploreLabel": "探索条件",
+    "selectionLabel": "選択した {{n}} 件",
+    "back": "{{label}}に戻る",
+    "backTitle": "前の範囲・表示・閲覧位置に戻す",
+    "origin": {
+      "theme": "テーマ",
+      "relation": "関連",
+      "explore": "",
+      "selection": ""
+    },
+    "removeSet": "この記録セットを外す（研究の絞り込みに戻る）",
+    "canvasConds": "探索条件",
+    "clearConds": "条件をクリア",
+    "materialize": "記録セットにする（{{n}} 件）",
+    "materializeTitle": "キャンバスに表示中の記録を記録セットとして保存し、写真・表・地図や審査・書き出しでも同じ記録を使います"
   },
   "explore": {
-    "scope": "範囲",
-    "scopeAll": "すべての記録",
-    "scopeDb": "ライブラリの絞り込み",
-    "scopeSel": "選択中の {{n}} 件",
-    "noFilter": "ライブラリで絞り込み条件がまだ設定されていません",
-    "count": "写真 {{n}} 枚",
     "phase": {
       "analyse": "写真の色を分析中 {{done}}/{{total}}",
       "layout": "レイアウトを計算中…",
       "atlas": "サムネイル集を作成中 {{done}}/{{total}}"
     },
     "failed": "探索データを作成できませんでした",
-    "preparing": "探索データをローカルで作成しています…",
     "loading": "読み込み中…",
     "firstTimeHint": "初回は全写真の分析に 1 分ほどかかります。2 回目以降はキャッシュを使うので数秒で終わります。",
     "rebuilding": "新しい範囲で作成中…",
     "empty": "この範囲には写真付きの記録がありません。",
-    "view": {
-      "explore": "写真を探索",
-      "themes": "テーマ",
-      "chain": "しりとり"
-    }
+    "notReady": "色彩と関連のデータを生成中です",
+    "canvas": "探索キャンバス"
+  },
+  "canvas": {
+    "group": "グループ",
+    "sort": "並び順",
+    "groups": {
+      "none": "グループなし（写真ウォール）",
+      "cn": "代表色",
+      "lang": "主要言語",
+      "rel": "多言語関係",
+      "dis": "ディスコース類型",
+      "car": "担体類型",
+      "pos": "放置位置",
+      "tmp": "時間性",
+      "q": "製作品質",
+      "day": "採集日"
+    },
+    "sorts": {
+      "spec": "色スペクトル",
+      "light": "明度",
+      "cf": "鮮やかさ",
+      "time": "採集日時",
+      "lang": "主要言語"
+    },
+    "modes": {
+      "wheel": "色相環",
+      "hl": "色相×明度"
+    },
+    "hint": "ホイールで拡大 · ドラッグで移動 · 写真をクリックで詳細",
+    "panel": "色とフィールドの絞り込み",
+    "fit": "表示をリセット",
+    "full": "全画面",
+    "exitFull": "全画面を終了",
+    "groupsLabel": "グループ",
+    "overview": "全体",
+    "enterGroup": "「{{name}}」に入る"
+  },
+  "canvasPage": {
+    "title": "関係キャンバス",
+    "hint": "ノードをクリックで関連を展開 · ダブルクリックで詳細 · 右側で関連の種類を切替"
+  },
+  "themes": {
+    "title": "テーマ",
+    "sub": "テーマは資料のまとまりへの入口です。開くと採用した条件と件数を示し、写真・地図・写真クラウドなどで見られます。",
+    "moreTitle": "もっと探索",
+    "canvasDesc": "1 枚の写真から、色・場所・言語・類型をたどって枝分かれしながら進みます。"
+  },
+  "guard": {
+    "title": "未保存の変更があります",
+    "body": "移動する前に、この記録の変更を保存しますか？",
+    "save": "保存して続ける",
+    "discard": "変更を破棄",
+    "cancel": "キャンセル"
   }
 }

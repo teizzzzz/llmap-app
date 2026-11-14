@@ -13,7 +13,7 @@ import type {
 import ScopeBanner from '../components/ScopeBanner';
 import { forgetJob, recallJob, rememberJob } from '../hooks/jobMemory';
 import useFilterOptions from '../hooks/useFilterOptions';
-import useSharedFilters, { scopeQuery, type ScopeKind } from '../hooks/useSharedFilters';
+import useSharedFilters, { hasAnyFilter, scopeQuery, type ScopeKind } from '../hooks/useSharedFilters';
 import { enumLabel } from '../lib/enumLabels';
 
 // 分類照片に使える枚挙字段（定義表のグループ順）。
@@ -200,12 +200,17 @@ export default function ExportPage() {
   const options = useFilterOptions();
 
   // 範囲: 資料庫の筛选結果（既定）か、手動で選んだ記録か。
-  const [scope, setScope] = useState<ScopeKind>(
-    () => (params.get('scope') === 'sel' && shared.selection.length ? 'sel' : 'db'));
+  const [scope, setScope] = useState<ScopeKind>(() => {
+    const s = params.get('scope');
+    if (s === 'rec' && params.get('record')) return 'rec';
+    return s === 'sel' && shared.selection.length ? 'sel' : 'db';
+  });
+  // 记录详情の「导出」: その 1 件（?record=）。
+  const [recordId] = useState<number | null>(() => (params.get('record') ? Number(params.get('record')) : null));
   useEffect(() => {
     if (params.get('scope')) setParams({}, { replace: true });
   }, [params, setParams]);
-  const filters: RecordsQuery = scopeQuery(scope, shared.filters, shared.selection);
+  const filters: RecordsQuery = scopeQuery(scope, shared.filters, shared.selection, recordId);
   const filtersKey = JSON.stringify(filters);
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -338,14 +343,18 @@ export default function ExportPage() {
         <h1>{t('export.title')}</h1>
       </div>
 
+      {/* 範囲は絞っているときだけ示す（全部の記録なら見出し下の説明は要らない）。 */}
+      {(scope !== 'db' || hasAnyFilter(filters)) && (
       <ScopeBanner
         filters={filters}
         datasets={options.datasets}
         count={total}
-        onReset={scope === 'db' ? () => navigate('/database') : undefined}
-        resetLabel={t('export.adjustScope')}
+        onReset={scope === 'db' ? () => navigate('/database') : scope === 'rec' ? () => setScope('db') : undefined}
+        resetLabel={scope === 'rec' ? t('export.useFilter') : t('export.adjustScope')}
+        single={scope === 'rec' ? `#${recordId}` : undefined}
       />
-      {shared.selection.length > 0 && (
+      )}
+      {scope !== 'rec' && shared.selection.length > 0 && (
         <div className="note-line">
           {scope === 'db'
             ? <>{t('export.selectionAvailable', { n: shared.selection.length })}
@@ -365,20 +374,22 @@ export default function ExportPage() {
         </div>
       )}
 
-      <div className="exp-tabs" role="tablist">
-        {TABS.map((k, i) => (
-          <button key={k} type="button" role="tab" aria-selected={prefs.tab === k}
-            className={`exp-tab${prefs.tab === k ? ' on' : ''}`} onClick={() => setPref('tab', k)}>
-            <b>{String(i + 1).padStart(2, '0')}</b>
-            <span>{t(`export.tab.${k}`)}</span>
-            <small>{t(`export.tabDesc.${k}`)}</small>
-          </button>
-        ))}
+      {/* 形式は互いに排他な選択（手順ではない）: 番号の無い分段切替。既定は分類照片。 */}
+      <div className="exp-format">
+        <div className="seg" role="tablist" aria-label={t('export.formatLabel')}>
+          {TABS.map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={prefs.tab === k}
+              className={prefs.tab === k ? 'on' : ''} onClick={() => setPref('tab', k)}>
+              {t(`export.tab.${k}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── 01 分類照片 ── */}
       {prefs.tab === 'split' && (
         <section className="card exp-panel">
+          <h3 className="exp-step">{t('export.stepHow')}</h3>
           <div className="exp-row">
             <span className="exp-k">{t('export.splitField')}</span>
             <select className="exp-select" value={prefs.splitField}
@@ -393,23 +404,18 @@ export default function ExportPage() {
                 ]} />
             )}
           </div>
-          <p className="exp-hint">
-            {isMulti
-              ? t(prefs.splitMode === 'combo' ? 'export.modeComboHint' : 'export.modeSingleHint',
-                { field: fieldLabel(prefs.splitField) })
-              : t('export.singleValueHint', { field: fieldLabel(prefs.splitField) })}
-          </p>
           {contentSeg}
 
+          <h3 className="exp-step">{t('export.stepPreview')}</h3>
           {splitError && <div className="error-box"><div className="hint">{splitError}</div></div>}
           {!split && !splitError && <div className="muted">{t('export.previewing')}</div>}
           {split && (
             <>
+              {/* 人が読む分類名と数を主に。ZIP 名は名前の下に小さく。 */}
               <table className="exp-table">
                 <thead>
                   <tr>
                     <th>{t('export.colGroup')}</th>
-                    <th>{t('export.colZip')}</th>
                     <th className="num">{t('export.colRecords')}</th>
                     <th className="num">{t('export.colFiles')}</th>
                     <th className="num">{t('export.colMissing')}</th>
@@ -418,41 +424,40 @@ export default function ExportPage() {
                 <tbody>
                   {split.groups.map((g) => (
                     <tr key={g.zipName}>
-                      <td>{valueLabel(g.value)}</td>
-                      <td className="mono dim">{g.zipName}</td>
+                      <td>
+                        <div className="exp-group">{valueLabel(g.value)}</div>
+                        <div className="exp-zip mono">{g.zipName}</div>
+                      </td>
                       <td className="num mono">{g.records}</td>
                       <td className="num mono">{g.files}</td>
-                      <td className={`num mono${g.missing ? ' warn' : ' dim'}`}>{g.missing}</td>
+                      <td className={`num mono${g.missing ? ' warn' : ' dim'}`}>{g.missing || '—'}</td>
                     </tr>
                   ))}
                   {split.groups.length === 0 && (
-                    <tr><td colSpan={5} className="muted">{t('export.noGroups')}</td></tr>
+                    <tr><td colSpan={4} className="muted">{t('export.noGroups')}</td></tr>
                   )}
                 </tbody>
               </table>
-              {/* 件数の読み方: 重複・未分類・欠落を言葉で説明する。 */}
-              <ul className="exp-notes">
-                <li>{t('export.sumLine', {
-                  records: split.recordCount, zips: zipCount, files: split.totalFiles,
-                })}</li>
-                {split.duplicateRecords > 0 && (
-                  <li>{t('export.dupLine', { n: split.duplicateRecords })}</li>
-                )}
-                {isMulti && prefs.splitMode === 'combo' && (
-                  <li>{t('export.comboLine')}</li>
-                )}
-                {split.unclassified > 0 && (
-                  <li className="warn">{t('export.unclassifiedLine', {
-                    n: split.unclassified, field: fieldLabel(prefs.splitField),
-                  })}</li>
-                )}
-                {missingSum > 0 && <li className="warn">{t('export.missingLine', { n: missingSum })}</li>}
-                <li className="dim">{t('export.dedupLine')}</li>
-              </ul>
+              {/* 注意が要るものだけ（未分類・欠落）。 */}
+              {(split.unclassified > 0 || missingSum > 0) && (
+                <ul className="exp-notes">
+                  {split.unclassified > 0 && (
+                    <li className="warn">{t('export.unclassifiedLine', {
+                      n: split.unclassified, field: fieldLabel(prefs.splitField),
+                    })}</li>
+                  )}
+                  {missingSum > 0 && <li className="warn">{t('export.missingLine', { n: missingSum })}</li>}
+                </ul>
+              )}
             </>
           )}
           {moreOptions(true)}
-          <div className="exp-actions">
+          {/* 書き出しボタンの横に、いつも「何組・何ファイルになるか」。 */}
+          <div className="exp-actions exp-sticky">
+            <span className="exp-summary">
+              {split ? t('export.willMake', { zips: zipCount, files: split.totalFiles }) : t('export.previewing')}
+            </span>
+            <span className="spacer" />
             <button className="btn primary" disabled={empty || !zipCount || splitJob.running}
               onClick={() => void splitJob.start(() => startPhotosSplitExport(
                 filters, prefs.content, prefs.naming, prefs.splitField, dir, prefs.splitMode))}>
@@ -480,7 +485,6 @@ export default function ExportPage() {
       {/* ── 02 完全データ包 ── */}
       {prefs.tab === 'package' && (
         <section className="card exp-panel">
-          <p className="exp-hint">{t('export.packageDesc')}</p>
           {moreOptions(false)}
           <div className="exp-actions">
             <button className="btn primary" disabled={empty || packageJob.running}
@@ -496,7 +500,6 @@ export default function ExportPage() {
       {prefs.tab === 'photos' && (
         <section className="card exp-panel">
           <h3 className="exp-h">{t('export.photosZipTitle')}</h3>
-          <p className="exp-hint">{t('export.photosZipDesc')}</p>
           {contentSeg}
           {photosPv && (
             <ul className="exp-notes">
@@ -521,7 +524,6 @@ export default function ExportPage() {
 
           <hr className="exp-sep" />
           <h3 className="exp-h">CSV</h3>
-          <p className="exp-hint">{t('export.csvNote')}</p>
           <div className="exp-actions">
             <button className="btn" disabled={empty || syncBusy} onClick={() => void download('csv')}>
               {t('export.runCsv', { n: total ?? 0 })}
@@ -533,7 +535,6 @@ export default function ExportPage() {
       {/* ── 04 地図データ ── */}
       {prefs.tab === 'geo' && (
         <section className="card exp-panel">
-          <p className="exp-hint">{t('export.geoDesc')}</p>
           <div className="exp-row">
             <span className="exp-k">{t('export.propsLabel')}</span>
             <Seg<'minimal' | 'full'> label={t('export.propsLabel')} value={prefs.geoProps}

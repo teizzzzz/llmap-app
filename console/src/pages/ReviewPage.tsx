@@ -11,7 +11,8 @@ import useSharedFilters, { scopeQuery, type ScopeKind } from '../hooks/useShared
 import { enumLabel } from '../lib/enumLabels';
 import { languageFilterValues } from '../lib/languageList';
 import { SelectDropdown } from '../components/Dropdown';
-import { QUEUE_TABS } from '../reviewStatus';
+import { PENDING_STATUSES, QUEUE_TABS } from '../reviewStatus';
+import { confirmLeave } from '../lib/unsavedGuard';
 
 // 内部値（API に渡る）。表示ラベルのみ翻訳する。
 const ENTRY_MODES = ['quick', 'standard', 'research'];
@@ -36,15 +37,29 @@ export default function ReviewPage() {
   // 資料庫から来たときの範囲: db = 筛选結果（空なら全部の記録）、sel = 手動選択。
   const [scope, setScope] = useState<ScopeKind | null>(() => {
     const s = params.get('scope');
-    return s === 'db' || s === 'sel' ? s : null;
+    return s === 'db' || s === 'sel' || (s === 'rec' && params.get('record')) ? s as ScopeKind : null;
   });
+  // 记录详情の「进入审核」: その 1 件（?record=）。
+  const [recordId] = useState<number | null>(() => (params.get('record') ? Number(params.get('record')) : null));
   const useDbScope = scope != null;
-  const scopeFilters = scope ? scopeQuery(scope, shared.filters, shared.selection) : {};
+  const scopeFilters = scope ? scopeQuery(scope, shared.filters, shared.selection, recordId) : {};
   useEffect(() => {
     if (params.get('scope')) setParams({}, { replace: true });
   }, [params, setParams]);
 
   const [tab, setTab] = useState('pending'); // 既定: raw/submitted/ai_drafted(+needs_review)
+  const [singleLabel, setSingleLabel] = useState('');
+  // 1 件の審核: その記録の状態のタブで開く（審核済みの記録も见直せるように）。
+  useEffect(() => {
+    if (scope !== 'rec' || recordId == null) return;
+    getRecords({ ids: [recordId], page: 1, pageSize: 1 }).then((r) => {
+      const it = r.items[0];
+      if (!it) return;
+      const st = String(it.DataStatus ?? '');
+      setTab(PENDING_STATUSES.includes(st) ? 'pending' : QUEUE_TABS.some((x) => x.key === st) ? st : 'pending');
+      setSingleLabel(String(it.DisplayID || it.SignID));
+    }).catch(() => {});
+  }, [scope, recordId]);
   const [filters, setFilters] = useState<QueueFilters>({});
   const [items, setItems] = useState<RecordItem[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -58,10 +73,8 @@ export default function ReviewPage() {
     try { localStorage.setItem(QUEUE_OPEN_KEY, queueOpen ? '1' : '0'); } catch { /* 表示は切替わる */ }
   }, [queueOpen]);
 
-  // 未保存の変更がある間の記録切替を保護する（workspace から通知される）。
-  const dirtyRef = useRef(false);
-  const confirmLeave = () =>
-    !dirtyRef.current || window.confirm(t('review.confirmDiscard'));
+  // 未保存の保護は共通の確認（保存して続ける／破棄／キャンセル）。
+  const leave = () => confirmLeave('page');
 
   const statuses =
     QUEUE_TABS.find((tb) => tb.key === tab)?.statuses ?? QUEUE_TABS[0].statuses;
@@ -71,8 +84,13 @@ export default function ReviewPage() {
     ? { ...scopeFilters, dataStatus: undefined }
     : filters;
 
+  // 古い応答で新しい結果を上書きしない（タブ・範囲を続けて変えたとき）。
+  const fetchSeq = useRef(0);
   const fetchQueue = useCallback(
     (selectFirst: boolean) => {
+      // 1 件の審核は、その記録の状態のタブが決まってから読む。
+      if (scope === 'rec' && !singleLabel) return;
+      const seq = ++fetchSeq.current;
       setError(null);
       getRecords({
         ...base,
@@ -81,6 +99,7 @@ export default function ReviewPage() {
         pageSize: QUEUE_PAGE_SIZE,
       })
         .then((res) => {
+          if (seq !== fetchSeq.current) return;
           setItems(res.items);
           setTotal(res.total);
           if (selectFirst) {
@@ -88,12 +107,13 @@ export default function ReviewPage() {
           }
         })
         .catch((e: unknown) => {
+          if (seq !== fetchSeq.current) return;
           setItems(null);
           setError(e instanceof ApiError ? e.message : String(e));
         });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, tab, scope, shared.filters, shared.selection],
+    [filters, tab, scope, shared.filters, shared.selection, singleLabel],
   );
   useEffect(() => fetchQueue(true), [fetchQueue]);
 
@@ -111,21 +131,22 @@ export default function ReviewPage() {
     fetchQueue(false);
   };
 
-  const select = (id: number) => {
-    if (id === selectedId || !confirmLeave()) return;
-    dirtyRef.current = false;
+  const select = async (id: number) => {
+    if (id === selectedId || !(await leave())) return;
     setSelectedId(id);
   };
 
-  const patchFilters = (p: Partial<QueueFilters>) =>
+  const patchFilters = async (p: Partial<QueueFilters>) => {
+    if (!(await leave())) return;
     setFilters((f) => ({ ...f, ...p }));
+  };
 
   // 前・次（J / K と操作欄のボタンで共通）。
   const list = items ?? [];
   const index = list.findIndex((r) => r.id === selectedId);
   const move = (d: 1 | -1) => {
     const next = list[index + d];
-    if (next) select(next.id);
+    if (next) void select(next.id);
   };
   const moveRef = useRef(move);
   moveRef.current = move;
@@ -171,9 +192,9 @@ export default function ReviewPage() {
           datasets={datasets}
           count={total}
           countLabel={t('review.scopeCount', { tab: tabLabel, n: total })}
-          onReset={() => {
-            if (!confirmLeave()) return;
-            dirtyRef.current = false;
+          single={scope === 'rec' ? singleLabel || String(recordId) : undefined}
+          onReset={async () => {
+            if (!(await leave())) return;
             setScope(null);
           }}
           resetLabel={t('review.scopeReset')}
@@ -186,14 +207,14 @@ export default function ReviewPage() {
           aria-label={t(queueOpen ? 'review.hideQueue' : 'review.showQueue')} aria-pressed={queueOpen}>
           {queueOpen ? '⟨' : '☰'}
         </button>
-        <div className="chip-row">
+        <div className="tabs" role="tablist">
           {QUEUE_TABS.map((tb) => (
             <button
               key={tb.key}
-              className={`chip${tab === tb.key ? ' on' : ''}`}
-              onClick={() => {
-                if (!confirmLeave()) return;
-                dirtyRef.current = false;
+              type="button" role="tab" aria-selected={tab === tb.key}
+              className={`tab${tab === tb.key ? ' on' : ''}`}
+              onClick={async () => {
+                if (!(await leave())) return;
                 setTab(tb.key);
               }}
             >
@@ -241,12 +262,12 @@ export default function ReviewPage() {
 
       {!error && items != null && items.length > 0 && (
         <div className={`rv-main${queueOpen ? '' : ' queue-closed'}`}>
-          {queueOpen && <ReviewQueue items={items} selectedId={selectedId} onSelect={select} />}
+          {queueOpen && <ReviewQueue items={items} selectedId={selectedId} onSelect={(id) => void select(id)} />}
           {selectedId != null ? (
             <ReviewWorkspace
               recordId={selectedId}
               schema={schema}
-              onDirtyChange={(d) => { dirtyRef.current = d; }}
+              onDirtyChange={() => {}}
               onActioned={handleActioned}
               nav={{
                 position,

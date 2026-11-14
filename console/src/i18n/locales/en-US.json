@@ -12,10 +12,11 @@
     "export": "Export",
     "settings": "Settings",
     "overview": "Overview",
-    "mode": "Mode",
-    "research": "Research",
-    "explore": "Explore",
-    "exploreNote": "Open a photo and choose “Open in Research” to view or edit its record."
+    "themes": "Themes",
+    "canvas": "Relation canvas",
+    "fold": "Collapse sidebar",
+    "unfold": "Expand sidebar",
+    "home": "Home"
   },
   "topbar": {
     "checking": "checking backend…",
@@ -238,7 +239,21 @@
     "otherLanguages": "Other · unknown",
     "unrecorded": "Not recorded",
     "legacy": "Legacy data",
-    "missingFiles": "Missing files {{n}}"
+    "missingFiles": "Missing files {{n}}",
+    "heroSub": "{{datasets}} datasets · {{members}} collectors · {{langs}} languages",
+    "continueReview": "Continue review",
+    "progress": "Progress",
+    "progressDone": "{{done}} / {{total}} done ({{pct}}%)",
+    "p": {
+      "verified": "Verified",
+      "reviewed": "Reviewed",
+      "waiting": "Waiting",
+      "rejected": "Rejected"
+    },
+    "missingShort": "Missing files",
+    "team": "Team",
+    "teamCount": "{{n}} collectors",
+    "openMember": "View this collector’s records"
   },
   "database": {
     "title": "Library",
@@ -272,9 +287,9 @@
     "openRecord": "Open record details",
     "zoom": "View photo larger",
     "scopeMenu": "Current results · {{n}}",
-    "scopeReview": "Review the {{n}} filtered records",
-    "scopeAi": "Run AI on the {{n}} filtered records",
-    "scopeExport": "Export the {{n}} filtered records",
+    "scopeReview": "Review the {{n}} current results",
+    "scopeAi": "AI-process the {{n}} current results",
+    "scopeExport": "Export the {{n}} current results",
     "albumNoPhotoNote": "The photo view shows the {{shown}} records with photos; {{missing}} more have no photo.",
     "showNoPhoto": "Show records without photos in the table",
     "selectPage": "Select all on this page",
@@ -285,8 +300,23 @@
     "selReview": "Review {{n}} selected",
     "selAi": "Run AI on {{n}} selected",
     "selExport": "Export {{n}} selected",
-    "scopeExplore": "Explore the {{n}} filtered records",
-    "selExplore": "Explore {{n}} selected"
+    "views": {
+      "album": "Photos",
+      "table": "Table",
+      "map": "Map",
+      "cloud": "Photo cloud",
+      "color": "Color"
+    },
+    "countTable": "{{n}} records",
+    "countAlbum": "{{n}} photos",
+    "countMap": "{{n}} / {{total}} with location",
+    "countCanvas": "showing {{shown}} / {{n}}",
+    "scopeMenuCanvas": "Shown on canvas · {{n}}",
+    "canvasCondsNote": "Canvas conditions are saved as a record set first, then passed to review, AI or export.",
+    "canvasNoPhotoNote": "The canvas shows only records with photos ({{missing}} records in this scope have none).",
+    "selOnly": "Show only the {{n}} selected",
+    "bulkMenu": "Bulk actions",
+    "bulkTarget": "Target: {{n}} current results"
   },
   "table": {
     "area": "Area",
@@ -309,7 +339,35 @@
     "saving": "Saving…",
     "saveFailed": "Save failed.",
     "updated": "updated {{time}}",
-    "detail": "Record details"
+    "detail": "Record details",
+    "viewSource": "View original",
+    "noSource": "No original",
+    "place": "Place",
+    "editFields": "Edit fields",
+    "exploreSection": "Color & relations",
+    "unsavedHint": "Unsaved changes",
+    "outOfScope": "Saved. This record no longer matches the current scope and will drop out of the results when you close it.",
+    "toReview": "Review",
+    "select": "Select",
+    "selected": "Selected ✓",
+    "export": "Export",
+    "ai": "AI process",
+    "continueRelations": "Explore relations",
+    "noExplore": "This record has no photo to analyse.",
+    "repColor": "Main color",
+    "colorfulness": "Colorfulness",
+    "lightness": "Lightness",
+    "relations": "Related photos (whole library)",
+    "viewRelation": "View these {{n}}",
+    "open": "Open record",
+    "mismatch": "The shown record changed, so nothing was saved. Reopen it and save again.",
+    "more": "More",
+    "relWithin": "within current scope",
+    "relWhole": "from the whole library",
+    "relScopedNote": "Relations are found across the whole library; you can view only those in the current scope.",
+    "relWholeNote": "Relations are found across the whole library.",
+    "viewRelationAll": "View all {{n}}",
+    "viewRelationIn": "Only {{n}} in scope"
   },
   "import": {
     "title": "Import Dataset Package",
@@ -529,7 +587,11 @@
     "runPhotos": "Export photo ZIP ({{n}} files)",
     "runCsv": "Download CSV ({{n}} records)",
     "geoDesc": "Exports records with coordinates as GeoJSON points (for QGIS and other GIS tools).",
-    "runGeo": "Download GeoJSON"
+    "runGeo": "Download GeoJSON",
+    "formatLabel": "Format",
+    "stepHow": "How to split",
+    "stepPreview": "Group preview",
+    "willMake": "Will create {{zips}} groups, {{files}} files"
   },
   "ai": {
     "title": "AI Processing",
@@ -540,9 +602,9 @@
     "rule2": "Fields the AI is unsure about (empty values) are never written.",
     "rule3": "Status is only promoted pending → ai; human-reviewed / final are never demoted by a re-run.",
     "rule4": "Each record is saved individually — cancelling keeps completed work, and re-running never duplicates appends.",
-    "batchSelection": "1 · Batch selection",
-    "taskType": "2 · Task",
-    "previewRun": "3 · Preview / Run",
+    "batchSelection": "Batch selection",
+    "taskType": "Task",
+    "previewRun": "Run",
     "match": "{{n}} records match",
     "loadError": "Could not load matching records.",
     "selectedBatch": "Selected batch: {{n}} records",
@@ -577,7 +639,8 @@
     "offTitle": "AI features are turned off",
     "offBody": "AI is turned off in Settings, so its entry points are hidden. Existing AI results and API keys are kept, and running jobs are not affected.",
     "offGoSettings": "Open Settings",
-    "offRunning": "AI job still running: {{done}} / {{total}} (turning AI off does not stop it)"
+    "offRunning": "AI job still running: {{done}} / {{total}} (turning AI off does not stop it)",
+    "model": "Model"
   },
   "settings": {
     "title": "Settings",
@@ -595,7 +658,7 @@
     "current": "Current",
     "backendHelpPrefix": "To change it in web/dev mode, set",
     "backendHelpSuffix": "and restart npm run dev. The desktop app injects the URL automatically at startup.",
-    "aiTitle": "AI (batch processing)",
+    "aiTitle": "AI",
     "aiDesc": "Provider and API keys used by the AI Processing page. Keys are stored only in settings.json on this machine and never returned by the read API.",
     "aiProvider": "Provider",
     "aiClaudeKey": "Claude key",
@@ -654,30 +717,93 @@
     "fromDatabase": "Current Library filter",
     "count": "{{n}} records",
     "reset": "Use all records",
-    "selectedN": "{{n}} selected records"
+    "selectedN": "{{n}} selected records",
+    "recordSet": "Record set",
+    "single": "Single record {{id}}",
+    "backAll": "all records",
+    "backFiltered": "previous filters",
+    "themeLabel": "“{{title}}”",
+    "relationLabel": "{{name}}",
+    "exploreLabel": "Canvas conditions",
+    "selectionLabel": "{{n}} selected",
+    "back": "Back to {{label}}",
+    "backTitle": "Restore the previous scope, view and position",
+    "origin": {
+      "theme": "Theme",
+      "relation": "Related",
+      "explore": "",
+      "selection": ""
+    },
+    "removeSet": "Remove this record set (back to research filters)",
+    "canvasConds": "Canvas conditions",
+    "clearConds": "Clear conditions",
+    "materialize": "Save as record set ({{n}})",
+    "materializeTitle": "Save the records shown on the canvas as a record set, used by photos, table, map, review and export"
   },
   "explore": {
-    "scope": "Scope",
-    "scopeAll": "All records",
-    "scopeDb": "Library filter",
-    "scopeSel": "{{n}} selected",
-    "noFilter": "No filter is set in the Library yet",
-    "count": "{{n}} photos",
     "phase": {
       "analyse": "Analysing colors {{done}}/{{total}}",
       "layout": "Computing layout…",
       "atlas": "Building thumbnail atlas {{done}}/{{total}}"
     },
     "failed": "Could not build the explore data",
-    "preparing": "Building explore data locally…",
     "loading": "Loading…",
     "firstTimeHint": "The first run analyses every photo (about a minute). Later runs use the cache and take seconds.",
     "rebuilding": "Building for the new scope…",
     "empty": "No records with photos in this scope.",
-    "view": {
-      "explore": "Photos",
-      "themes": "Themes",
-      "chain": "Chain"
-    }
+    "notReady": "Color and relation data is still being prepared",
+    "canvas": "Explore canvas"
+  },
+  "canvas": {
+    "group": "Group by",
+    "sort": "Sort",
+    "groups": {
+      "none": "No grouping (photo wall)",
+      "cn": "Main color",
+      "lang": "Main language",
+      "rel": "Multilingual relation",
+      "dis": "Discourse type",
+      "car": "Carrier type",
+      "pos": "Placement",
+      "tmp": "Temporality",
+      "q": "Production quality",
+      "day": "Capture day"
+    },
+    "sorts": {
+      "spec": "Spectrum",
+      "light": "Lightness",
+      "cf": "Colorfulness",
+      "time": "Capture time",
+      "lang": "Main language"
+    },
+    "modes": {
+      "wheel": "Color wheel",
+      "hl": "Hue × lightness"
+    },
+    "hint": "Scroll to zoom · drag to pan · click a photo for details",
+    "panel": "Color & field filters",
+    "fit": "Reset view",
+    "full": "Full screen",
+    "exitFull": "Exit full screen",
+    "groupsLabel": "Groups",
+    "overview": "Overview",
+    "enterGroup": "Enter “{{name}}”"
+  },
+  "canvasPage": {
+    "title": "Relation canvas",
+    "hint": "Click a node to expand · double-click for details · switch relation type on the right"
+  },
+  "themes": {
+    "title": "Themes",
+    "sub": "Each theme opens a group of records. It shows the conditions it uses and the result count, and you can view it as photos, map, photo cloud and more.",
+    "moreTitle": "Explore more",
+    "canvasDesc": "Start from one photo and follow color, place, language and type, branching as you go."
+  },
+  "guard": {
+    "title": "Unsaved changes",
+    "body": "Save the changes to this record before leaving?",
+    "save": "Save and continue",
+    "discard": "Discard changes",
+    "cancel": "Cancel"
   }
 }

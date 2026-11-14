@@ -1281,3 +1281,49 @@ def test_explore_build_bundle_and_empty_scope():
     assert st["status"] == "done" and st["count"] == 0 and not st["key"]
     # 不正な key は拒否
     assert client.get("/explore/bundles/bad-key/data.js").status_code == 400
+    # 研究字段の編集: 見た目の key は変わらず（色の再計算・atlas の作り直しなし）、
+    # data.js（中身）と /explore/meta は最新の値になる。
+    st = _wait_explore(client.post("/explore/build", json={"ids": ids}).json()["jobId"])
+    key0 = st["key"]
+    shown = json.loads(client.get(f"/explore/bundles/{key0}/data.js").text[len("window.LLV_DATA = "):-1])
+    rid = shown["records"][0]["rid"]      # 写真の読める記録
+    assert client.patch(f"/records/{rid}", json={"主要言語": "韓国語", "_status": "human-reviewed"}).status_code == 200
+    st = _wait_explore(client.post("/explore/build", json={"ids": ids}).json()["jobId"])
+    assert st["key"] == key0 and st["count"] == 2
+    data = json.loads(client.get(f"/explore/bundles/{key0}/data.js").text[len("window.LLV_DATA = "):-1])
+    rec0 = next(x for x in data["records"] if x["rid"] == rid)
+    assert rec0["main"] == ["ko"] and rec0["st"] == "human-reviewed" and rec0["pal"]
+    meta = client.post("/explore/meta", json={"ids": [rid, 999999]}).json()["records"]
+    assert len(meta) == 1 and meta[0]["rid"] == rid and meta[0]["main"] == ["ko"]
+
+
+def test_record_sets_scope_everywhere():
+    """記録集合: 登録した id 群を setKey で /records・/map/records・/records/ids・導出前集計に使える。
+    同じ id 群は同じ key。不明な key は 404（黙って全件にしない）。"""
+    items = client.get("/records", params={"pageSize": 5}).json()["items"]
+    ids = [x["id"] for x in items[:3]]
+    r = client.post("/record-sets", json={"ids": ids + [ids[0], "x"]})
+    assert r.status_code == 200
+    key = r.json()["key"]
+    assert r.json()["count"] == 3
+    assert client.post("/record-sets", json={"ids": list(reversed(ids))}).json()["key"] == key
+    assert sorted(client.get(f"/record-sets/{key}").json()["ids"]) == sorted(ids)
+    got = client.get("/records", params={"setKey": key, "pageSize": 50}).json()
+    assert got["total"] == 3 and {x["id"] for x in got["items"]} == set(ids)
+    # 他の条件と AND
+    one = client.get("/records", params={"setKey": key, "ids": str(ids[0])}).json()
+    assert one["total"] == 1
+    assert sorted(client.post("/records/ids", json={"setKey": key}).json()["ids"]) == sorted(ids)
+    for m in client.get("/map/records", params={"setKey": key}).json():
+        assert m["id"] in ids
+    assert client.get("/records", params={"setKey": "0123456789abcdef"}).status_code == 404
+    assert client.get("/records", params={"setKey": "../x"}).status_code == 400
+
+
+def test_map_records_follow_research_filters():
+    """地図視図は資料庫と同じ筛选（検索語・研究字段・状態）で絞れる。"""
+    all_gps = client.get("/map/records").json()
+    some = client.get("/map/records", params={"q": "no-such-sign-zzz"}).json()
+    assert some == [] and isinstance(all_gps, list)
+    st = client.get("/map/records", params={"status": "human-reviewed"}).json()
+    assert all(x["id"] in {y["id"] for y in all_gps} for x in st)

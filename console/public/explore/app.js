@@ -6,6 +6,11 @@
   const TH = window.LLV_THUMBS || 'thumbs/';
   const R = D.records;
   const N = R.length;
+  // 桌面の研究台に埋め込まれているか。埋め込みでは研究台が範囲・視図・詳情を受け持ち、
+  // ここは「画布」（照片云・色彩・主题・関係画布）に徹する（postMessage で連携）。
+  const EMBED = !!window.LLV_EMBED && window.parent !== window;
+  const post = (msg) => { if (EMBED) window.parent.postMessage(msg, '*'); };
+  const IDX = new Map(R.map((r, i) => [r.rid, i]));
   const $ = (id) => document.getElementById(id);
   const rand = (a, b) => a + Math.random() * (b - a);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -115,9 +120,10 @@
 
   // ================================================================ relations ("接下来探索什么？")
   const CAP = R.map((r) => r.id.replace(/-[a-z]$/, ''));
-  const groupBy = (keys) => { const m = new Map(); keys.forEach((k, i) => { if (!m.has(k)) m.set(k, []); m.get(k).push(i); }); return m; };
+  const groupBy = (keys, m = new Map()) => { m.clear(); keys.forEach((k, i) => { if (R[i].gone) return; if (!m.has(k)) m.set(k, []); m.get(k).push(i); }); return m; };
   const capMap = groupBy(CAP);
-  const LK = R.map((r) => r.main.slice().sort().join('+') + '|' + r.aux.slice().sort().join('+'));
+  const lkOf = (r) => r.main.slice().sort().join('+') + '|' + r.aux.slice().sort().join('+');
+  const LK = R.map(lkOf);
   const lkMap = groupBy(LK);
   const TK = R.map((r) => r.f.dis + '|' + r.f.car);
   const tkMap = groupBy(TK);
@@ -143,7 +149,7 @@
     if (relCache.has(i)) return relCache.get(i);
     const r = R[i], out = [];
     out.push({
-      key: 'color', title: () => t('r.color.t'), sub: () => t('r.color.s', { n: r.nb.length }), all: r.nb.slice(),
+      key: 'color', title: () => t('r.color.t'), sub: () => t('r.color.s', { n: r.nb.length }), all: r.nb.filter((j) => !R[j].gone),
       tag: (j) => t('r.color.tag', { c: cnl(R[j].cn) }), link: (j) => ({ dot: sharedColor(i, j) }),
     });
     const sib = (capMap.get(CAP[i]) || []).filter((j) => j !== i);
@@ -152,11 +158,11 @@
       tag: () => t('r.scene.tag'), link: () => ({ text: t('r.scene.link') }),
     });
     const near = [];
-    for (let j = 0; j < N; j++) if (CAP[j] !== CAP[i]) near.push([meters(i, j), j]);
+    for (let j = 0; j < N; j++) if (CAP[j] !== CAP[i] && !R[j].gone && R[j].lat != null) near.push([meters(i, j), j]);
     near.sort((a, b) => a[0] - b[0]);
     const nearSel = near.slice(0, 24);
-    const radius = Math.max(5, Math.round(nearSel[nearSel.length - 1][0]));
-    out.push({
+    const radius = nearSel.length ? Math.max(5, Math.round(nearSel[nearSel.length - 1][0])) : 0;
+    if (nearSel.length && r.lat != null) out.push({
       key: 'near', title: () => t('r.near.t'), sub: () => t('r.near.s', { m: radius, n: nearSel.length }), all: nearSel.map((x) => x[1]),
       tag: (j) => t('r.near.tag', { m: Math.round(meters(i, j)) }), link: (j) => ({ text: t('r.near.link', { m: Math.round(meters(i, j)) }) }),
     });
@@ -174,7 +180,7 @@
     });
     if (r.main.length) {
       const L0 = r.main[0], cands = [];
-      for (let j = 0; j < N; j++) if (j !== i && R[j].main[0] === L0 && R[j].chr) cands.push([palDist(i, j), j]);
+      for (let j = 0; j < N; j++) if (j !== i && !R[j].gone && R[j].main[0] === L0 && R[j].chr) cands.push([palDist(i, j), j]);
       cands.sort((a, b) => b[0] - a[0]);
       if (cands.length) out.push({
         key: 'contrast', title: () => t('r.contrast.t'), sub: () => t('r.contrast.s', { x: langName(L0) }), all: shuffle(cands.slice(0, 60).map((x) => x[1]), i * 31 + 3).slice(0, 24),
@@ -225,6 +231,12 @@
     selected: null, trail: [], panel: false,
   };
   const active = new Uint8Array(N).fill(1);
+  // 研究台の範囲（資料庫の筛选・記録集合・選択）。範囲外は描かない（色彩でも消す）。
+  // 探索内の条件（色・言語・関連など）は範囲の内側をさらに絞る（色彩では薄く残す）。
+  const base = new Uint8Array(N);
+  for (let i = 0; i < N; i++) base[i] = R[i].gone ? 0 : 1;
+  // 研究台で手動選択した記録（小さな印を描く）。
+  let checked = new Set();
 
   // ================================================================ filtering
   function relSet() {
@@ -234,6 +246,7 @@
   }
   const qTokens = () => S.q.toLowerCase().split(/\s+/).filter(Boolean);
   function passes(i, except, rs, toks) {
+    if (!base[i]) return false;
     for (const k in S.sel) {
       if (k === except) continue;
       const set = S.sel[k];
@@ -266,6 +279,42 @@
     renderHeading(n);
     if (exploreReady) layout(opts.keepCamera);
     writeHash();
+    tellState(n);
+  }
+  // 研究台へ: 表示中の件数と、探索内の条件（研究台の筛选栏に「探索条件」として出す）。
+  function conditions() {
+    const out = [];
+    if (S.q) out.push({ id: 'q', label: `“${S.q}”` });
+    for (const [k, set] of Object.entries(S.sel)) for (const v of set) {
+      const d = DIM[k];
+      out.push({ id: `sel:${k}:${v}`, label: `${d.label}: ${fmtVal(d, v)}`, dot: d.sw ? d.sw(v) : null });
+    }
+    for (const rg of RANGES) if (S.range[rg.key]) {
+      const [lo, hi] = S.range[rg.key];
+      out.push({ id: `range:${rg.key}`, label: `${rg.label} ${Math.round(lo * 100)}–${Math.round(hi * 100)}` });
+    }
+    if (S.pick) out.push({ id: 'pick', label: t('chip.pick'), dot: S.pick.hex });
+    if (S.rel) out.push({ id: 'rel', label: `${relName(S.rel.key)} · ${R[S.rel.i].d.slice(-10)}` });
+    return out;
+  }
+  function tellState(n) {
+    if (!EMBED) return;
+    if (n == null) { n = 0; for (let i = 0; i < N; i++) n += active[i]; }
+    let inBase = 0; for (let i = 0; i < N; i++) inBase += base[i];
+    const groups = S.mode === 'group' ? groupBlocks.map((g) => ({ v: g.v, label: fmtVal(g.d, g.v), n: g.n, sw: g.d.sw ? g.d.sw(g.v) : null, ph: R[g.rep].ph })) : [];
+    post({ type: 'llmap:state', shown: n, inScope: inBase, conds: conditions(), mode: S.mode, group: S.group, sort: S.sort, panel: S.panel,
+      groups, focus: focusIdx >= 0 && groupBlocks[focusIdx] ? groupBlocks[focusIdx].v : null });
+  }
+  function clearCondition(id) {
+    if (id === 'q') { S.q = ''; $('search').value = ''; }
+    else if (id === 'pick') S.pick = null;
+    else if (id === 'rel') S.rel = null;
+    else if (id.startsWith('range:')) delete S.range[id.slice(6)];
+    else if (id.startsWith('sel:')) {
+      const [, k, ...rest] = id.split(':');
+      const v = rest.join(':');
+      if (S.sel[k]) { S.sel[k].delete(v); if (!S.sel[k].size) delete S.sel[k]; }
+    }
   }
 
   function renderHeading(n) {
@@ -281,6 +330,7 @@
     }
     let scenes = new Set(), langs = new Set();
     for (let i = 0; i < N; i++) if (active[i]) { scenes.add(CAP[i]); R[i].main.forEach((l) => langs.add(l)); }
+    if (EMBED) return;
     $('ctx-t').textContent = title;
     $('ctx-s').innerHTML = t('head.sub', { n: n.toLocaleString(), s: scenes.size, l: langs.size });
   }
@@ -354,6 +404,7 @@
     const BINS = 28;
     const all = new Array(BINS).fill(0), cur = new Array(BINS).fill(0);
     for (let i = 0; i < N; i++) {
+      if (!base[i]) continue;
       const b = Math.min(BINS - 1, Math.floor(R[i][rg.key] * BINS));
       all[b]++;
       if (passes(i, rg.key, rs, toks)) cur[b]++;
@@ -410,7 +461,8 @@
     document.body.classList.toggle('panel-open', open);
     $('toggle-filter').classList.toggle('on', open);
     if (open) renderCharts();
-    if (exploreReady) layout();
+    if (exploreReady) layout(true);
+    tellState();
   }
   $('toggle-filter').onclick = () => setPanel(!S.panel);
 
@@ -503,6 +555,8 @@
   const navH = () => parseInt(getComputedStyle(document.body).getPropertyValue('--nav-h')) || 76;
   function safeRect() {
     const mobile = W < 720;
+    // 研究台の操作（上の分組・下の組の帯）に隠れないよう余白を取る。
+    if (EMBED) return { l: S.panel && !mobile ? 340 : 24, r: 24, t: 60, b: S.mode === 'group' ? 72 : 32 };
     return {
       l: S.panel && !mobile ? 348 : 28,
       r: !$('detail').hidden && !mobile ? 428 : 28,
@@ -542,9 +596,14 @@
 
   const cloudScore = (i) => R[i].cf * 0.7 + (R[i].chr ? 0.3 : 0) + (R[i].pal[R[i].rep][1] || 0) * 0.2;
 
+  // 照片云の分組（全貌 → 分組 → 写真 の 3 段の見方）。focus 中は他の組を薄くする。
+  let groupBlocks = [];
+  const groupOf = new Int32Array(N).fill(-1);
+  let focusIdx = -1;
   function layout(keepCamera) {
     for (let i = 0; i < N; i++) { from.x[i] = cur.x[i]; from.y[i] = cur.y[i]; from.a[i] = cur.a[i]; from.s[i] = cur.s[i]; }
     labels = [];
+    groupBlocks = []; groupOf.fill(-1); focusIdx = -1;
     const ids = [];
     for (let i = 0; i < N; i++) if (active[i]) ids.push(i);
     const sr = safeRect();
@@ -594,23 +653,30 @@
       for (const sh of shelves) {
         let x = Math.round((rowW - (sh.w - GX)) / 2);
         for (const b of sh.items) {
+          const gi = groupBlocks.length;
           b.items.forEach((i, k) => {
             to.x[i] = x + (k % b.cols); to.y[i] = y + Math.floor(k / b.cols); to.a[i] = 1;
             delay[i] = (k / b.items.length) * STAGGER;
+            groupOf[i] = gi;
           });
-          if (multi) labels.push({ x, y, v: b.v, n: b.items.length, d });
+          let rep = b.items[0];
+          for (const i of b.items) if (cloudScore(i) > cloudScore(rep)) rep = i;
+          groupBlocks.push({ v: b.v, x, y, w: b.cols, h: b.rows, n: b.items.length, rep, d });
+          if (multi) labels.push({ x, y, v: b.v, n: b.items.length, d, rep });
           x += b.w + GX;
         }
         y += sh.h + GY;
       }
       hideInactive();
     } else {
+      const lp = S.mode === 'wheel' || S.mode === 'hl' ? localGrid(S.mode) : null;
       for (let i = 0; i < N; i++) {
         let p;
-        if (S.mode === 'wheel') p = R[i].wh;
+        if (lp && lp.has(i)) p = lp.get(i);
+        else if (S.mode === 'wheel') p = R[i].wh;
         else if (S.mode === 'hl') p = R[i].hl;
         else { mapPos = mapPos || computeMapPos(); p = mapPos[i]; }
-        to.x[i] = p[0]; to.y[i] = p[1]; to.a[i] = active[i] ? 1 : DIM_A;
+        to.x[i] = p[0]; to.y[i] = p[1]; to.a[i] = !base[i] ? 0 : active[i] ? 1 : DIM_A;
         delay[i] = (R[i].sp / N) * STAGGER;
       }
     }
@@ -618,7 +684,74 @@
     labelsEl.replaceChildren(); labelsEl.dataset.k = '';
     if (!keepCamera) fitCamera();
     requestDraw();
+    if (exploreReady) setTimeout(() => tellState(), 0);
   }
+
+  // 範囲（研究台の筛选・記録集合）が資料庫の一部なら、色轮・色相×明度をその記録だけで
+  // 並べ直す（全体の配置のままだと小さな範囲は疎らで小さくなる）。backend と同じ式・
+  // 同じ「近い組から空いている格子へ」の割当。大きすぎる範囲は全体の配置を使う。
+  const gridCache = new Map();
+  let wheelR = 0;
+  function localGrid(mode) {
+    const ids = [];
+    for (let i = 0; i < N; i++) if (base[i]) ids.push(i);
+    if (ids.length === 0 || ids.length >= N - countGone() || ids.length > 1200) { if (mode === 'wheel') wheelR = 0; return null; }
+    const key = mode + ':' + ids.length + ':' + ids[0] + ':' + ids[ids.length - 1] + ':' + ids[ids.length >> 1];
+    if (gridCache.has(key)) { const c = gridCache.get(key); if (mode === 'wheel') wheelR = c.r; return c.pos; }
+    const n = ids.length;
+    const repOf = (i) => { const q = R[i].pal[R[i].rep]; return { L: R[i].chr ? q[2] : R[i].L, C: Math.hypot(q[3], q[4]), h: R[i].hue }; };
+    let pts, cells, rr = 0;
+    if (mode === 'wheel') {
+      pts = ids.map((i) => {
+        const c = repOf(i);
+        if (!R[i].chr) return [0, (0.5 - c.L) * 0.36];
+        const r = 0.28 + 0.72 * Math.min(1, c.C / 0.2);
+        return [r * Math.cos((c.h * Math.PI) / 180), -r * Math.sin((c.h * Math.PI) / 180)];
+      });
+      rr = Math.sqrt(n / Math.PI) + 1.5;
+      for (;;) {
+        cells = [];
+        const k = Math.ceil(rr);
+        for (let y = -k; y <= k; y++) for (let x = -k; x <= k; x++) if (x * x + y * y <= rr * rr) cells.push([x, y]);
+        if (cells.length >= n) break;
+        rr += 0.5;
+      }
+      pts = pts.map(([x, y]) => [x * rr, y * rr]);
+    } else {
+      const rows = Math.max(1, Math.ceil(Math.sqrt(n / 2.4)));
+      const cols = Math.ceil(n / rows) + 2;
+      pts = ids.map((i) => {
+        const c = repOf(i);
+        const x = R[i].chr ? 0.09 + 0.91 * ((((c.h - 15) % 360) + 360) % 360) / 360 : 0.03;
+        return [x * (cols - 1), (1 - c.L) * (rows - 1)];
+      });
+      cells = [];
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) cells.push([x, y]);
+    }
+    const m = cells.length;
+    const cost = new Float64Array(n * m);
+    for (let a = 0; a < n; a++) for (let b = 0; b < m; b++) {
+      const dx = pts[a][0] - cells[b][0], dy = pts[a][1] - cells[b][1];
+      cost[a * m + b] = dx * dx + dy * dy;
+    }
+    const order = new Uint32Array(n * m);
+    for (let k = 0; k < order.length; k++) order[k] = k;
+    order.sort((x, y) => cost[x] - cost[y]);
+    const usedP = new Uint8Array(n), usedC = new Uint8Array(m), pos = new Map();
+    let left = n;
+    for (let k = 0; k < order.length && left; k++) {
+      const a = (order[k] / m) | 0, b = order[k] % m;
+      if (usedP[a] || usedC[b]) continue;
+      usedP[a] = usedC[b] = 1; left--;
+      pos.set(ids[a], cells[b]);
+    }
+    if (gridCache.size > 8) gridCache.clear();
+    gridCache.set(key, { pos, r: rr });
+    if (mode === 'wheel') wheelR = rr;
+    return pos;
+  }
+  let goneN = -1;
+  const countGone = () => { if (goneN < 0) { goneN = 0; for (let i = 0; i < N; i++) if (R[i].gone) goneN++; } return goneN; };
 
   function fitCamera(instant) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, any = false;
@@ -729,9 +862,11 @@
       if (a < 0.01 || i === hover || i === sel || (related && related.has(i) && a > 0.3)) continue;
       const x = cur.x[i], y = cur.y[i], sz = cur.s[i] - GAP;
       if (x < vx0 || y < vy0 || x > vx1 || y > vy1) continue;
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = focusIdx >= 0 && S.mode === 'group' && groupOf[i] !== focusIdx ? a * 0.18 : a;
       drawTile(i, x, y, sz, !animating && cam.k * sz > 70);
     }
+    // 近づいたら写真の上に必要な情報（言語・審核状態）。クリックで共通の详情。
+    if (!animating && cam.k * (1 - GAP) >= 120) drawTileInfo(vx0, vy0, vx1, vy1);
     if (sel != null) {
       const p = ease(Math.min(1, (performance.now() - selT0) / 260));
       if (p < 1) requestDraw();
@@ -745,6 +880,20 @@
       // selected: lifted card, soft shadow, white inner edge
       if (cur.a[sel] > 0.01) liftTile(sel, 1 + 0.07 * p, 0.10 + 0.14 * p, 1, true);
     }
+    // 研究台で選択中の記録: 右上に小さな黒丸（拡大しても邪魔にならない大きさ）
+    if (checked.size) {
+      ctx.globalAlpha = 1;
+      for (const i of checked) {
+        if (cur.a[i] < 0.3) continue;
+        const x = cur.x[i], y = cur.y[i], sz = cur.s[i] - GAP;
+        if (x < vx0 || y < vy0 || x > vx1 || y > vy1) continue;
+        const rr = Math.max(sz * 0.13, 4 / cam.k);
+        ctx.fillStyle = '#0f0f0e';
+        ctx.beginPath(); ctx.arc(x + sz - rr * 1.1, y + rr * 1.1, rr, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = Math.max(1 / cam.k, rr * 0.28);
+        ctx.strokeStyle = '#fff'; ctx.stroke();
+      }
+    }
     // hover: gentle lift; tiny tiles grow to a readable size
     if (hover != null && hover !== sel && cur.a[hover] > 0.01) {
       const base = cur.s[hover] - GAP, px = cam.k * base;
@@ -752,6 +901,40 @@
     }
     ctx.globalAlpha = 1;
     drawLabels();
+  }
+  const ST_LABEL = {
+    zh: { pending: '待处理', ai: 'AI 草稿', 'human-reviewed': '已审核', final: '已确认' },
+    ja: { pending: '未処理', ai: 'AI 下書き', 'human-reviewed': 'レビュー済み', final: '確定済み' },
+  };
+  function drawTileInfo(vx0, vy0, vx1, vy1) {
+    let n = 0;
+    for (let i = 0; i < N && n < 160; i++) {
+      if (cur.a[i] < 0.5 || (focusIdx >= 0 && S.mode === 'group' && groupOf[i] !== focusIdx)) continue;
+      const x = cur.x[i], y = cur.y[i], sz = cur.s[i] - GAP;
+      if (x + sz < vx0 || y + sz < vy0 || x > vx1 || y > vy1) continue;
+      n++;
+      const r = R[i], band = sz * 0.2;
+      ctx.globalAlpha = 1;
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(x, y, sz, sz, sz * RAD); ctx.clip();
+      ctx.fillStyle = 'rgba(15,15,14,0.62)';
+      ctx.fillRect(x, y + sz - band, sz, band);
+      const fs = band * 0.42;
+      ctx.font = `600 ${fs}px Inter, 'Hiragino Sans', 'Microsoft YaHei', sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      const langs = [...r.main].map((c) => c.toUpperCase()).join(' ') || '—';
+      ctx.fillText(langs, x + fs * 0.7, y + sz - band / 2);
+      const st = (ST_LABEL[LANG] || ST_LABEL.zh)[r.st] || '';
+      if (st) {
+        ctx.font = `${fs * 0.92}px Inter, 'Hiragino Sans', 'Microsoft YaHei', sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillText(st, x + sz - fs * 0.7, y + sz - band / 2);
+        ctx.textAlign = 'left';
+      }
+      ctx.restore();
+    }
   }
   let selT0 = 0;
   /** draw a tile "lifted": scale, drop shadow, optional white inner edge (edge = 0..1 strength) */
@@ -782,8 +965,8 @@
   }
 
   function drawWheelGuide() {
-    let r = 0;
-    for (let i = 0; i < N; i++) r = Math.max(r, Math.hypot(R[i].wh[0], R[i].wh[1]));
+    let r = wheelR;
+    if (!r) for (let i = 0; i < N; i++) r = Math.max(r, Math.hypot(R[i].wh[0], R[i].wh[1]));
     r += 1.8;
     const g = ctx.createConicGradient(0, 0.5, 0.5);
     for (let s = 0; s <= 24; s++) g.addColorStop(s / 24, `oklch(0.7 0.2 ${(360 - (s / 24) * 360) % 360})`);
@@ -806,19 +989,35 @@
       el.style.transform = 'translate(-6px, calc(-100% - 4px))';
       el.dataset.v = l.v;
       const sw = l.d.sw ? `<i class="sw" style="background:${l.d.sw(l.v)}"></i>` : '';
-      el.innerHTML = `${sw}<b>${esc(fmtVal(l.d, l.v))}</b><span class="n">${l.n}</span>`;
+      const gi = groupBlocks.findIndex((g) => g.v === l.v);
+      if (focusIdx >= 0 && gi !== focusIdx) el.className = 'dim';
+      el.innerHTML = `<img src="${TH}${R[l.rep].ph}" alt="">${sw}<b>${esc(fmtVal(l.d, l.v))}</b><span class="n">${l.n}</span>`;
       frag.appendChild(el);
     }
     labelsEl.replaceChildren(frag);
   }
-  // drill into one cloud (Close-Up Cloud style)
+  // 組名をクリック → その組へ入る（カメラを寄せ、他の組は薄く）。もう一度で全貌。
   labelsEl.addEventListener('click', (e) => {
     const el = e.target.closest('[data-v]');
     if (!el) return;
-    S.sel[S.group] = new Set([el.dataset.v]);
-    // move the grouping to the next dimension so the drilled cloud is still structured
-    recompute();
+    const gi = groupBlocks.findIndex((g) => g.v === el.dataset.v);
+    focusGroup(gi === focusIdx ? -1 : gi);
   });
+  function focusGroup(gi) {
+    focusIdx = gi;
+    labelsEl.dataset.k = '';
+    if (gi < 0) { fitCamera(); tellState(); requestDraw(); return; }
+    const g = groupBlocks[gi];
+    const sr = safeRect();
+    const aw = W - sr.l - sr.r, ah = H - sr.t - sr.b;
+    const x0 = g.x - 0.5, y0 = g.y - 3, x1 = g.x + g.w + 0.5, y1 = g.y + g.h + 0.5;
+    const k = Math.min(aw / (x1 - x0), ah / (y1 - y0), 160);
+    Object.assign(camFrom, cam);
+    Object.assign(camTo, { k, x: sr.l + aw / 2 - ((x0 + x1) / 2) * k, y: sr.t + ah / 2 - ((y0 + y1) / 2) * k });
+    camAnim = performance.now();
+    tellState();
+    requestDraw();
+  }
 
   // interaction
   let hover = null, drag = null, moved = false;
@@ -860,7 +1059,7 @@
     drag = null;
   });
   cv.addEventListener('pointerleave', () => { hover = null; hideTip(); requestDraw(); });
-  cv.addEventListener('dblclick', (e) => { const [mx, my] = local(e); if (hit(mx, my) == null) fitCamera(); });
+  cv.addEventListener('dblclick', (e) => { const [mx, my] = local(e); if (hit(mx, my) == null) { if (focusIdx >= 0) focusGroup(-1); else fitCamera(); } });
   cv.addEventListener('wheel', (e) => {
     e.preventDefault();
     camAnim = -1;
@@ -892,12 +1091,14 @@
   groupSel.innerHTML = DIMS.map((d) => `<option value="${d.key}">${d.label}</option>`).join('');
   let themeScrollUpdate = null;
   function setMode(m) {
+    if (!['wall', 'group', 'wheel', 'hl', 'map'].includes(m)) m = 'wall';
     S.mode = m;
     document.querySelectorAll('#modes button').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
     $('ctl-sort').style.display = m === 'wall' ? '' : 'none';
     $('ctl-group').style.display = m === 'group' ? '' : 'none';
     if (exploreReady) layout();
     writeHash();
+    tellState();
   }
   document.querySelectorAll('#modes button').forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
   $('sort').onchange = (e) => { S.sort = e.target.value; layout(); writeHash(); };
@@ -925,6 +1126,12 @@
   function select(i, push) {
     if (S.selected !== i) selT0 = performance.now();
     S.selected = i;
+    if (EMBED) {
+      // 詳情は研究台の共通の記録详情で開く（ここでは選んだ写真を浮かせて示すだけ）。
+      requestDraw();
+      post({ type: 'llmap:open', rid: R[i].rid });
+      return;
+    }
     if (push) {
       const at = S.trail.indexOf(i);
       if (at >= 0) S.trail.splice(at, 1);
@@ -941,6 +1148,7 @@
     writeHash();
   }
   function closeDetail() {
+    if (EMBED) { S.selected = null; requestDraw(); return; }
     const wasOpen = !detail.hidden;
     S.selected = null; detail.hidden = true;
     document.body.classList.remove('detail-open');
@@ -1078,6 +1286,7 @@
   function themeMatches(t) {
     const out = [];
     for (let i = 0; i < N; i++) {
+      if (R[i].gone) continue;
       let ok = true;
       for (const [k, vs] of Object.entries(t.sel || {})) if (!VAL[k][i].some((v) => vs.includes(v))) { ok = false; break; }
       for (const [k, [lo, hi]] of Object.entries(t.range || {})) if (R[i][k] < lo || R[i][k] > hi) ok = false;
@@ -1123,7 +1332,17 @@
     row.addEventListener('scroll', update, { passive: true });
     addEventListener('resize', update);
     // mouse wheel: vertical wheel scrolls the row sideways until it reaches an end
+    // 研究台の首页に埋め込まれているとき: 縦のホイールはページのスクロールへ渡す
+    // （主题の列が奪うと、首页が下へ進まなくなる）。横へは掴んで動かす／横スワイプ。
+    if (EMBED) {
+      $('landing').addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        e.preventDefault();
+        post({ type: 'llmap:wheel', dy: e.deltaMode === 1 ? e.deltaY * 32 : e.deltaY });
+      }, { passive: false });
+    }
     row.addEventListener('wheel', (e) => {
+      if (EMBED) return;
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // trackpad horizontal swipe: native
       const max = row.scrollWidth - row.clientWidth;
       if ((e.deltaY < 0 && row.scrollLeft <= 0) || (e.deltaY > 0 && row.scrollLeft >= max - 1)) return;
@@ -1161,7 +1380,23 @@
     return update;
   }
 
+  function themeConds(t) {
+    const out = [];
+    for (const [k, vs] of Object.entries(t.sel || {})) out.push(`${DIM[k].label}: ${vs.map((v) => fmtVal(DIM[k], v)).join(' / ')}`);
+    for (const [k, [lo, hi]] of Object.entries(t.range || {})) {
+      const rg = RANGES.find((x) => x.key === k);
+      out.push(`${rg ? rg.label : k} ${Math.round(lo * 100)}–${Math.round(hi * 100)}`);
+    }
+    return out;
+  }
   function openTheme(t) {
+    if (EMBED) {
+      // 主题＝一組の記録への入口: 研究台が「記録集合」として受け取り、条件と件数を示して
+      // 照片・地図・照片云などで見られるようにする。
+      post({ type: 'llmap:theme', id: t.id, title: tr(`th.${t.id}.t`), sub: tr(`th.${t.id}.s`), conds: themeConds(t),
+        mode: t.mode || 'group', group: t.group || 'cn', rids: themeMatches(t).map((i) => R[i].rid) });
+      return;
+    }
     clearFilters();
     for (const [k, vs] of Object.entries(t.sel || {})) S.sel[k] = new Set(vs);
     for (const [k, r] of Object.entries(t.range || {})) S.range[k] = r.slice();
@@ -1496,7 +1731,9 @@
     setTimeout(() => fitBoard(), 30);
   }
   function chainRandom() {
-    const pool = R.map((_, i) => i).filter((i) => R[i].chr && R[i].cf > 0.35);
+    let pool = R.map((_, i) => i).filter((i) => base[i] && R[i].chr && R[i].cf > 0.35);
+    if (!pool.length) pool = R.map((_, i) => i).filter((i) => base[i]);
+    if (!pool.length) return;
     chainStartFrom(pool[Math.floor(Math.random() * pool.length)]);
   }
   function clearChain() {
@@ -1505,15 +1742,21 @@
     CH.nodes = []; CH.links = []; CH.ghosts = []; CH.active = null;
     renderLinks(); renderChainTitle(); renderNextPanel(); saveChain();
   }
+  const CHAIN_KEY = EMBED ? 'llmap-chain' : 'llv-chain';
   function saveChain() {
-    store.set('llv-chain', { nodes: CH.nodes.map(({ id, i, x, y }) => ({ id, i, x, y })), links: CH.links.map(({ a, b, rel }) => ({ a, b, rel })), active: CH.active, uid: CH.uid, rel: CH.rel });
+    // 記録 id（rid）で保存する: 資料庫が増減して並びが変わっても同じ写真を指す。
+    store.set(CHAIN_KEY, { v: 2, nodes: CH.nodes.map(({ id, i, x, y }) => ({ id, rid: R[i].rid, x, y })), links: CH.links.map(({ a, b, rel }) => ({ a, b, rel })), active: CH.active, uid: CH.uid, rel: CH.rel });
   }
   function loadChain() {
-    const s = store.get('llv-chain');
+    const s = store.get(CHAIN_KEY);
     if (!s || !Array.isArray(s.nodes)) return;
     CH.uid = s.uid || 1;
     CH.rel = s.rel || 'color';
-    for (const n of s.nodes) { if (R[n.i]) { CH.nodes.push(n); makeNodeEl(n); } }
+    for (const n of s.nodes) {
+      // 旧形式（並び番号 i）は資料庫が変わると別の写真を指すので読まない。
+      const i = s.v === 2 ? IDX.get(n.rid) : (EMBED ? undefined : n.i);
+      if (i != null && R[i] && !R[i].gone) { const m = { id: n.id, i, x: n.x, y: n.y }; CH.nodes.push(m); makeNodeEl(m); }
+    }
     CH.links = (s.links || []).filter((l) => nodeById(l.a) && nodeById(l.b)).map((l) => ({ ...l, rel: l.rel || 'color' }));
     markRoots();
     const a = nodeById(s.active);
@@ -1563,10 +1806,114 @@
     if (!window.LLV_EMBED || window.parent === window) return;
     window.parent.postMessage({ type: 'llmap:view', view: S.view === 'landing' ? 'themes' : S.view }, '*');
   }
+  // 記録の中身（言語・研究字段・状態）を差し替える（研究台で編集したとき）。色・配置はそのまま。
+  function patchRecords(list) {
+    for (const m of list || []) {
+      const i = IDX.get(m.rid);
+      if (i == null) continue;
+      Object.assign(R[i], m);
+      for (const d of DIMS) VAL[d.key][i] = d.get(R[i]);
+      LK[i] = lkOf(R[i]); TK[i] = R[i].f.dis + '|' + R[i].f.car;
+      const langs = [...R[i].main, ...R[i].aux].flatMap((c) => [I.lang.zh[c] || '', I.lang.ja[c] || '', (D.langs[c] && D.langs[c].name) || '', c]);
+      const cols = [R[i].cn, ...R[i].pal.map((q) => q[5])].flatMap((c) => [c, I.cn.zh[c], I.cn.ja[c]]);
+      const fv = Object.values(R[i].f).flatMap((v) => [v, I.values.ja[v] || '']);
+      SEARCH[i] = [R[i].d, R[i].id, R[i].note, R[i].t, ...fv, ...langs, ...cols].join(' ').toLowerCase();
+    }
+    groupBy(LK, lkMap); groupBy(TK, tkMap);
+    relCache.clear();
+    for (const d of DIMS) {
+      const c = new Map();
+      VAL[d.key].forEach((vs) => vs.forEach((v) => c.set(v, (c.get(v) || 0) + 1)));
+      let vals = [...c.keys()];
+      if (d.order) vals = d.order.filter((v) => c.has(v));
+      else if (d.sortByKey) vals.sort();
+      else vals.sort((a, b) => c.get(b) - c.get(a));
+      allValues[d.key] = vals;
+    }
+    tip.dataset.i = '';
+    recompute({ keepCamera: true, keepTheme: true });
+    if (S.view === 'chain') { CH.nodes.forEach((m) => { m.el.remove(); makeNodeEl(m); }); markRoots(); setActive(nodeById(CH.active)); }
+  }
+  // 詳情の「探索」区: 色板・色の情報・6 種の関連（全資料庫から。削除済みは除く）。
+  function describe(rid) {
+    const i = IDX.get(rid);
+    if (i == null || R[i].gone) return null;
+    const r = R[i];
+    return {
+      rid, pal: r.pal.map((q) => ({ hex: q[0], p: q[1], name: cnl(q[5]) })),
+      rep: { hex: repHex(r), name: cnl(r.cn) }, cf: r.cf, L: r.L, chr: r.chr,
+      // 研究台の範囲が資料庫の一部か（関連は全資料庫から探すので、範囲内の数も添える）。
+      scoped: (() => { let n = 0; for (let k = 0; k < N; k++) n += base[k]; return n < N - countGone(); })(),
+      relations: relations(i).map((rel) => ({
+        key: rel.key, name: relName(rel.key), title: rel.title(), sub: rel.sub(),
+        rids: [r.rid, ...rel.all.map((j) => R[j].rid)],
+        inScope: rel.all.filter((j) => base[j]).map((j) => R[j].rid),
+        items: rel.all.slice(0, 12).map((j) => ({ rid: R[j].rid, ph: R[j].ph, tag: rel.tag(j) })),
+      })),
+    };
+  }
+  function snapshot() {
+    return {
+      mode: S.mode, sort: S.sort, group: S.group, q: S.q, panel: S.panel,
+      sel: Object.fromEntries(Object.entries(S.sel).map(([k, v]) => [k, [...v]])),
+      range: { ...S.range }, pick: S.pick, rel: S.rel ? { rid: R[S.rel.i].rid, key: S.rel.key } : null,
+      cam: { ...camTo },
+    };
+  }
+  function restore(sn) {
+    if (!sn) return;
+    S.sel = Object.fromEntries(Object.entries(sn.sel || {}).map(([k, v]) => [k, new Set(v)]));
+    S.range = sn.range || {}; S.pick = sn.pick || null; S.q = sn.q || ''; $('search').value = S.q;
+    S.rel = sn.rel && IDX.has(sn.rel.rid) ? { i: IDX.get(sn.rel.rid), key: sn.rel.key } : null;
+    if (sn.sort) { S.sort = sn.sort; $('sort').value = S.sort; }
+    if (sn.group) { S.group = sn.group; groupSel.value = S.group; }
+    S.mode = sn.mode || S.mode;
+    S.panel = !!sn.panel; $('panel').hidden = !S.panel; document.body.classList.toggle('panel-open', S.panel);
+    if (S.panel) renderCharts();
+    recompute({ keepCamera: true });
+    if (sn.cam && exploreReady) {
+      // 配置が落ち着いたあとで、前のカメラ位置へ戻す。
+      setTimeout(() => { Object.assign(camFrom, cam); Object.assign(camTo, sn.cam); camAnim = performance.now(); requestDraw(); }, 60);
+    }
+  }
   window.addEventListener('message', (e) => {
     if (e.source !== window.parent) return;
     const d = e.data || {};
     if (d.type === 'llmap:go' && ['explore', 'themes', 'chain'].includes(d.view)) go(d.view);
+    else if (d.type === 'llmap:mode') {
+      if (d.group && DIM[d.group]) { S.group = d.group; groupSel.value = d.group; }
+      if (d.sort && sorters[d.sort]) { S.sort = d.sort; $('sort').value = d.sort; }
+      if (d.mode) setMode(d.mode); else if (exploreReady) layout();
+      writeHash(); tellState();
+    } else if (d.type === 'llmap:scope') {
+      // null = 全資料庫。それ以外は表示してよい記録 id。
+      const allow = d.rids ? new Set(d.rids) : null;
+      for (let i = 0; i < N; i++) base[i] = R[i].gone ? 0 : allow ? (allow.has(R[i].rid) ? 1 : 0) : 1;
+      if (S.rel && !base[S.rel.i]) S.rel = null;
+      if (S.panel) renderCharts();
+      recompute({ keepTheme: true, keepCamera: !!d.keepCamera });
+    } else if (d.type === 'llmap:selection') {
+      checked = new Set((d.rids || []).map((rid) => IDX.get(rid)).filter((i) => i != null));
+      requestDraw();
+    } else if (d.type === 'llmap:focus') {
+      const i = d.rid == null ? null : IDX.get(d.rid);
+      if (i == null) { S.selected = null; } else { if (S.selected !== i) selT0 = performance.now(); S.selected = i; }
+      requestDraw();
+    } else if (d.type === 'llmap:patch') patchRecords(d.records);
+    else if (d.type === 'llmap:panel') setPanel(!!d.open);
+    else if (d.type === 'llmap:fit') { if (S.view === 'chain') fitBoard(); else { focusIdx = -1; labelsEl.dataset.k = ''; fitCamera(); tellState(); requestDraw(); } }
+    else if (d.type === 'llmap:focusGroup') focusGroup(d.v == null ? -1 : groupBlocks.findIndex((g) => g.v === d.v));
+    else if (d.type === 'llmap:clearCond') { if (d.id === '*') clearFilters(); else clearCondition(d.id); recompute({ keepTheme: true }); }
+    else if (d.type === 'llmap:restore') restore(d.snap);
+    else if (d.type === 'llmap:chainFrom') { const i = IDX.get(d.rid); if (i != null) { go('chain'); chainStartFrom(i); } }
+    else if (d.type === 'llmap:lang' && I[d.lang]) setLang(d.lang);
+    else if (d.type === 'llmap:req') {
+      let data = null;
+      if (d.what === 'describe') data = describe(d.rid);
+      else if (d.what === 'active') { data = []; for (let i = 0; i < N; i++) if (active[i]) data.push(R[i].rid); }
+      else if (d.what === 'snapshot') data = snapshot();
+      post({ type: 'llmap:reply', reqId: d.reqId, data });
+    }
   });
   document.querySelectorAll('[data-go]').forEach((el) => el.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1658,5 +2005,7 @@
   if (init.view === 'landing') { buildFloaters(); writeHash(); }
   else { S.view = 'boot'; go(init.view); }
   tellView();
-  if (init.sel) { const i = R.findIndex((r) => r.id === init.sel); if (i >= 0) setTimeout(() => select(i, true), 100); }
+  if (init.sel && !EMBED) { const i = R.findIndex((r) => r.id === init.sel); if (i >= 0) setTimeout(() => select(i, true), 100); }
+  post({ type: 'llmap:ready', count: N });
+  tellState();
 })();

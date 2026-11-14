@@ -34,11 +34,14 @@ export function filterChips(
   value: RecordsQuery,
   datasets: Dataset[],
   t: TFunction,
+  /** 記録集合の説明（審核・AI・導出の範囲帯で出す。資料庫では範囲の帯が別に示すので省く）。 */
+  setLabel?: string,
 ): Chip[] {
   const fieldFilters = value.fields ?? {};
   const datasetIds = value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : []);
   const chip = (k: string, v: string) => t('filters.chip', { k, v });
   const chips: Chip[] = [];
+  if (value.setKey && setLabel) chips.push({ key: 'set', label: setLabel, remove: { setKey: undefined } });
   if (value.ids?.length) chips.push({ key: 'ids', label: t('scope.selectedN', { n: value.ids.length }), remove: { ids: undefined } });
   if (value.q) chips.push({ key: 'q', label: chip(t('filters.keyword'), value.q), remove: { q: undefined } });
   if (value.mainLanguage) chips.push({ key: 'lang', label: chip(t('filters.language'), enumLabel(t, value.mainLanguage)), remove: { mainLanguage: undefined } });
@@ -77,6 +80,10 @@ export default function RecordsFilters({
   fieldPresence,
   hideDatasets,
   trailing,
+  leading,
+  extraChips,
+  hasExtra,
+  hideCount,
 }: {
   value: RecordsQuery;
   options: FilterOptions;
@@ -93,6 +100,13 @@ export default function RecordsFilters({
   hideDatasets?: boolean;
   /** chip 行の右側に置く追加操作（相册の縮略図サイズ等）。 */
   trailing?: ReactNode;
+  /** 検索行の先頭（資料庫の視図切替）。 */
+  leading?: ReactNode;
+  /** 研究の筛选以外の条件（記録集合・画布の条件・返回）。同じ行に並べる。 */
+  extraChips?: ReactNode;
+  hasExtra?: boolean;
+  /** 件数は別の場所（見出し）に出すので、ここには出さない。 */
+  hideCount?: boolean;
 }) {
   const { t } = useTranslation();
   const fieldFilters = value.fields ?? {};
@@ -140,6 +154,8 @@ export default function RecordsFilters({
 
   return (
     <div className="fbar">
+      <div className="fbar-line">
+      {leading}
       <div className="fbar-row">
         <label className="fbar-search">
           <span aria-hidden="true">⌕</span>
@@ -178,6 +194,7 @@ export default function RecordsFilters({
           {t('filters.more')}
           {moreCount > 0 && <span className="fbar-more-n">{moreCount}</span>}
         </button>
+      </div>
       </div>
 
       {showMore && (
@@ -227,21 +244,27 @@ export default function RecordsFilters({
         </div>
       )}
 
+      {/* 適用中の条件は、あるときだけ 1 行で（研究の筛选・記録集合・画布の条件を同じ見た目で）。 */}
+      {(chips.length > 0 || hasExtra || trailing || !hideCount) && (
       <div className="fbar-chips">
+        {extraChips}
         {chips.map((c) => (
           <button key={c.key} type="button" className="chip removable" onClick={() => onChange(c.remove)}>
             {c.label}<span aria-hidden="true">×</span>
           </button>
         ))}
-        {chips.length > 0 && (
-          <button type="button" className="btn ghost" onClick={onClear}>{t('filters.clearAll')}</button>
+        {(chips.length > 0 || hasExtra) && (
+          <button type="button" className="btn ghost sm" onClick={onClear}>{t('filters.clearAll')}</button>
         )}
         <span className="spacer" />
         {trailing}
-        <span className="fbar-count mono">
-          {total != null ? total : '—'}{grand != null && ` / ${grand}`}
-        </span>
+        {!hideCount && (
+          <span className="fbar-count mono">
+            {total != null ? total : '—'}{grand != null && ` / ${grand}`}
+          </span>
+        )}
       </div>
+      )}
     </div>
   );
 }

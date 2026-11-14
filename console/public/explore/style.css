@@ -523,6 +523,27 @@ body.detail-open .chips { right: 436px; }
 /* 桌面に埋め込まれているとき: 言語は研究台の設定に従い、「关于」（公開サイトの紹介）は出さない。 */
 /* 画面の切替は研究台のサイドバーにあるので、logo・リンク・「开始探索」も出さない。
    表紙は主题区だけ（hero と公開サイトの紹介は出さない）。 */
-.embed #lang-sw, .embed .logo, .embed .links, .embed #nav-cta,
-.embed .hero, .embed .about { display: none; }
-.embed .themes { padding-top: 90px; }
+/* 桌面の研究台に埋め込むとき: 上部ナビ・見出し・条件・画面下の切替・詳情カードは
+   研究台が受け持つ（範囲・視図・共通の記録详情）。ここは画布だけ。 */
+:root.embed { --nav-h: 8px; }
+.embed .nav, .embed .hero, .embed .about, .embed .foot,
+.embed .ctx-head, .embed .chips, .embed #dock, .embed .detail,
+.embed .explore > .hint { display: none !important; }
+.embed .themes { padding-top: 20px; }
+.embed .themes .sec-head h2, .embed .themes .sec-head p { display: none; }
+.embed .themes .sec-head { justify-content: flex-end; }
+.embed .th-progress { display: none; }
+.embed .panel { top: 60px; }
+.embed .glabels > div { cursor: pointer; pointer-events: auto; gap: 6px; padding: 3px 9px 3px 3px; border-radius: 999px; background: rgba(255,255,255,.92); box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+.embed .glabels > div img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.embed .glabels > div:hover { box-shadow: 0 0 0 1.5px #0f0f0e; }
+.embed .glabels > div.dim { opacity: .35; }
+.embed .panel { top: 12px; bottom: 12px; }
+/* 首页に埋め込むとき: 左右の余白を首页の本文に揃える。 */
+.embed .themes .sec-head { padding: 0 4px; margin-bottom: 10px; }
+.embed .th-row { padding: 6px 4px 20px; scroll-padding-inline: 4px; }
+.embed .th-wrap::before, .embed .th-wrap::after { width: 24px; }
+.embed .themes { padding-top: 4px; }
+/* 首页: 主题の見出し行（題・説明・矢印）は出さない。縦のはみ出しも作らない。 */
+.embed .themes .sec-head { display: none; }
+.embed .landing { overflow: hidden; }

@@ -5,7 +5,8 @@
 - PATCH /records/{id}      : 研究字段と _status/DataStatus の編集（系統字段はロック）
 - GET  /records/{id}/photo | /source-photo : 写真配信
 - GET  /photos/{filename}  : ファイル名直接配信（目录穿越は拒否）
-- GET  /map/records        : GPS を持つ記録のみの軽量リスト
+- GET  /map/records        : GPS を持つ記録のみの軽量リスト（筛选は /records と同じ）
+- POST /records/ids        : 筛选（本文）に合う記録 id の一覧（探索の範囲マスク用）
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from sqlmodel import Session, col, func, select
 
 from .database import get_session, photos_dir, source_photos_dir, thumbs_dir
 from .db_models import Dataset, SignRecord
+from .record_sets import resolve as resolve_record_set
 from .schema import (
     CSV_HEADER, DATA_STATUS_MAP, DATA_STATUS_VALUES, MULTI_FIELDS,
     STATUS_VALUES, SYSTEM_FIELDS,
@@ -103,6 +105,7 @@ def apply_filters(
     dataset_ids=None,
     field_filters=None,
     record_ids=None,
+    set_key: str | None = None,
 ):
     """/records・/map/records・/export/csv で共用する筛选。
 
@@ -169,6 +172,9 @@ def apply_filters(
     rids = _dataset_id_list(record_ids)
     if rids:
         stmt = stmt.where(col(SignRecord.id).in_(rids))
+    # 記録集合（探索の主题・関連・色の条件など、SQL にできない範囲）。他と AND。
+    if set_key:
+        stmt = stmt.where(col(SignRecord.id).in_(resolve_record_set(set_key)))
     for field, vals in _field_filters(field_filters).items():
         extracted = func.json_extract(SignRecord.data_json, f'$."{field}"')
         if field in MULTI_FIELDS:
@@ -230,6 +236,7 @@ def list_records(
     datasetIds: str | None = None,
     fields: str | None = None,
     ids: str | None = None,
+    setKey: str | None = None,
 ):
     kw = dict(
         q=q, main_language=mainLanguage, area_code=areaCode,
@@ -237,7 +244,7 @@ def list_records(
         status=status, date_from=dateFrom, date_to=dateTo, has_gps=hasGps,
         has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
         dataset_id=datasetId, dataset_ids=datasetIds, field_filters=fields,
-        record_ids=ids,
+        record_ids=ids, set_key=setKey,
     )
     total = session.exec(
         apply_filters(select(func.count()).select_from(SignRecord), **kw)).one()
@@ -420,19 +427,32 @@ def photo_by_name(filename: str):
 @router.get("/map/records")
 def map_records(
     session: Session = Depends(get_session),
+    q: str | None = None,
     mainLanguage: str | None = None,
     areaCode: str | None = None,
+    collectorId: str | None = None,
     entryMode: str | None = None,
     dataStatus: str | None = None,
+    status: str | None = None,
+    dateFrom: str | None = None,
+    dateTo: str | None = None,
+    hasPhoto: bool | None = None,
+    hasSourcePhoto: bool | None = None,
     datasetId: int | None = None,
     datasetIds: str | None = None,
+    fields: str | None = None,
     ids: str | None = None,
+    setKey: str | None = None,
 ):
+    # 資料庫の地図視図は資料庫と同じ範囲を描く（筛选は /records と同じ。GPS 必須）。
     stmt = apply_filters(
         select(SignRecord),
-        main_language=mainLanguage, area_code=areaCode, entry_mode=entryMode,
-        data_status=dataStatus, dataset_id=datasetId, dataset_ids=datasetIds,
-        has_gps=True, record_ids=ids,
+        q=q, main_language=mainLanguage, area_code=areaCode,
+        collector_id=collectorId, entry_mode=entryMode, data_status=dataStatus,
+        status=status, date_from=dateFrom, date_to=dateTo,
+        has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
+        dataset_id=datasetId, dataset_ids=datasetIds, field_filters=fields,
+        has_gps=True, record_ids=ids, set_key=setKey,
     )
     return [
         {
@@ -448,3 +468,13 @@ def map_records(
         }
         for r in session.exec(stmt).all()
     ]
+
+
+@router.post("/records/ids")
+def record_ids(payload: dict = Body(default={}), session: Session = Depends(get_session)):
+    """筛选（RecordsQuery と同じ形の本文）に合う記録の id。探索の範囲マスクに使う
+    （範囲を変えても探索データを作り直さず、表示する記録だけを切り替える）。"""
+    from .export_jobs import _filters_kwargs  # 循環 import を避ける
+    stmt = apply_filters(select(SignRecord.id), **_filters_kwargs(payload))         .order_by(col(SignRecord.id))
+    ids = list(session.exec(stmt).all())
+    return {"ids": ids, "count": len(ids)}

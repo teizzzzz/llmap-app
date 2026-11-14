@@ -1,10 +1,9 @@
 import { photoUrl } from '../../api/client';
 import type { RecordItem } from '../../api/types';
-import LangTags from '../LangTags';
 import PhotoThumb from '../database/PhotoThumb';
-import StatusBadge from '../database/StatusBadge';
 
-/** 審核队列（左列）。選択中は左に墨の縦線。 */
+/** 審核队列（左列）: 写真だけを並べる（編号・時刻・状態は右の字段欄と上の帯で分かる）。
+    選択中は墨の枠。名前は tooltip に残す。 */
 export default function ReviewQueue({
   items,
   selectedId,
@@ -23,16 +22,10 @@ export default function ReviewQueue({
           className={`queue-item${r.id === selectedId ? ' selected' : ''}`}
           ref={r.id === selectedId ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
           onClick={() => onSelect(r.id)}
+          title={r.DisplayID || r.SignID}
+          aria-label={r.DisplayID || r.SignID}
         >
-          <PhotoThumb src={photoUrl(r.thumbnailUrl)} size={52} alt={r.SignID} />
-          <span className="queue-body">
-            <span className="mono queue-id">{r.DisplayID || r.SignID}</span>
-            <LangTags value={r.主要言語} />
-            <span className="queue-meta">
-              <span className="mono">{(r.採集日時 || '—').slice(5, 16)}</span>
-              <StatusBadge value={r.DataStatus} />
-            </span>
-          </span>
+          <PhotoThumb src={photoUrl(r.thumbnailUrl)} size={96} alt="" />
         </button>
       ))}
     </div>
