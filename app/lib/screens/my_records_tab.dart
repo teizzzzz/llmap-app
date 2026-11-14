@@ -4,6 +4,7 @@
 /// 写真の左上タグで記録の状態（待补充 / 已提交 / 已审核…）を区別する。
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
@@ -68,13 +69,16 @@ class MyRecordsTab extends StatelessWidget {
                   label: t.manageShort,
                   onTap: items.isEmpty ? null : onManage,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                _PillButton(
-                  icon: Icons.ios_share,
-                  label: t.exportData,
-                  filled: true,
-                  onTap: items.isEmpty ? null : onExport,
-                ),
+                // Web 試用版では書き出しを出さない（試すのは撮影と閲覧まで）。
+                if (!kIsWeb) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  _PillButton(
+                    icon: Icons.ios_share,
+                    label: t.exportData,
+                    filled: true,
+                    onTap: items.isEmpty ? null : onExport,
+                  ),
+                ],
                 PopupMenuButton<String>(
                   tooltip: t.moreActions,
                   icon: const Icon(Icons.more_horiz),

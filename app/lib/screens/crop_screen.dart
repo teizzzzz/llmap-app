@@ -63,7 +63,60 @@ class _CropScreenState extends State<CropScreen> {
   @override
   void initState() {
     super.initState();
-    _gpsFuture = currentGps();
+    // 写真に撮影位置（EXIF）があればそれを、無ければ現在地を使う。
+    final fromPhoto = exifGps(widget.imageBytes);
+    _gpsFuture = fromPhoto != null ? Future.value(fromPhoto) : currentGps();
+    _warnIfNoGps();
+  }
+
+  /// 位置が取れなかったら（権限なし・時間切れ）、黙って進めずに知らせる。
+  /// 「地図で指定」か「もう一度試す」を選べる。
+  Future<void> _warnIfNoGps() async {
+    final gps = await _gpsFuture;
+    if (gps != null || !mounted || _manualGps != null) return;
+    final lang = Localizations.localeOf(context).languageCode;
+    const m = {
+      'zh': {
+        'title': '没有获取到位置',
+        'body': '请允许浏览器使用位置信息后再试一次，或者在地图上手动指定。\n\n'
+            'iPhone：设置 → 隐私与安全性 → 定位服务 → Safari 网站 → 选择「使用 App 期间」，然后回到这里点「再试一次」。',
+        'manual': '在地图上指定',
+        'retry': '再试一次',
+      },
+      'ja': {
+        'title': '位置情報を取得できませんでした',
+        'body': 'ブラウザに位置情報の利用を許可してからもう一度試すか、地図で場所を指定してください。\n\n'
+            'iPhone：設定 → プライバシーとセキュリティ → 位置情報サービス → Safari の Web サイト →「この App の使用中」を選び、ここに戻って「もう一度試す」。',
+        'manual': '地図で指定する',
+        'retry': 'もう一度試す',
+      },
+      'en': {
+        'title': 'Could not get your location',
+        'body': 'Allow location access for this browser and try again, or pick the place on the map.\n\n'
+            'iPhone: Settings → Privacy & Security → Location Services → Safari Websites → “While Using the App”, then come back and tap “Try again”.',
+        'manual': 'Pick on map',
+        'retry': 'Try again',
+      },
+    };
+    final tx = m[lang] ?? m['en']!;
+    await showLLDialog(
+      context,
+      icon: Icons.gps_off,
+      iconColor: AppColors.warning,
+      title: tx['title']!,
+      message: tx['body']!,
+      primaryLabel: tx['manual']!,
+      onPrimary: () {
+        Navigator.pop(context);
+        _adjustLocation();
+      },
+      secondaryLabel: tx['retry']!,
+      onSecondary: () {
+        Navigator.pop(context);
+        setState(() => _gpsFuture = currentGps());
+        _warnIfNoGps();
+      },
+    );
   }
 
   Future<void> _next() async {

@@ -15,7 +15,12 @@ const _kExploreUrl = 'explore_data_url';
 
 Future<String> loadExploreUrl() async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getString(_kExploreUrl) ?? '';
+  final saved = prefs.getString(_kExploreUrl) ?? '';
+  // Web 試用版: 未設定なら、同じサイトに置いた見本の探索データ（./explore-data）を使う。
+  if (saved.trim().isEmpty && kIsWeb) {
+    return Uri.base.resolve('explore-data').toString();
+  }
+  return saved;
 }
 
 Future<void> saveExploreUrl(String url) async {

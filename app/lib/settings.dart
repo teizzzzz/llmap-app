@@ -7,8 +7,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'capture_mode.dart';
+import 'platform/reload.dart';
+import 'store.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/tokens.dart';
 import 'version.dart';
@@ -79,7 +82,8 @@ extension CaptureModeLabels on CaptureMode {
       };
 
   String description(AppLocalizations t) => switch (this) {
-        CaptureMode.quick => t.modeQuickDesc,
+        // 説明は最初の一句だけ（「写真と場所の記録を優先」）。
+        CaptureMode.quick => t.modeQuickDesc.split(RegExp('[。；;]')).first,
         CaptureMode.standard => t.modeStandardDesc,
         CaptureMode.research => t.modeResearchDesc,
       };
@@ -224,6 +228,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ));
   }
 
+  /// Web 試用版の文言（3 言語。ARB には入れず、試用版だけの表示としてここに置く）。
+  String _trial(String key) {
+    final lang = Localizations.localeOf(context).languageCode;
+    const m = {
+      'zh': {
+        'title': '试用版',
+        'reset': '重置',
+        'tester': '成为内部测试者',
+        'confirm': '确定清空你在这台设备上拍的所有照片和记录吗？此操作无法恢复。',
+        'ok': '清空',
+        'cancel': '取消',
+      },
+      'ja': {
+        'title': '試用版',
+        'reset': 'リセット',
+        'tester': '内部テスターになる',
+        'confirm': 'この端末で撮った写真と記録をすべて消しますか？元に戻せません。',
+        'ok': '消す',
+        'cancel': 'キャンセル',
+      },
+      'en': {
+        'title': 'Trial version',
+        'reset': 'Reset',
+        'tester': 'Become a beta tester',
+        'confirm': 'Erase all photos and records you captured on this device? This cannot be undone.',
+        'ok': 'Erase',
+        'cancel': 'Cancel',
+      },
+    };
+    return (m[lang] ?? m['en']!)[key]!;
+  }
+
+  Future<void> _resetTrial() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        content: Text(_trial('confirm')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(_trial('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(_trial('ok'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await LocalStore.instance.resetTrial();
+    reloadApp(); // 最初の状態から始め直す
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -235,6 +287,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          // ── 内部テスターの募集（フォームを開く） ──
+          LLCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.science_outlined),
+              title: Text(_trial('tester'), style: AppText.body()),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => launchUrl(
+                Uri.parse('https://forms.gle/V3pDvHpkCaqF3SxH9'),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // ── Web 試用版: この端末のブラウザに保存した内容を消す ──
+          if (LocalStore.isWebTrial) ...[
+            LLCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_trial('title'), style: AppText.sectionTitle()),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: _resetTrial,
+                    icon: const Icon(Icons.restart_alt),
+                    label: Text(_trial('reset')),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           // ── 言語 / Language ──
           LLCard(
             child: Column(
@@ -257,8 +341,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(t.captureMode, style: AppText.sectionTitle()),
-                const SizedBox(height: AppSpacing.xs),
-                Text(t.captureModeNote, style: AppText.caption()),
                 const SizedBox(height: AppSpacing.sm),
                 for (final m in kSelectableModes) _modeOption(t, m),
                 // research のみ: 字段方案（官方字段 / 自定义=未実装入口）。
@@ -302,7 +384,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   activeThumbColor: AppColors.primary,
                   title: Text(t.aiAuto, style: AppText.sectionTitle()),
-                  subtitle: Text(t.aiAutoSub, style: AppText.caption()),
                   value: _aiEnabled,
                   onChanged: (v) => setState(() => _aiEnabled = v),
                 ),
@@ -352,8 +433,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(t.exploreDataUrl, style: AppText.sectionTitle()),
-                const SizedBox(height: AppSpacing.xs),
-                Text(t.exploreDataUrlNote, style: AppText.caption()),
                 const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _explore,
@@ -378,8 +457,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(t.collectorId, style: AppText.sectionTitle()),
-                const SizedBox(height: AppSpacing.xs),
-                Text(t.collectorIdNote, style: AppText.caption()),
                 const SizedBox(height: AppSpacing.md),
                 LLFormField(
                   label: t.collectorIdLabel,
@@ -413,7 +490,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 icon: Icons.travel_explore,
                 title: t.aboutUs,
-                message: t.aboutUsBody(kAppVersion),
+                message: 'LLMap · $kAppVersion',
                 primaryLabel: t.ok,
               ),
             ),

@@ -780,13 +780,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: Text(t.mapInView(all.length),
                     style: AppText.sectionTitle().copyWith(fontSize: 16)),
               ),
-              if (all.length > shown.length)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
-                  child: Text(t.mapInViewCapped(shown.length),
-                      style: AppText.caption()),
-                ),
             ],
           ),
         ),

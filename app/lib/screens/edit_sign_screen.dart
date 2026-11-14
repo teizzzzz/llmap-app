@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -73,18 +72,19 @@ class _EditSignScreenState extends State<EditSignScreen> {
   /// 編集中の写真プレビュー。タップで全画面ズーム表示。
   Widget _preview() {
     final name = widget.sign.fileName;
-    final file = name.isEmpty ? null : LocalStore.instance.photoFile(name);
+    final has = LocalStore.instance.hasPhotoSync(name);
+    final image = LocalStore.instance.photoImage(name);
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: AspectRatio(
         aspectRatio: 4 / 3,
-        child: (file != null && file.existsSync())
+        child: has
             ? GestureDetector(
-                onTap: () => _openFullImage(file),
+                onTap: () => _openFullImage(image),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.file(file, fit: BoxFit.cover, gaplessPlayback: true),
+                    Image(image: image, fit: BoxFit.cover, gaplessPlayback: true),
                     Positioned(
                       right: AppSpacing.sm,
                       bottom: AppSpacing.sm,
@@ -112,7 +112,7 @@ class _EditSignScreenState extends State<EditSignScreen> {
     );
   }
 
-  void _openFullImage(File file) {
+  void _openFullImage(ImageProvider image) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
@@ -126,7 +126,7 @@ class _EditSignScreenState extends State<EditSignScreen> {
             child: InteractiveViewer(
               minScale: 0.5,
               maxScale: 5,
-              child: Image.file(file),
+              child: Image(image: image),
             ),
           ),
         ),

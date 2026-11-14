@@ -4,6 +4,7 @@
 /// 相册は端末内の整理機能（albums.json）で、記録本体・導出には影響しない。
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../albums.dart';
@@ -596,11 +597,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   child:
                       Text(allVisibleSelected ? t.deselectAll : t.selectAll),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.ios_share),
-                  tooltip: t.exportSelected,
-                  onPressed: _selected.isEmpty ? null : _exportSelected,
-                ),
+                if (!kIsWeb)
+                  IconButton(
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: t.exportSelected,
+                    onPressed: _selected.isEmpty ? null : _exportSelected,
+                  ),
                 IconButton(
                   icon: const Icon(Icons.photo_album_outlined),
                   tooltip: t.addToAlbum,
@@ -624,11 +626,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
           : AppBar(
               title: Text(t.galleryTitle),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.ios_share),
-                  tooltip: t.exportDataset,
-                  onPressed: widget.signs.isEmpty ? null : _openExportSheet,
-                ),
+                if (!kIsWeb)
+                  IconButton(
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: t.exportDataset,
+                    onPressed: widget.signs.isEmpty ? null : _openExportSheet,
+                  ),
                 IconButton(
                   icon: const Icon(Icons.swap_vert),
                   tooltip: t.sortTitle,
@@ -929,8 +932,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
   Widget _thumb(Sign s) {
     final name = s.fileName;
     if (name.isEmpty) return _thumbFallback();
-    return Image.file(
-      LocalStore.instance.photoFile(name),
+    return Image(
+      image: LocalStore.instance.photoImage(name),
       fit: BoxFit.cover,
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => _thumbFallback(),

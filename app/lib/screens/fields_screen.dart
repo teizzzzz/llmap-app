@@ -71,10 +71,8 @@ class _FieldsScreenState extends State<FieldsScreen> {
     try {
       // 端末に保存済みの裁切写真を読み、無ければ全景にフォールバック。
       final name = sign.get('写真ファイル名');
-      final f = LocalStore.instance.photoFile(name);
-      final bytes = await f.exists()
-          ? await f.readAsBytes()
-          : widget.imageBytes;
+      final bytes =
+          await LocalStore.instance.readPhoto(name) ?? widget.imageBytes;
       final fields = await ai.judge(
         photoBytes: bytes,
         provider: widget.aiConfig.provider,

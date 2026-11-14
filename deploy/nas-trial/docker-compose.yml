@@ -1,0 +1,13 @@
+# LLMap Web 試用版（静的サイト）。この フォルダを NAS に置いて `docker compose up -d`。
+# http://<NAS の IP>:8088/ で開く。カメラと位置情報は HTTPS でしか使えないので、
+# 外へ出すときは NAS のリバースプロキシ / Tailscale / Cloudflare Tunnel を前に置く（README）。
+services:
+  llmap-trial:
+    image: nginx:alpine
+    container_name: llmap-trial
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

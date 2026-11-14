@@ -21,7 +21,7 @@ class LLSignCard extends StatelessWidget {
   /// 写真がある場合も番号を小バッジで重ねて並び順を保持。
   Widget _thumb() {
     final name = sign.fileName;
-    final file = name.isEmpty ? null : LocalStore.instance.photoFile(name);
+    final has = LocalStore.instance.hasPhotoSync(name);
     final radius = BorderRadius.circular(AppRadius.md);
     final numberBox = Container(
       width: 46,
@@ -32,7 +32,7 @@ class LLSignCard extends StatelessWidget {
           style: const TextStyle(
               fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
     );
-    if (file == null || !file.existsSync()) return numberBox;
+    if (!has) return numberBox;
     return SizedBox(
       width: 46,
       height: 46,
@@ -41,7 +41,8 @@ class LLSignCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.file(file, fit: BoxFit.cover, gaplessPlayback: true,
+            Image(image: LocalStore.instance.photoImage(name),
+                fit: BoxFit.cover, gaplessPlayback: true,
                 errorBuilder: (_, _, _) => numberBox),
             Positioned(
               left: 0,

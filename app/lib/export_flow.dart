@@ -4,8 +4,7 @@
 /// 導出包の構造・写真の収束は store.buildBundle / export_normalizer のまま。
 library;
 
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -72,7 +71,13 @@ Future<void> runDatasetExport(
     // ダイアログは呼び出し元の生死に関わらず必ず閉じてから、共有/保存へ。
     closeDialog();
     if (!context.mounted) return;
-    if (isMobile) {
+    if (kIsWeb) {
+      // Web 試用版: buildBundle がブラウザのダウンロードとして渡し済み。
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(t.datasetExported)));
+      }
+    } else if (isMobile) {
       // iPad では sharePositionOrigin 必須（無いと presentation で例外）。
       final box = context.findRenderObject() as RenderBox?;
       await Share.shareXFiles(
@@ -86,15 +91,10 @@ Future<void> runDatasetExport(
             .showSnackBar(SnackBar(content: Text(t.datasetExported)));
       }
     } else {
-      final dir =
-          Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
-      final zipName = zipPath.split(RegExp(r'[/\\]')).last;
-      final dest = File('$dir/Downloads/$zipName');
-      await dest.parent.create(recursive: true);
-      await File(zipPath).copy(dest.path);
+      final dest = await LocalStore.instance.copyToDownloads(zipPath);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t.exportedTo(dest.path))),
+          SnackBar(content: Text(t.exportedTo(dest))),
         );
       }
     }

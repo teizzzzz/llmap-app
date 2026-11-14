@@ -82,7 +82,7 @@ class PhotoItem {
       dataStatus: s.get('DataStatus'),
       image: file.isEmpty
           ? null
-          : FileImage(LocalStore.instance.photoFile(file)),
+          : LocalStore.instance.photoImage(file),
       sign: s,
     );
   }
