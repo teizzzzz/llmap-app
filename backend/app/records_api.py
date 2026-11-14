@@ -102,8 +102,12 @@ def apply_filters(
     dataset_id: int | None = None,
     dataset_ids=None,
     field_filters=None,
+    record_ids=None,
 ):
-    """/records・/map/records・/export/csv で共用する筛选。"""
+    """/records・/map/records・/export/csv で共用する筛选。
+
+    record_ids（記録 id の配列 or "1,5,9"）は Console の手動選択用。
+    他の条件と AND で効く（「選択した記録」だけを審核・AI・導出の対象にする）。"""
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -162,6 +166,9 @@ def apply_filters(
     # 研究字段（字段表の字段）での筛选。値は data_json にのみあるため
     # SQLite JSON1 の json_extract で照合する。複数選択字段（"日本語/英語"）
     # は含有判定、それ以外は完全一致（複数値は OR）。
+    rids = _dataset_id_list(record_ids)
+    if rids:
+        stmt = stmt.where(col(SignRecord.id).in_(rids))
     for field, vals in _field_filters(field_filters).items():
         extracted = func.json_extract(SignRecord.data_json, f'$."{field}"')
         if field in MULTI_FIELDS:
@@ -222,6 +229,7 @@ def list_records(
     datasetId: int | None = None,
     datasetIds: str | None = None,
     fields: str | None = None,
+    ids: str | None = None,
 ):
     kw = dict(
         q=q, main_language=mainLanguage, area_code=areaCode,
@@ -229,6 +237,7 @@ def list_records(
         status=status, date_from=dateFrom, date_to=dateTo, has_gps=hasGps,
         has_photo=hasPhoto, has_source_photo=hasSourcePhoto,
         dataset_id=datasetId, dataset_ids=datasetIds, field_filters=fields,
+        record_ids=ids,
     )
     total = session.exec(
         apply_filters(select(func.count()).select_from(SignRecord), **kw)).one()
@@ -417,12 +426,13 @@ def map_records(
     dataStatus: str | None = None,
     datasetId: int | None = None,
     datasetIds: str | None = None,
+    ids: str | None = None,
 ):
     stmt = apply_filters(
         select(SignRecord),
         main_language=mainLanguage, area_code=areaCode, entry_mode=entryMode,
         data_status=dataStatus, dataset_id=datasetId, dataset_ids=datasetIds,
-        has_gps=True,
+        has_gps=True, record_ids=ids,
     )
     return [
         {

@@ -11,9 +11,15 @@ const fmtSize = (n: number) =>
 export default function ImportDatasetDialog({
   onClose,
   onImported,
+  onViewImported,
+  aiOn = true,
 }: {
   onClose: () => void;
   onImported: () => void; // 成功後に records / datasets を親が再取得する
+  /** 「本次导入的记录を見る」: 今回のデータセットだけに絞って開く。 */
+  onViewImported?: (datasetId: number) => void;
+  /** AI を使う設定か（次の一歩の案内文を変える）。 */
+  aiOn?: boolean;
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -215,9 +221,19 @@ export default function ImportDatasetDialog({
             )}
 
             <div className="detail-actions">
-              <button className="btn primary" onClick={onClose}>{t('import.viewRecords')}</button>
+              {onViewImported && result.datasetId != null && (result.importedRecordCount ?? 0) > 0 ? (
+                <button className="btn primary" onClick={() => onViewImported(result.datasetId!)}>
+                  {t('import.viewImported', { n: result.importedRecordCount })}
+                </button>
+              ) : (
+                <button className="btn primary" onClick={onClose}>{t('import.viewRecords')}</button>
+              )}
               <button className="btn" onClick={reset}>{t('import.importAnother')}</button>
             </div>
+            {/* AI は任意: 使う人だけが、今回の導入分に対して自分で始める。 */}
+            {result.datasetId != null && (result.importedRecordCount ?? 0) > 0 && (
+              <p className="muted next-hint">{t(aiOn ? 'import.nextHint' : 'import.nextHintNoAi')}</p>
+            )}
           </>
         )}
       </div>

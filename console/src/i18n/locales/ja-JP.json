@@ -5,12 +5,13 @@
   },
   "nav": {
     "dashboard": "ダッシュボード",
-    "database": "データベース",
+    "database": "ライブラリ",
     "map": "地図",
     "review": "レビュー",
     "ai": "AI処理",
     "export": "エクスポート",
-    "settings": "設定"
+    "settings": "設定",
+    "overview": "概要"
   },
   "topbar": {
     "checking": "backend 確認中…",
@@ -30,7 +31,8 @@
     "none": "なし",
     "records": "{{n}} 件",
     "openInDatabase": "データベースで開く",
-    "comingSoon": "近日対応"
+    "comingSoon": "近日対応",
+    "close": "閉じる"
   },
   "filters": {
     "search": "ID / テキストを検索…",
@@ -235,7 +237,7 @@
     "missingFiles": "欠損ファイル {{n}}"
   },
   "database": {
-    "title": "データベース",
+    "title": "ライブラリ",
     "subtitle": "取り込んだ言語景観記録を管理します。",
     "import": "データパッケージを読み込む",
     "loading": "記録を読み込み中…",
@@ -261,7 +263,24 @@
     "zoomHint": "拡縮: Ctrl/Alt + ホイール",
     "viewAlbum": "アルバム",
     "exportFiltered": "絞り込み結果を書き出す",
-    "copy": "コピー"
+    "copy": "コピー",
+    "view": "表示",
+    "openRecord": "記録の詳細を見る",
+    "zoom": "写真を拡大表示",
+    "scopeMenu": "現在の結果 · {{n}} 件",
+    "scopeReview": "現在の絞り込み {{n}} 件を審査",
+    "scopeAi": "現在の絞り込み {{n}} 件を AI 処理",
+    "scopeExport": "現在の絞り込み {{n}} 件を書き出す",
+    "albumNoPhotoNote": "写真表示には写真のある {{shown}} 件だけが並びます。ほかに写真のない記録が {{missing}} 件あります。",
+    "showNoPhoto": "写真のない記録を表で見る",
+    "selectPage": "このページをすべて選択",
+    "selectRecord": "{{id}} を選択",
+    "selectionBar": "まとめて操作",
+    "selectedCount": "{{n}} 件を選択中",
+    "clearSelection": "選択を解除",
+    "selReview": "選んだ {{n}} 件を審査",
+    "selAi": "選んだ {{n}} 件を AI 処理",
+    "selExport": "選んだ {{n}} 件を書き出す"
   },
   "table": {
     "area": "地区",
@@ -283,7 +302,8 @@
     "save": "保存",
     "saving": "保存中…",
     "saveFailed": "保存に失敗しました。",
-    "updated": "更新: {{time}}"
+    "updated": "更新: {{time}}",
+    "detail": "記録の詳細"
   },
   "import": {
     "title": "Dataset Package を取り込む",
@@ -317,7 +337,10 @@
     "filledOk": "✓ 欠落写真の補充が完了しました",
     "restored": "復元した写真",
     "stillMissing": "パッケージ内にも無い写真",
-    "reused": "共用（内容去重）"
+    "reused": "共用（内容去重）",
+    "viewImported": "今回取り込んだ {{n}} 件を見る",
+    "nextHint": "このまま審査を始められます。AI を使う場合は、ライブラリ右上の「現在の結果」メニューからこのデータに対して実行できます（任意）。",
+    "nextHintNoAi": "このまま、このデータの審査を始められます。"
   },
   "map": {
     "title": "地図",
@@ -367,7 +390,18 @@
       "rejected": "却下する",
       "reviewedNext": "審核済みにして次へ"
     },
-    "openInDatabase": "データベースで開く"
+    "openInDatabase": "データベースで開く",
+    "scopeCount": "うち「{{tab}}」{{n}} 件",
+    "scopeReset": "すべての記録に戻す",
+    "hideQueue": "キューを閉じる",
+    "showQueue": "キューを開く",
+    "prev": "前へ",
+    "next": "次へ",
+    "unsavedNote": "未保存の変更があります",
+    "saveHint": "項目の変更だけを保存します（審査状態は変わりません）",
+    "statusLabel": "審査状態",
+    "completeness": "入力済みの項目",
+    "zoomHint": "クリックで拡大（ズーム・移動・元写真の切り替え）"
   },
   "export": {
     "title": "エクスポート",
@@ -437,7 +471,56 @@
       "package": "Dataset Package",
       "csv": "CSV",
       "geojson": "GeoJSON"
-    }
+    },
+    "adjustScope": "ライブラリで対象を調整",
+    "selectionAvailable": "ライブラリで手動選択した記録が {{n}} 件あります。",
+    "useSelection": "選んだ記録だけを書き出す",
+    "useFilter": "ライブラリの現在の絞り込みを書き出す",
+    "tab": {
+      "split": "分類写真",
+      "package": "完全データパッケージ",
+      "photos": "写真と CSV",
+      "geo": "地図データ"
+    },
+    "tabDesc": {
+      "split": "項目ごとに ZIP を分ける",
+      "package": "再読み込みできる完全バックアップ",
+      "photos": "写真 ZIP 1 つ / 表データ",
+      "geo": "GeoJSON の地点"
+    },
+    "splitField": "分類する項目",
+    "splitMode": "分け方",
+    "modeSingle": "言語ごと（1 言語 1 ZIP）",
+    "modeCombo": "言語の組み合わせごと（1 組 1 ZIP）",
+    "modeSingleHint": "「{{field}}」の値ごとに分けます。複数の値を持つ記録（例:「日本語/英語」）は、日本語と英語の両方の ZIP に入ります。",
+    "modeComboHint": "「{{field}}」の値の組み合わせで分けます（例:「日本語 + 英語」で 1 つの ZIP）。各記録はちょうど 1 つの ZIP に入ります。",
+    "singleValueHint": "「{{field}}」の値ごとに、1 値 1 ZIP で分けます。",
+    "previewing": "集計中…",
+    "colGroup": "分類",
+    "colZip": "ZIP ファイル",
+    "colRecords": "記録",
+    "colFiles": "写真",
+    "colMissing": "欠落",
+    "noGroups": "この対象には分類できる記録がありません。",
+    "sumLine": "対象 {{records}} 件 → ZIP {{zips}} 個、写真ファイルは合計 {{files}} 個。",
+    "dupLine": "うち {{n}} 件は複数の分類に属するため、複数の ZIP に重複して入ります（写真の数は重複を含みます）。",
+    "comboLine": "組み合わせで分けるため、各記録は 1 つの ZIP にだけ入り、ZIP をまたいだ重複はありません。",
+    "unclassifiedLine": "{{n}} 件は「{{field}}」が未入力のため、どの ZIP にも入りません。",
+    "missingLine": "写真ファイル {{n}} 個が見つかりません（ZIP 内の MISSING.txt に記録されます）。",
+    "dedupLine": "同じ ZIP の中で内容がまったく同じ写真は 1 つにまとめるため、実際のファイル数は少し減ることがあります。各 ZIP に photo_mapping.csv が付きます。",
+    "moreOptions": "その他のオプション（命名・保存先）",
+    "runSplit": "ZIP {{zips}} 個を書き出す（{{files}} ファイル）",
+    "zipRecords": "{{n}} 件",
+    "zipFiles": "{{n}} ファイル",
+    "packageDesc": "data.csv・項目定義・マニフェスト・写真をまとめた完全なデータパッケージです。LLMap に再読み込みでき、形式はこれまでと同じです。",
+    "runPackage": "データパッケージを書き出す（{{n}} 件）",
+    "photosZipTitle": "写真 ZIP",
+    "photosZipDesc": "分類せず、対象の写真を 1 つの ZIP にまとめます。",
+    "photosPvLine": "切り抜き {{crop}} 枚・元写真 {{source}} 枚、合計 {{files}} ファイル。",
+    "runPhotos": "写真 ZIP を書き出す（{{n}} ファイル）",
+    "runCsv": "CSV をダウンロード（{{n}} 件）",
+    "geoDesc": "座標のある記録を GeoJSON の地点として書き出します（QGIS などで使えます）。",
+    "runGeo": "GeoJSON をダウンロード"
   },
   "ai": {
     "title": "AI処理",
@@ -480,7 +563,11 @@
       "abort": "中止: {{message}}",
       "cancelled": "キャンセルしました（処理済み分は保存されています）",
       "done": "完了: 更新 {{changed}} 件 · 変更なし {{unchanged}} 件 · スキップ {{skipped}} 件 · エラー {{errors}} 件"
-    }
+    },
+    "scopeReset": "既定の対象（未整理）に戻す",
+    "offTitle": "AI 機能はオフです",
+    "offBody": "設定で AI をオフにしているため、関連する入口を隠しています。既存の AI の結果と API キーはそのまま残り、実行中のジョブにも影響しません。",
+    "offGoSettings": "設定を開く"
   },
   "settings": {
     "title": "設定",
@@ -516,7 +603,10 @@
       "claude-opus-4-8": "Opus 4.8 · 最高品質（高価）",
       "gemini-2.5-flash": "Flash · 高速・低価格（既定）",
       "gemini-2.5-pro": "Pro · 高品質"
-    }
+    },
+    "aiEnable": "AI 支援を使う",
+    "aiEnableOn": "オン：ライブラリから現在の対象に AI 処理を実行できます。",
+    "aiEnableOff": "オフ：AI の入口をすべて隠します。既存の結果とキーは残り、手作業の研究はすべて使えます。"
   },
   "storage": {
     "title": "ストレージ",
@@ -547,5 +637,13 @@
     "fit": "全体表示",
     "rotate": "回転",
     "copy": "画像をコピー"
+  },
+  "scope": {
+    "label": "対象",
+    "all": "すべての記録",
+    "fromDatabase": "ライブラリの現在の絞り込み",
+    "count": "{{n}} 件",
+    "reset": "すべての記録に戻す",
+    "selectedN": "手動で選んだ {{n}} 件"
   }
 }

@@ -12,6 +12,7 @@ import type {
   MapQuery,
   MapRecord,
   PhotosExportPreview,
+  PhotosSplitPreview,
   RecordDetail,
   RecordsQuery,
   RecordsResponse,
@@ -212,16 +213,30 @@ export const startPhotosSplitExport = (
   naming: 'signid' | 'displayid' | 'original' = 'original',
   field: string,
   outputDir?: string,
+  mode: 'single' | 'combo' = 'single',
 ) =>
   request<{ jobId: string }>('/export/photos/split', {
     method: 'POST',
     body: JSON.stringify({
-      ...filters, content, naming, field,
+      ...filters, content, naming, field, mode,
       ...(outputDir ? { outputDir } : {}),
     }),
   });
 
 /** 写真 ZIP の事前集計（何枚出るか。導出はしない）。 */
+/** 字段別分包の事前集計（各 zip の件数・写真数・欠落、重複・未分類）。 */
+export const previewPhotosSplit = (
+  filters: RecordsQuery,
+  content: 'crop' | 'source' | 'both',
+  naming: 'signid' | 'displayid' | 'original',
+  field: string,
+  mode: 'single' | 'combo',
+) =>
+  request<PhotosSplitPreview>('/export/photos/split/preview', {
+    method: 'POST',
+    body: JSON.stringify({ ...filters, content, naming, field, mode }),
+  });
+
 export const previewPhotosExport = (
   filters: RecordsQuery = {},
   content: 'crop' | 'source' | 'both' = 'both',

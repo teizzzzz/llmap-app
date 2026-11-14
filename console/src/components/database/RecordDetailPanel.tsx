@@ -23,10 +23,16 @@ export default function RecordDetailPanel({
   recordId,
   schema,
   onSaved,
+  onClose,
+  onDirtyChange,
 }: {
   recordId: number;
   schema: SchemaInfo | null;
   onSaved: () => void;
+  /** 指定時は見出しに閉じるボタンを出す（資料庫の抽屉）。 */
+  onClose?: () => void;
+  /** 未保存の変更の有無を親へ（閉じる・切替時の確認用）。 */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [detail, setDetail] = useState<RecordDetail | null>(null);
@@ -60,6 +66,7 @@ export default function RecordDetailPanel({
     return out;
   }, [draft, detail]);
   const dirty = Object.keys(changed).length > 0;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
   const save = async () => {
     if (!detail || !dirty) return;
@@ -117,6 +124,10 @@ export default function RecordDetailPanel({
         <div className="detail-badges">
           <StatusBadge value={detail.EntryMode} />
           <StatusBadge value={current('DataStatus')} />
+          {onClose && (
+            <button type="button" className="btn ghost icon" onClick={onClose}
+              title={t('common.close')} aria-label={t('common.close')}>✕</button>
+          )}
         </div>
       </div>
 
@@ -153,15 +164,18 @@ export default function RecordDetailPanel({
         />
       )}
 
-      <h3 className="detail-section">{t('record.identity')}</h3>
-      <div className="identity-grid">
-        {IDENTITY_FIELDS.map((f) => (
-          <div key={f} className="identity-row">
-            <span className="k">{fieldLabel(f)}</span>
-            <span className="v mono">{detail.data[f] || '—'}</span>
-          </div>
-        ))}
-      </div>
+      {/* 識別情報（ファイル名・版本など）は低頻度なので折りたたむ。 */}
+      <details className="detail-meta">
+        <summary>{t('record.identity')}</summary>
+        <div className="identity-grid">
+          {IDENTITY_FIELDS.map((f) => (
+            <div key={f} className="identity-row">
+              <span className="k">{fieldLabel(f)}</span>
+              <span className="v mono">{detail.data[f] || '—'}</span>
+            </div>
+          ))}
+        </div>
+      </details>
 
       <h3 className="detail-section">
         {t('record.researchFields')}{' '}

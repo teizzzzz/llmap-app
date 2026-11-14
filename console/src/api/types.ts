@@ -251,6 +251,27 @@ export interface RecordsQuery {
   datasetIds?: number[];
   /** 研究字段（字段表）での筛选: 字段名 → 値。GET では JSON 文字列に直列化。 */
   fields?: Record<string, string>;
+  /** 手動で選んだ記録の id（資料庫の批量選択）。他の条件と AND。GET では "1,5,9"。 */
+  ids?: number[];
+}
+
+/** POST /export/photos/split/preview — 字段別分包の事前集計 */
+export interface PhotosSplitPreview {
+  field: string;
+  /** single = 単一値ごと（複数値の記録は複数 zip に入る）/ combo = 組合せごと */
+  mode: 'single' | 'combo';
+  /** 複数選択字段か（言語など。combo が意味を持つ） */
+  multi: boolean;
+  recordCount: number;
+  /** どれかの zip に入る記録数（重複を数えない） */
+  groupedRecords: number;
+  /** 2 つ以上の zip に入る記録数（single の複数値） */
+  duplicateRecords: number;
+  /** 値が空でどの zip にも入らない記録数 */
+  unclassified: number;
+  /** 全 zip の写真数の合計（重複を含む・内容去重の前） */
+  totalFiles: number;
+  groups: { value: string; zipName: string; records: number; files: number; missing: number }[];
 }
 
 /** POST /export/photos/preview — 写真 ZIP の事前集計 */
@@ -274,7 +295,16 @@ export interface ExportJobStatus {
   path: string;
   sizeBytes: number;
   error: string;
-  report: Record<string, number>;
+  /** 件数の報告。分類照片（photos_split）は zip ごとの内訳 zips を含む。 */
+  report: {
+    zipCount?: number;
+    filesAdded?: number;
+    dedupedFiles?: number;
+    missingCount?: number;
+    mode?: 'single' | 'combo';
+    zips?: { zipName: string; value: string; records: number; filesAdded: number; missingCount: number }[];
+    [k: string]: unknown;
+  } | null;
 }
 
 /** GET/PUT /config の応答（settings.json）。 */

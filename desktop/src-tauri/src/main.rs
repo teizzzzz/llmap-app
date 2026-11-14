@@ -210,22 +210,43 @@ window.__LLMAP_API_BASE_URL__ = 'http://127.0.0.1:{port}';
         'data directory not writable.<br>Logs: LLMap data dir /logs/backend.log';
     }}
     if (window.__LLMAP_BOOT_ERROR__) {{ fail(window.__LLMAP_BOOT_ERROR__); return; }}
-    var tries = 0, wasDown = false;
+    var tries = 0, wasDown = false, busy = false, lastErr = '';
+    // 1 回の確認は 1.5 秒で打ち切る（応答の無い fetch が残り続けて、以後の確認が
+    // 永久に届かず「起動中」のまま固まるのを防ぐ）。
+    function check() {{
+      if (busy) return;
+      busy = true;
+      var ctl = window.AbortController ? new AbortController() : null;
+      var to = setTimeout(function () {{ if (ctl) ctl.abort(); }}, 1500);
+      fetch(api + '/health', ctl ? {{ signal: ctl.signal, cache: 'no-store' }} : {{ cache: 'no-store' }})
+        .then(function (r) {{
+          if (!r.ok) {{ lastErr = 'HTTP ' + r.status; return; }}
+          clearInterval(timer);
+          if (wasDown) location.reload();
+          else el.remove();
+        }})
+        .catch(function (e) {{ wasDown = true; lastErr = String(e && e.message || e); }})
+        .then(function () {{ clearTimeout(to); busy = false; }});
+    }}
     var timer = setInterval(function () {{
       tries++;
-      fetch(api + '/health').then(function (r) {{
-        if (!r.ok) return;
-        clearInterval(timer);
-        if (wasDown) location.reload();
-        else el.remove();
-      }}).catch(function () {{ wasDown = true; }});
+      check();
       // 初回起動は OS のコード署名検証（macOS）や杀毒扫描（Windows）で
-      // 数十秒かかることがあるため 60 秒まで待つ。10 秒過ぎたら文言で案内する。
+      // 数十秒かかることがあるため 60 秒まで待つ。10 秒過ぎたら文言で案内し、
+      // 再読込ボタンと最後のエラーを出す（開発中の再読込で固まった場合の逃げ道）。
       if (tries === 50) {{
-        document.getElementById('__llmap_boot_msg').textContent =
-          'Still starting… the first launch can take up to a minute.';
+        var m = document.getElementById('__llmap_boot_msg');
+        m.innerHTML = 'Still starting… the first launch can take up to a minute.' +
+          '<div id="__llmap_boot_err" style="margin-top:8px;font-size:12px;color:#8e8e8e"></div>' +
+          '<button id="__llmap_boot_reload" style="margin-top:12px;padding:6px 14px;' +
+          'border:0;border-radius:999px;background:#0f0f0e;color:#fff;cursor:pointer">Reload</button>';
+        document.getElementById('__llmap_boot_reload').onclick = function () {{ location.reload(); }};
       }}
-      if (tries > 300) {{ clearInterval(timer); fail('Backend did not become ready within 60s.'); }}
+      if (tries >= 50 && lastErr) {{
+        var er = document.getElementById('__llmap_boot_err');
+        if (er) er.textContent = 'Last check: ' + lastErr + ' · ' + api;
+      }}
+      if (tries > 300) {{ clearInterval(timer); fail('Backend did not become ready within 60s. Last check: ' + lastErr); }}
     }}, 200);
   }});
 }})();

@@ -29,7 +29,7 @@ export default function ReviewQueue({
             <span className="mono queue-id">{r.DisplayID || r.SignID}</span>
             <LangTags value={r.主要言語} />
             <span className="queue-meta">
-              <span className="mono">{(r.採集日時 || '—').slice(5)}</span>
+              <span className="mono">{(r.採集日時 || '—').slice(5, 16)}</span>
               <StatusBadge value={r.DataStatus} />
             </span>
           </span>

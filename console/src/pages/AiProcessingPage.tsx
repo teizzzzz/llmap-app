@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   ApiError, aiPreview, cancelAiJob, getAiJob, getAiStatus, getRecords,
   startAiJob,
@@ -7,7 +8,10 @@ import {
 import type {
   AiJobStatus, AiLogEntry, AiPreview, AiStatus, RecordsQuery,
 } from '../api/types';
+import ScopeBanner from '../components/ScopeBanner';
 import useFilterOptions from '../hooks/useFilterOptions';
+import useAiEnabled from '../hooks/useAiEnabled';
+import useSharedFilters, { scopeQuery } from '../hooks/useSharedFilters';
 import { enumLabel } from '../lib/enumLabels';
 import { languageFilterValues } from '../lib/languageList';
 
@@ -70,7 +74,20 @@ function useAiJob() {
 
 export default function AiProcessingPage() {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<RecordsQuery>({ dataStatus: 'raw' });
+  // 資料庫の「AI 处理当前筛选」から来たら、その範囲（筛选）をそのまま対象にする。
+  const [params, setParams] = useSearchParams();
+  const shared = useSharedFilters();
+  // 範囲: db = 資料庫の筛选結果（空なら全部の記録）、sel = 手動選択。
+  const [fromDb, setFromDb] = useState(() => ['db', 'sel'].includes(params.get('scope') ?? ''));
+  const [filters, setFilters] = useState<RecordsQuery>(() => {
+    const s = params.get('scope');
+    if (s === 'db' || s === 'sel') return scopeQuery(s, shared.filters, shared.selection);
+    return { dataStatus: 'raw' };
+  });
+  const [aiOn] = useAiEnabled();
+  useEffect(() => {
+    if (params.get('scope')) setParams({}, { replace: true });
+  }, [params, setParams]);
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ai, setAi] = useState<AiStatus | null>(null);
@@ -185,11 +202,42 @@ export default function AiProcessingPage() {
     }
   };
 
+  // 設定で AI を切っているとき: 操作は出さず、理由と戻し方だけを示す。
+  // 既存の AI 結果・後端の設定・実行中のジョブには触れない。
+  if (!aiOn) {
+    return (
+      <>
+        <div className="page-head compact">
+          <h1>{t('ai.title')}</h1>
+        </div>
+        <div className="card ai-off">
+          <strong>{t('ai.offTitle')}</strong>
+          <p className="muted">{t('ai.offBody')}</p>
+          <Link className="btn" to="/settings">{t('ai.offGoSettings')}</Link>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="page-head">
+      <div className="page-head compact">
         <h1>{t('ai.title')}</h1>
       </div>
+
+      {fromDb && (
+        <ScopeBanner
+          filters={filters}
+          datasets={datasets}
+          count={total}
+          onReset={() => {
+            setPreview(null);
+            setFromDb(false);
+            setFilters({ dataStatus: 'raw' });
+          }}
+          resetLabel={t('ai.scopeReset')}
+        />
+      )}
 
       {/* v6 の 2 大規則（実装済みの併合動作の説明 — 必須表示） */}
       <div className="warn-box" style={{ marginBottom: 14 }}>

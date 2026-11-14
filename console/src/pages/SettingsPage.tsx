@@ -5,6 +5,7 @@ import {
   storageCleanup, storageReset, updateConfig,
 } from '../api/client';
 import type { AiStatus, AppConfig, StorageSummary } from '../api/types';
+import useAiEnabled from '../hooks/useAiEnabled';
 import { SUPPORTED_LANGUAGES, setLanguage } from '../i18n';
 
 /** バイト数の人間向け表示（GB/MB/KB）。 */
@@ -70,6 +71,7 @@ export default function SettingsPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   // モデル選択肢は backend が唯一の正（/ai/status の modelOptions）。
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
+  const [aiOn, setAiOn] = useAiEnabled();
 
   useEffect(() => {
     getAiStatus().then(setAiStatus).catch(() => {});
@@ -339,7 +341,18 @@ export default function SettingsPage() {
       {config && (
         <div className="card" style={{ marginBottom: 14 }}>
           <h3 style={{ marginTop: 0 }}>{t('settings.aiTitle')}</h3>
-          <p className="muted" style={{ margin: '0 0 10px' }}>
+          {/* AI は任意。切ると AI の入口（侧栏・資料庫のメニュー・AI 页）を隠すだけで、
+              既存の AI 結果・鍵・実行中のジョブには触れない（この端末の表示設定）。 */}
+          <label className="switch-row">
+            <input type="checkbox" role="switch" checked={aiOn}
+              onChange={(e) => setAiOn(e.target.checked)} />
+            <span>
+              <b>{t('settings.aiEnable')}</b>
+              <span className="muted">{t(aiOn ? 'settings.aiEnableOn' : 'settings.aiEnableOff')}</span>
+            </span>
+          </label>
+          {aiOn && (<>
+          <p className="muted" style={{ margin: '12px 0 10px' }}>
             {t('settings.aiDesc')}
           </p>
           <div style={{ display: 'grid', gap: 10, maxWidth: 640 }}>
@@ -414,6 +427,7 @@ export default function SettingsPage() {
               <div className="hint">{aiError}</div>
             </div>
           )}
+          </>)}
         </div>
       )}
 

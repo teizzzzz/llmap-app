@@ -88,6 +88,8 @@ def _filters_kwargs(payload: dict) -> dict:
         dataset_ids=payload.get("datasetIds"),
         # 研究字段（字段表）での筛选。POST では dict がそのまま来る。
         field_filters=payload.get("fields"),
+        # 手動選択（記録 id の配列）。他の条件と AND。
+        record_ids=payload.get("ids"),
     )
 
 
@@ -486,56 +488,110 @@ def _value_slug(field: str, value: str) -> str:
     return ascii_ or hashlib.sha256(value.encode()).hexdigest()[:6]
 
 
+SPLIT_MODES = ("single", "combo")
+
+
+def _split_zip_name(fslug: str, slug: str, mode: str) -> str:
+    """分類 zip の名前。combo は "<字段>_combo_<値>.zip" —— 単一値方式の
+    同名 zip（例 main_jp.zip）と同じ目录に出しても取り違えない・上書きしない。"""
+    return f"{fslug}_combo_{slug}.zip" if mode == "combo" else f"{fslug}_{slug}.zip"
+
+
+def _split_groups(records: list[SignRecord], field: str, mode: str = "single"):
+    """字段の値で記録を桶に分ける（導出ジョブと事前集計で共用）。
+
+    返り値: (groups, unclassified)
+      groups: [(key, slug, recs)] —— key は表示用の値（combo は "日本語+英語"）、
+              slug は zip 名の値部分。並びは枚挙順（combo は構成値の枚挙順）。
+      unclassified: 値が空・「—」でどの桶にも入らない記録。
+
+    mode="single": トークン単位。複数選択字段（"日本語/英語"）は各値の桶へ
+      —— 1 記録が複数の zip に入る（従来どおり）。
+    mode="combo": 複数選択字段の値の組合せ 1 つにつき 1 桶（"日本語+英語" は
+      「日本語」「英語」とは別の桶）—— 1 記録は必ず 1 つの zip に入る。
+    どちらも枚挙に無い値（言語の自由追加・小語種・不明 など）は
+    「その他/其他」に寄せる —— other = 主要枚挙以外のすべて、が研究上の期待語義。"""
+    enum_vals = ENUMS[field]
+    order = {v: i for i, v in enumerate(enum_vals)}
+    other = next((v for v in ("その他", "其他") if v in enum_vals), None)
+    is_multi = field in MULTI_FIELDS
+    use_combo = mode == "combo" and is_multi
+
+    def tokens_of(rec: SignRecord) -> list[str]:
+        raw = (json.loads(rec.data_json).get(field) or "").strip()
+        toks = split_multi(raw) if is_multi else \
+            ([raw] if raw and raw != "—" else [])
+        hit: list[str] = []
+        for tok in toks:
+            v = tok if tok in order else other
+            if v and v not in hit:
+                hit.append(v)
+        return sorted(hit, key=lambda v: order[v])
+
+    unclassified: list[SignRecord] = []
+    if not use_combo:
+        buckets: dict[str, list[SignRecord]] = {v: [] for v in enum_vals}
+        for rec in records:
+            hit = tokens_of(rec)
+            if not hit:
+                unclassified.append(rec)
+            for v in hit:
+                buckets[v].append(rec)
+        groups = [(v, _value_slug(field, v), buckets[v])
+                  for v in enum_vals if buckets[v]]
+        return groups, unclassified
+
+    combos: dict[tuple[str, ...], list[SignRecord]] = {}
+    for rec in records:
+        hit = tokens_of(rec)
+        if not hit:
+            unclassified.append(rec)
+            continue
+        combos.setdefault(tuple(hit), []).append(rec)
+    # 単一言語の組を先に、次に構成数・枚挙順で並べる。
+    keys = sorted(combos, key=lambda k: (len(k), [order[v] for v in k]))
+    groups = [("+".join(k), "-".join(_value_slug(field, v) for v in k), combos[k])
+              for k in keys]
+    return groups, unclassified
+
+
 def _build_photos_split(job: ExportJob, filters: dict,
                         content: str, naming: str, field: str,
-                        out_dir: Path | None = None) -> None:
-    """字段の各値ごとに 1 本ずつ zip を作る。出力名は <字段slug>_<値slug>.zip
-    固定 —— 再実行で同名を上書きする（手作業の再整理を不要に）。
-
-    値の判定はトークン単位（複数選択字段は分割して各値の zip に入る）。
-    枚挙に無い値（言語の自由追加・タイ語等の小語種・不明 など）は
-    「その他/其他」の桶に集める —— other = 主要枚挙以外のすべて、が
-    研究上の期待語義のため（字面の「その他」だけだとほぼ空になる）。"""
+                        out_dir: Path | None = None,
+                        mode: str = "single") -> None:
+    """字段の各値（mode=combo なら各組合せ）ごとに 1 本ずつ zip を作る。
+    出力名は <字段slug>_<値slug>.zip 固定（combo は <字段slug>_combo_<値slug>.zip、
+    値slug は "-" で連結）—— 再実行で同名を上書きする（手作業の再整理を不要に）。"""
     base = out_dir or exports_dir()
     fslug = SPLIT_FIELD_SLUGS.get(field, _value_slug(field, field))
 
     with Session(get_engine()) as session:
         records = _load_records(session, filters)
 
-    enum_vals = ENUMS[field]
-    other = next((v for v in ("その他", "其他") if v in enum_vals), None)
-    is_multi = field in MULTI_FIELDS
-    buckets: dict[str, list[SignRecord]] = {v: [] for v in enum_vals}
-    for rec in records:
-        raw = (json.loads(rec.data_json).get(field) or "").strip()
-        tokens = split_multi(raw) if is_multi else \
-            ([raw] if raw and raw != "—" else [])
-        hit: set[str] = set()
-        for tok in tokens:
-            if tok in buckets:
-                hit.add(tok)
-            elif other:
-                hit.add(other)  # 枚挙外の値 → その他/其他 へ
-        for v in hit:
-            buckets[v].append(rec)
-    batches = [(v, buckets[v]) for v in enum_vals if buckets[v]]
+    groups, _unclassified = _split_groups(records, field, mode)
+    zip_mode = "combo" if mode == "combo" and field in MULTI_FIELDS else "single"
 
     plans = []
-    for value, recs in batches:
+    for value, slug, recs in groups:
         plan, missing = _photos_plan(recs, content, naming)
-        plans.append((value, recs, plan, missing))
+        plans.append((value, slug, recs, plan, missing))
         job.total += len(plan)
 
     added = deduped = missing_total = 0
     zip_names: list[str] = []
-    for value, recs, plan, missing in plans:
-        name = f"{fslug}_{_value_slug(field, value)}.zip"
+    per_zip: list[dict] = []
+    for value, slug, recs, plan, missing in plans:
+        name = _split_zip_name(fslug, slug, zip_mode)
         rep = _write_photos_zip(
             job, recs, plan, missing, base / f".{name}.part", base / name)
         zip_names.append(name)
         added += rep["filesAdded"]
         deduped += rep["dedupedFiles"]
         missing_total += rep["missingCount"]
+        per_zip.append({
+            "zipName": name, "value": value, "records": len(recs),
+            "filesAdded": rep["filesAdded"], "missingCount": rep["missingCount"],
+        })
 
     job.file_name = f"{fslug}_*.zip"
     job.path = base  # 個別 zip の生成先目录（単一ファイルの下载は不可）
@@ -545,6 +601,8 @@ def _build_photos_split(job: ExportJob, filters: dict,
         "filesAdded": added,
         "dedupedFiles": deduped,
         "missingCount": missing_total,
+        "mode": mode,
+        "zips": per_zip,
     }
 
 
@@ -588,11 +646,13 @@ def start_photos_export(payload: dict = Body(default={})):
 
 @router.post("/export/photos/split")
 def start_photos_split_export(payload: dict = Body(default={})):
-    """字段別分包: 指定字段の各値ごとに <字段slug>_<値slug>.zip を生成。"""
+    """字段別分包: 指定字段の各値ごとに <字段slug>_<値slug>.zip を生成。
+    mode="combo"（複数選択字段のみ）は値の組合せごとに 1 本。"""
     filters = _filters_kwargs(payload)
     content = payload.get("content", "both")
     naming = payload.get("naming", "original")
     field = payload.get("field", "")
+    mode = payload.get("mode", "single")
     if content not in ("crop", "source", "both"):
         raise HTTPException(400, f"不正な content: {content}")
     if naming not in ("signid", "displayid", "original"):
@@ -600,11 +660,64 @@ def start_photos_split_export(payload: dict = Body(default={})):
     if field not in ENUMS:
         raise HTTPException(
             400, f"分包できない字段です（枚挙字段のみ可）: {field!r}")
+    if mode not in SPLIT_MODES:
+        raise HTTPException(400, f"不正な mode: {mode}")
     out_dir = _output_dir(payload)
     return _start(
         "photos_split",
         lambda job: _build_photos_split(
-            job, filters, content, naming, field, out_dir))
+            job, filters, content, naming, field, out_dir, mode))
+
+
+@router.post("/export/photos/split/preview")
+def photos_split_preview(payload: dict = Body(default={})):
+    """字段別分包の事前集計（書き込みなし）。各 zip に入る記録数・写真数・欠落と、
+    複数の zip に重複して入る記録数、どの桶にも入らない記録数を返す。
+
+    写真数は導出ジョブの total と同じ計画（_photos_plan）で数える —— 実際に
+    zip へ入る枚数は内容去重（sha256）でこれ以下になり得る。"""
+    filters = _filters_kwargs(payload)
+    content = payload.get("content", "both")
+    naming = payload.get("naming", "original")
+    field = payload.get("field", "")
+    mode = payload.get("mode", "single")
+    if content not in ("crop", "source", "both"):
+        raise HTTPException(400, f"不正な content: {content}")
+    if naming not in ("signid", "displayid", "original"):
+        raise HTTPException(400, f"不正な naming: {naming}")
+    if field not in ENUMS:
+        raise HTTPException(
+            400, f"分包できない字段です（枚挙字段のみ可）: {field!r}")
+    if mode not in SPLIT_MODES:
+        raise HTTPException(400, f"不正な mode: {mode}")
+    with Session(get_engine()) as session:
+        records = _load_records(session, filters)
+    groups, unclassified = _split_groups(records, field, mode)
+    fslug = SPLIT_FIELD_SLUGS.get(field, _value_slug(field, field))
+    zip_mode = "combo" if mode == "combo" and field in MULTI_FIELDS else "single"
+    placed: dict[int, int] = {}
+    out = []
+    total_files = 0
+    for value, slug, recs in groups:
+        plan, missing = _photos_plan(recs, content, naming)
+        total_files += len(plan)
+        for r in recs:
+            placed[r.id] = placed.get(r.id, 0) + 1
+        out.append({
+            "value": value, "zipName": _split_zip_name(fslug, slug, zip_mode),
+            "records": len(recs), "files": len(plan), "missing": len(missing),
+        })
+    return {
+        "field": field,
+        "mode": zip_mode,
+        "multi": field in MULTI_FIELDS,
+        "recordCount": len(records),
+        "groupedRecords": len(placed),
+        "duplicateRecords": sum(1 for n in placed.values() if n > 1),
+        "unclassified": len(unclassified),
+        "totalFiles": total_files,
+        "groups": out,
+    }
 
 
 @router.post("/export/photos/preview")

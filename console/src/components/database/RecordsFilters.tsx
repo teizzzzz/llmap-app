@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { getRecords } from '../../api/client';
 import type { Dataset, RecordsQuery } from '../../api/types';
 import { enumLabel } from '../../lib/enumLabels';
@@ -25,7 +26,43 @@ const FIELD_FILTER_GROUPS: { group: string; keys: string[] }[] = [
   { group: 'D', keys: ['設置主体', 'ディスコース類型', '製作品質'] },
 ];
 
-type Chip = { key: string; label: string; remove: Partial<RecordsQuery> };
+export type Chip = { key: string; label: string; remove: Partial<RecordsQuery> };
+
+/** 適用中の筛选条件を chip（表示文言＋外すための patch）に変換する。
+    資料庫の筛选栏と、審核・AI ページの「範囲」表示で同じ文言を使う。 */
+export function filterChips(
+  value: RecordsQuery,
+  datasets: Dataset[],
+  t: TFunction,
+): Chip[] {
+  const fieldFilters = value.fields ?? {};
+  const datasetIds = value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : []);
+  const chip = (k: string, v: string) => t('filters.chip', { k, v });
+  const chips: Chip[] = [];
+  if (value.ids?.length) chips.push({ key: 'ids', label: t('scope.selectedN', { n: value.ids.length }), remove: { ids: undefined } });
+  if (value.q) chips.push({ key: 'q', label: chip(t('filters.keyword'), value.q), remove: { q: undefined } });
+  if (value.mainLanguage) chips.push({ key: 'lang', label: chip(t('filters.language'), enumLabel(t, value.mainLanguage)), remove: { mainLanguage: undefined } });
+  if (value.dataStatus) chips.push({ key: 'status', label: chip(t('filters.status'), value.dataStatus.split(',').map((s) => t(`status.${s}`, { defaultValue: s })).join(' / ')), remove: { dataStatus: undefined } });
+  if (value.areaCode) chips.push({ key: 'area', label: chip(t('filters.area'), value.areaCode), remove: { areaCode: undefined } });
+  if (value.dateFrom || value.dateTo) chips.push({ key: 'date', label: chip(t('filters.date'), `${value.dateFrom ?? '…'} — ${value.dateTo ?? '…'}`), remove: { dateFrom: undefined, dateTo: undefined } });
+  if (value.collectorId) chips.push({ key: 'collector', label: chip(t('filters.collector'), value.collectorId), remove: { collectorId: undefined } });
+  if (value.entryMode) chips.push({ key: 'mode', label: chip(t('filters.mode'), t(`status.${value.entryMode}`, { defaultValue: value.entryMode })), remove: { entryMode: undefined } });
+  for (const id of datasetIds) {
+    const ds = datasets.find((d) => d.id === id);
+    const rest = datasetIds.filter((x) => x !== id);
+    chips.push({ key: `ds-${id}`, label: chip(t('filters.dataset'), ds ? ds.name : `#${id}`), remove: { datasetIds: rest.length ? rest : undefined, datasetId: undefined } });
+  }
+  for (const [k, label] of [['hasGps', 'filters.gps'], ['hasPhoto', 'filters.photo'], ['hasSourcePhoto', 'filters.source']] as const) {
+    const v = value[k];
+    if (v !== undefined) chips.push({ key: k, label: chip(t(label), t(v ? 'common.yes' : 'common.no')), remove: { [k]: undefined } });
+  }
+  for (const [k, v] of Object.entries(fieldFilters)) {
+    const rest = { ...fieldFilters };
+    delete rest[k];
+    chips.push({ key: `f-${k}`, label: chip(t(`fields.${k}`, { defaultValue: k }), enumLabel(t, v)), remove: { fields: Object.keys(rest).length ? rest : undefined } });
+  }
+  return chips;
+}
 
 /** 検索＋筛选バー。常用 4 項目を 1 行に、残りは「更多筛选」に畳む。
     適用中の条件は chip で一覧し、クリックでその条件だけ外せる。
@@ -96,31 +133,8 @@ export default function RecordsFilters({
   const fromYn = (v: string) => (v === '' ? undefined : v === 'true');
 
   const datasetIds = value.datasetIds ?? (value.datasetId != null ? [value.datasetId] : []);
-  const chip = (k: string, v: string) => t('filters.chip', { k, v });
-
-  // 適用中の条件 → chip。
-  const chips: Chip[] = [];
-  if (value.q) chips.push({ key: 'q', label: chip(t('filters.keyword'), value.q), remove: { q: undefined } });
-  if (value.mainLanguage) chips.push({ key: 'lang', label: chip(t('filters.language'), enumLabel(t, value.mainLanguage)), remove: { mainLanguage: undefined } });
-  if (value.dataStatus) chips.push({ key: 'status', label: chip(t('filters.status'), t(`status.${value.dataStatus}`, { defaultValue: value.dataStatus })), remove: { dataStatus: undefined } });
-  if (value.areaCode) chips.push({ key: 'area', label: chip(t('filters.area'), value.areaCode), remove: { areaCode: undefined } });
-  if (value.dateFrom || value.dateTo) chips.push({ key: 'date', label: chip(t('filters.date'), `${value.dateFrom ?? '…'} — ${value.dateTo ?? '…'}`), remove: { dateFrom: undefined, dateTo: undefined } });
-  if (value.collectorId) chips.push({ key: 'collector', label: chip(t('filters.collector'), value.collectorId), remove: { collectorId: undefined } });
-  if (value.entryMode) chips.push({ key: 'mode', label: chip(t('filters.mode'), t(`status.${value.entryMode}`, { defaultValue: value.entryMode })), remove: { entryMode: undefined } });
-  for (const id of datasetIds) {
-    const ds = options.datasets.find((d) => d.id === id);
-    const rest = datasetIds.filter((x) => x !== id);
-    chips.push({ key: `ds-${id}`, label: chip(t('filters.dataset'), ds ? ds.name : `#${id}`), remove: { datasetIds: rest.length ? rest : undefined, datasetId: undefined } });
-  }
-  for (const [k, label] of [['hasGps', 'filters.gps'], ['hasPhoto', 'filters.photo'], ['hasSourcePhoto', 'filters.source']] as const) {
-    const v = value[k];
-    if (v !== undefined) chips.push({ key: k, label: chip(t(label), t(v ? 'common.yes' : 'common.no')), remove: { [k]: undefined } });
-  }
-  for (const [k, v] of Object.entries(fieldFilters)) {
-    const rest = { ...fieldFilters };
-    delete rest[k];
-    chips.push({ key: `f-${k}`, label: chip(t(`fields.${k}`, { defaultValue: k }), enumLabel(t, v)), remove: { fields: Object.keys(rest).length ? rest : undefined } });
-  }
+  // 適用中の条件 → chip（審核・AI の範囲表示でも同じ文言を使う）。
+  const chips = filterChips(value, options.datasets, t);
   const primaryKeys = new Set(['q', 'lang', 'status', 'area', 'date']);
   const moreCount = chips.filter((c) => !primaryKeys.has(c.key)).length;
 

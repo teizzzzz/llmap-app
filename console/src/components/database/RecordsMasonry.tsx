@@ -1,4 +1,8 @@
 // 相册視図: 筛选結果の写真を原比例の瀑布流（Pinterest 式）で並べる。
+// 操作は 3 つに分ける: 写真をクリック＝記録の详情（右の抽屉）、
+// 右上の「放大」＝写真ビューア、「复制」＝画像/ID のコピー、
+// 左上の丸＝批量操作用の選択（何か選んでいる間は全部の写真に出る）。
+// 写真の下には必要な情報（编号・言語・審核状態）だけを出す。
 // 列への割当は「既知の縦横比で最も短い列へ」を毎回先頭から計算する。
 // 比は画像の読込完了時に分かるので、未読込のものは仮の比で置く
 // （遅延読込は上から順に進むため、見えている範囲の並びはほぼ動かない）。
@@ -7,8 +11,9 @@ import { useTranslation } from 'react-i18next';
 import { ApiError, getRecords, photoUrl } from '../../api/client';
 import type { RecordItem, RecordsQuery } from '../../api/types';
 import { copyImageToClipboard } from '../../lib/copyImage';
-import { LANG_COLOR, primaryLangCode } from '../../lib/langColors';
+import LangTags from '../LangTags';
 import PhotoLightbox, { type LightboxItem } from '../PhotoLightbox';
+import StatusBadge from './StatusBadge';
 
 const PAGE = 60;
 const GAP = 12;
@@ -39,11 +44,25 @@ export default function RecordsMasonry({
   thumb,
   onThumb,
   onTotal,
+  onOpen,
+  selectedId,
+  reloadKey,
+  checked,
+  onToggleCheck,
 }: {
   filters: RecordsQuery;
   thumb: number;
   onThumb: (v: number) => void;
   onTotal: (n: number | null) => void;
+  /** 写真クリック: 記録の详情を開く。 */
+  onOpen: (r: RecordItem) => void;
+  /** 详情を開いている記録（枠で示す）。 */
+  selectedId: number | null;
+  /** 変えると 1 ページ目から読み直す（详情で保存した後の反映用）。 */
+  reloadKey?: number;
+  /** 批量操作用に選んだ記録 id。 */
+  checked: number[];
+  onToggleCheck: (id: number) => void;
 }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<RecordItem[]>([]);
@@ -70,6 +89,22 @@ export default function RecordsMasonry({
       .finally(() => setLoading(false));
   }, [filters, onTotal]);
   useEffect(() => loadPage(1), [loadPage]);
+  // 详情で保存した後: 読込済みの枚数ぶんを読み直して表示を更新（位置は保つ）。
+  const loadedRef = useRef(0);
+  loadedRef.current = items.length;
+  useEffect(() => {
+    if (!reloadKey) return;
+    const size = Math.min(500, Math.max(PAGE, loadedRef.current));
+    getRecords({ ...filters, hasPhoto: true, page: 1, pageSize: size })
+      .then((res) => {
+        setItems(res.items);
+        setTotal(res.total);
+        onTotal(res.total);
+        setPage(Math.ceil(res.items.length / PAGE));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   // 容器幅 → 列数。
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -154,40 +189,58 @@ export default function RecordsMasonry({
       {!error && !loading && items.length === 0 && (
         <div className="placeholder"><p>{t('database.albumNoPhotos')}</p></div>
       )}
-      <div className="masonry" ref={wrapRef}>
+      <div className={`masonry${checked.length ? ' selecting' : ''}`} ref={wrapRef}>
         {columns.map((col, c) => (
           <div key={c} className="masonry-col" style={{ width: colW }}>
             {col.map(({ r, i }) => {
               const id = r.DisplayID || r.SignID;
               const state = copied?.startsWith(`${r.id}:`) ? copied.split(':')[1] : null;
               return (
-                <div key={r.id} className="tile"
-                  style={{ aspectRatio: `1 / ${ratios.current.get(r.id) ?? GUESS_RATIO}` }}>
-                  <button type="button" className="tile-img" onClick={() => setLightboxIndex(i)}>
-                    <img
-                      src={photoUrl(r.thumbnailUrl) ?? undefined}
-                      alt={id}
-                      loading="lazy"
-                      decoding="async"
-                      onLoad={(e) => {
-                        const im = e.currentTarget;
-                        if (im.naturalWidth && !ratios.current.has(r.id)) {
-                          ratios.current.set(r.id, im.naturalHeight / im.naturalWidth);
-                          bump((n) => n + 1);
-                        }
-                      }}
-                    />
-                  </button>
-                  <i className="tile-lang" style={{ background: LANG_COLOR[primaryLangCode(r.主要言語)] }} />
-                  <div className="tile-bar">
+                <div key={r.id}
+                  className={`tile${selectedId === r.id ? ' selected' : ''}${checked.includes(r.id) ? ' checked' : ''}`}>
+                  <div className="tile-photo"
+                    style={{ aspectRatio: `1 / ${ratios.current.get(r.id) ?? GUESS_RATIO}` }}>
+                    <button type="button" className="tile-img" title={t('database.openRecord')}
+                      onClick={() => onOpen(r)}>
+                      <img
+                        src={photoUrl(r.thumbnailUrl) ?? undefined}
+                        alt={id}
+                        loading="lazy"
+                        decoding="async"
+                        onLoad={(e) => {
+                          const im = e.currentTarget;
+                          if (im.naturalWidth && !ratios.current.has(r.id)) {
+                            ratios.current.set(r.id, im.naturalHeight / im.naturalWidth);
+                            bump((n) => n + 1);
+                          }
+                        }}
+                      />
+                    </button>
+                    <button type="button" className="tile-check" role="checkbox"
+                      aria-checked={checked.includes(r.id)}
+                      title={t('database.selectRecord', { id })}
+                      aria-label={t('database.selectRecord', { id })}
+                      onClick={() => onToggleCheck(r.id)}>
+                      {checked.includes(r.id) ? '✓' : ''}
+                    </button>
+                    <div className="tile-tools">
+                      <button type="button" title={t('database.zoom')} aria-label={t('database.zoom')}
+                        onClick={() => setLightboxIndex(i)}>⤢</button>
+                      <button type="button" title={t('database.copyImage')} aria-label={t('database.copyImage')}
+                        onClick={() => copyImage(r)}>
+                        {state === 'img' ? '✓' : state === 'err' ? '✗' : '⧉'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="tile-cap">
                     <button type="button" className="tile-id mono" title={t('database.copyId')}
                       onClick={() => copyId(r)}>
                       {state === 'id' ? '✓' : id}
                     </button>
-                    <button type="button" className="tile-copy" title={t('database.copyImage')}
-                      onClick={() => copyImage(r)}>
-                      {state === 'img' ? '✓' : state === 'err' ? '✗' : t('database.copy')}
-                    </button>
+                    <span className="tile-meta">
+                      <LangTags value={r.主要言語} />
+                      <StatusBadge value={r.DataStatus} />
+                    </span>
                   </div>
                 </div>
               );

@@ -1,26 +1,55 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ApiError, cancelExportJob, exportGeoJson, exportJobDownloadUrl,
   exportRecordsCsv, getConfig, getExportJob, getRecords,
-  previewPhotosExport, startPackageExport, startPhotosExport,
+  previewPhotosExport, previewPhotosSplit, startPackageExport, startPhotosExport,
   startPhotosSplitExport,
 } from '../api/client';
-import type { AppConfig, ExportJobStatus, PhotosExportPreview } from '../api/types';
-import RecordsFilters from '../components/database/RecordsFilters';
+import type {
+  AppConfig, ExportJobStatus, PhotosExportPreview, PhotosSplitPreview, RecordsQuery,
+} from '../api/types';
+import ScopeBanner from '../components/ScopeBanner';
 import useFilterOptions from '../hooks/useFilterOptions';
-import useSharedFilters from '../hooks/useSharedFilters';
-import { languageFilterValues } from '../lib/languageList';
+import useSharedFilters, { scopeQuery, type ScopeKind } from '../hooks/useSharedFilters';
+import { enumLabel } from '../lib/enumLabels';
 
-// 写真 ZIP の字段別分包に出す枚挙字段（定義表のグループ順）。
+// 分類照片に使える枚挙字段（定義表のグループ順）。
 const SPLIT_FIELDS = [
   '文字性', '主要言語', '補助言語', '装飾の言語', '文字体系', '多言語関係',
   '担体類型', '放置位置', '空間階層', '時間性', '可読性', '重ね書き',
   '設置主体', 'ディスコース類型', '製作品質',
 ];
 
-type Format = 'photos' | 'package' | 'csv' | 'geojson';
-const FORMATS: Format[] = ['photos', 'package', 'csv', 'geojson'];
+// 導出の優先順（よく使う順）: 分類照片 → 完全データ包 → 照片と CSV → 地図データ。
+type Tab = 'split' | 'package' | 'photos' | 'geo';
+const TABS: Tab[] = ['split', 'package', 'photos', 'geo'];
+type Content = 'crop' | 'source' | 'both';
+type Naming = 'signid' | 'displayid' | 'original';
+type SplitMode = 'single' | 'combo';
+
+interface Prefs {
+  tab: Tab;
+  splitField: string;
+  splitMode: SplitMode;
+  content: Content;
+  naming: Naming;
+  outputDir: string;
+  geoProps: 'minimal' | 'full';
+}
+const PREFS_KEY = 'llmap.exportPrefs';
+const DEFAULT_PREFS: Prefs = {
+  tab: 'split', splitField: '主要言語', splitMode: 'single',
+  content: 'crop', naming: 'original', outputDir: '', geoProps: 'minimal',
+};
+function loadPrefs(): Prefs {
+  try {
+    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
 
 // 导出ファイル名（データ側の規約なので言語によらず固定）。
 const stamp = () => {
@@ -88,62 +117,93 @@ function useExportJob() {
     if (job && job.status === 'running') await cancelExportJob(job.id);
   };
 
-  return { job, starting, error, start, cancel };
+  const running = starting || job?.status === 'running';
+  return { job, starting, running, error, start, cancel };
 }
 
-/** 選択肢の小さな縦組み（ラベル＋ select）。 */
-function Option({ label, value, options, onChange }: {
+/** 胶囊の選択（seg）。 */
+function Seg<T extends string>({ value, options, onChange, label }: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
   label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
 }) {
   return (
-    <label className="opt">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </label>
+    <div className="seg" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value}
+          className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 導出ジョブの進捗・結果・失敗の表示（分類照片 / データ包 / 照片 ZIP 共通）。 */
+function JobStatus({ job }: { job: ReturnType<typeof useExportJob> }) {
+  const { t } = useTranslation();
+  const st = job.job;
+  return (
+    <>
+      {job.error && <div className="error-box"><div className="hint">{job.error}</div></div>}
+      {st?.status === 'running' && (
+        <div className="job-row">
+          <span className="job-bar"><i style={{ width: `${st.total ? (st.done / st.total) * 100 : 0}%` }} /></span>
+          <span className="mono">{st.done} / {st.total}</span>
+          <button className="btn ghost" onClick={job.cancel}>{t('common.cancel')}</button>
+        </div>
+      )}
+      {st?.status === 'done' && (
+        <div className="ok-box">
+          <span className="mono">{st.fileName}</span> · {fmtSize(st.sizeBytes)}
+          {st.kind === 'photos_split'
+            ? <> · {t('export.splitZips', { n: st.report?.zipCount ?? 0 })}</>
+            : <> · <a href={exportJobDownloadUrl(st.id)}>{t('export.download')}</a></>}
+          {st.path && <div className="mono path">{st.path}</div>}
+        </div>
+      )}
+      {st?.status === 'cancelled' && <div className="muted">{t('export.jobCancelled')}</div>}
+      {st?.status === 'error' && (
+        <div className="error-box">
+          <strong>{t('export.failed')}</strong>
+          <div className="hint">{st.error}</div>
+        </div>
+      )}
+    </>
   );
 }
 
 export default function ExportPage() {
   const { t } = useTranslation();
-  const { filters, patch, clear } = useSharedFilters();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const shared = useSharedFilters();
+  const options = useFilterOptions();
+
+  // 範囲: 資料庫の筛选結果（既定）か、手動で選んだ記録か。
+  const [scope, setScope] = useState<ScopeKind>(
+    () => (params.get('scope') === 'sel' && shared.selection.length ? 'sel' : 'db'));
+  useEffect(() => {
+    if (params.get('scope')) setParams({}, { replace: true });
+  }, [params, setParams]);
+  const filters: RecordsQuery = scopeQuery(scope, shared.filters, shared.selection);
+  const filtersKey = JSON.stringify(filters);
+
+  const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
+  const setPref = <K extends keyof Prefs>(k: K, v: Prefs[K]) =>
+    setPrefs((p) => ({ ...p, [k]: v }));
+  useEffect(() => {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* 記憶できなくても動く */ }
+  }, [prefs]);
+  const dir = prefs.outputDir.trim() || undefined;
+
   const [total, setTotal] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
-  const [format, setFormat] = useState<Format>('photos');
-  const [geoProps, setGeoProps] = useState<'minimal' | 'full'>('minimal');
-  const [photosContent, setPhotosContent] = useState<'crop' | 'source' | 'both'>('both');
-  const [photosNaming, setPhotosNaming] = useState<'signid' | 'displayid' | 'original'>('original');
-  // 字段別分包（'' = 分包しない = 1 本の zip）。
-  const [photosSplitField, setPhotosSplitField] = useState('');
-  // 導出先の一時指定（空 = 設定の既定目录）。設定自体は変更しない。
-  const [outputDir, setOutputDir] = useState('');
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  const [preview, setPreview] = useState<PhotosExportPreview | null>(null);
-  // 同期型（CSV / GeoJSON）の結果。
-  const [syncBusy, setSyncBusy] = useState(false);
-  const [syncDone, setSyncDone] = useState<string | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const options = useFilterOptions();
-  const packageJob = useExportJob();
-  const photosJob = useExportJob();
-
   useEffect(() => { getConfig().then(setCfg).catch(() => {}); }, []);
 
-  // 写真 ZIP の事前集計（筛选条件・内容選択に追従）。
-  useEffect(() => {
-    let stale = false;
-    setPreview(null);
-    previewPhotosExport(filters, photosContent)
-      .then((p) => { if (!stale) setPreview(p); })
-      .catch(() => { if (!stale) setPreview(null); });
-    return () => { stale = true; };
-  }, [filters, photosContent]);
-
-  // 筛选後の件数。pageSize=1 で total だけ取得する。
+  // 範囲の件数。
   useEffect(() => {
     setCountError(null);
     getRecords({ ...filters, page: 1, pageSize: 1 })
@@ -152,32 +212,56 @@ export default function ExportPage() {
         setTotal(null);
         setCountError(e instanceof ApiError ? e.message : String(e));
       });
-  }, [filters]);
-  useEffect(() => { setSyncDone(null); setSyncError(null); }, [filters, format]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]);
 
-  const dir = outputDir.trim() || undefined;
-  const job = format === 'photos' ? photosJob : format === 'package' ? packageJob : null;
-  const running = !!job && (job.starting || job.job?.status === 'running');
+  // 分類照片の事前集計（字段・方式・内容・命名・範囲に追従）。
+  const multiField = (f: string) => !!options.schema?.multi_fields?.includes(f);
+  const [split, setSplit] = useState<PhotosSplitPreview | null>(null);
+  const [splitError, setSplitError] = useState<string | null>(null);
+  useEffect(() => {
+    if (prefs.tab !== 'split' || !prefs.splitField) return;
+    let stale = false;
+    setSplit(null);
+    setSplitError(null);
+    previewPhotosSplit(filters, prefs.content, prefs.naming, prefs.splitField, prefs.splitMode)
+      .then((p) => { if (!stale) setSplit(p); })
+      .catch((e: unknown) => { if (!stale) setSplitError(e instanceof ApiError ? e.message : String(e)); });
+    return () => { stale = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey, prefs.tab, prefs.splitField, prefs.splitMode, prefs.content, prefs.naming]);
 
-  const run = async () => {
-    if (format === 'photos') {
-      void photosJob.start(() => photosSplitField
-        ? startPhotosSplitExport(filters, photosContent, photosNaming, photosSplitField, dir)
-        : startPhotosExport(filters, photosContent, photosNaming, dir));
-      return;
-    }
-    if (format === 'package') {
-      void packageJob.start(() => startPackageExport(filters, dir));
-      return;
-    }
+  // 照片 ZIP（分類なし）の事前集計。
+  const [photosPv, setPhotosPv] = useState<PhotosExportPreview | null>(null);
+  useEffect(() => {
+    if (prefs.tab !== 'photos') return;
+    let stale = false;
+    setPhotosPv(null);
+    previewPhotosExport(filters, prefs.content)
+      .then((p) => { if (!stale) setPhotosPv(p); })
+      .catch(() => { if (!stale) setPhotosPv(null); });
+    return () => { stale = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey, prefs.tab, prefs.content]);
+
+  const splitJob = useExportJob();
+  const packageJob = useExportJob();
+  const photosJob = useExportJob();
+
+  // 同期型（CSV / GeoJSON）の結果。
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncDone, setSyncDone] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  useEffect(() => { setSyncDone(null); setSyncError(null); }, [filtersKey, prefs.tab]);
+  const download = async (kind: 'csv' | 'geojson') => {
     setSyncBusy(true);
     setSyncDone(null);
     setSyncError(null);
     try {
-      const name = `llmap_export_${stamp()}.${format === 'csv' ? 'csv' : 'geojson'}`;
-      const blob = format === 'csv'
+      const name = `llmap_export_${stamp()}.${kind}`;
+      const blob = kind === 'csv'
         ? await exportRecordsCsv(filters)
-        : await exportGeoJson(filters, geoProps);
+        : await exportGeoJson(filters, prefs.geoProps);
       saveBlob(blob, name);
       setSyncDone(name);
     } catch (e: unknown) {
@@ -187,33 +271,74 @@ export default function ExportPage() {
     }
   };
 
-  const splitOptions = [
-    { value: '', label: t('export.splitNone') },
-    ...SPLIT_FIELDS
-      .filter((k) => options.schema?.enums[k]?.length && (options.fieldStats?.[k] ?? 1) > 0)
-      .map((k) => ({ value: k, label: t(`fields.${k}`, { defaultValue: k }) })),
-  ];
+  const fieldLabel = (f: string) => t(`fields.${f}`, { defaultValue: f });
+  const splitFields = SPLIT_FIELDS.filter((k) =>
+    options.schema?.enums[k]?.length && ((options.fieldStats?.[k] ?? 1) > 0 || k === prefs.splitField));
+  const isMulti = multiField(prefs.splitField);
+  const valueLabel = (v: string) => v.split('+').map((x) => enumLabel(t, x)).join(' + ');
+  const missingSum = split?.groups.reduce((a, g) => a + g.missing, 0) ?? 0;
+  const zipCount = split?.groups.filter((g) => g.records > 0).length ?? 0;
+  const empty = !total;
+
+  const contentSeg = (
+    <div className="exp-row">
+      <span className="exp-k">{t('export.contentLabel')}</span>
+      <Seg<Content> label={t('export.contentLabel')} value={prefs.content}
+        onChange={(v) => setPref('content', v)} options={[
+          { value: 'crop', label: t('export.contentCrop') },
+          { value: 'source', label: t('export.contentSource') },
+          { value: 'both', label: t('export.contentBoth') },
+        ]} />
+    </div>
+  );
+  const moreOptions = (withNaming: boolean) => (
+    <details className="exp-more">
+      <summary>{t('export.moreOptions')}</summary>
+      <div className="exp-more-body">
+        {withNaming && (
+          <label className="opt">
+            <span>{t('export.namingLabel')}</span>
+            <select value={prefs.naming} onChange={(e) => setPref('naming', e.target.value as Naming)}>
+              <option value="original">{t('export.namingOriginal')}</option>
+              <option value="signid">{t('export.namingSignId')}</option>
+              <option value="displayid">{t('export.namingDisplayId')}</option>
+            </select>
+          </label>
+        )}
+        <label className="opt">
+          <span>{t('export.outputDir')}</span>
+          <input type="text" value={prefs.outputDir} placeholder={cfg?.effectiveExportDir ?? ''}
+            onChange={(e) => setPref('outputDir', e.target.value)} />
+        </label>
+      </div>
+    </details>
+  );
 
   return (
     <>
-      <div className="page-head">
-        <h1>{t('export.title')}<span className="page-count">{total ?? ''}</span></h1>
+      <div className="page-head compact">
+        <h1>{t('export.title')}</h1>
       </div>
 
-      <RecordsFilters
-        value={filters}
-        options={{
-          languages: languageFilterValues(options.schema?.enums['主要言語']),
-          areas: options.areas,
-          collectors: options.collectors,
-          datasets: options.datasets,
-        }}
-        schemaEnums={options.schema?.enums}
-        fieldPresence={options.fieldStats}
-        total={total}
-        onChange={patch}
-        onClear={clear}
+      <ScopeBanner
+        filters={filters}
+        datasets={options.datasets}
+        count={total}
+        onReset={scope === 'db' ? () => navigate('/database') : undefined}
+        resetLabel={t('export.adjustScope')}
       />
+      {shared.selection.length > 0 && (
+        <div className="note-line">
+          {scope === 'db'
+            ? <>{t('export.selectionAvailable', { n: shared.selection.length })}
+              <button type="button" className="link-btn" onClick={() => setScope('sel')}>
+                {t('export.useSelection')}
+              </button></>
+            : <button type="button" className="link-btn" onClick={() => setScope('db')}>
+              {t('export.useFilter')}
+            </button>}
+        </div>
+      )}
 
       {countError && (
         <div className="error-box">
@@ -222,108 +347,193 @@ export default function ExportPage() {
         </div>
       )}
 
-      <div className="steps">
-        {/* 01 範囲: 筛选結果の内訳 */}
-        <section className="step">
-          <header><b>01</b><h2>{t('export.stepScope')}</h2></header>
-          <div className="step-big">{total ?? '—'}</div>
-          {preview && (
+      <div className="exp-tabs" role="tablist">
+        {TABS.map((k, i) => (
+          <button key={k} type="button" role="tab" aria-selected={prefs.tab === k}
+            className={`exp-tab${prefs.tab === k ? ' on' : ''}`} onClick={() => setPref('tab', k)}>
+            <b>{String(i + 1).padStart(2, '0')}</b>
+            <span>{t(`export.tab.${k}`)}</span>
+            <small>{t(`export.tabDesc.${k}`)}</small>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 01 分類照片 ── */}
+      {prefs.tab === 'split' && (
+        <section className="card exp-panel">
+          <div className="exp-row">
+            <span className="exp-k">{t('export.splitField')}</span>
+            <select className="exp-select" value={prefs.splitField}
+              onChange={(e) => setPref('splitField', e.target.value)}>
+              {splitFields.map((k) => <option key={k} value={k}>{fieldLabel(k)}</option>)}
+            </select>
+            {isMulti && (
+              <Seg<SplitMode> label={t('export.splitMode')} value={prefs.splitMode}
+                onChange={(v) => setPref('splitMode', v)} options={[
+                  { value: 'single', label: t('export.modeSingle') },
+                  { value: 'combo', label: t('export.modeCombo') },
+                ]} />
+            )}
+          </div>
+          <p className="exp-hint">
+            {isMulti
+              ? t(prefs.splitMode === 'combo' ? 'export.modeComboHint' : 'export.modeSingleHint',
+                { field: fieldLabel(prefs.splitField) })
+              : t('export.singleValueHint', { field: fieldLabel(prefs.splitField) })}
+          </p>
+          {contentSeg}
+
+          {splitError && <div className="error-box"><div className="hint">{splitError}</div></div>}
+          {!split && !splitError && <div className="muted">{t('export.previewing')}</div>}
+          {split && (
             <>
-              <div className="dash-row"><span>{t('export.cropFiles')}</span><span className="mono">{preview.cropFiles}</span></div>
-              <div className="dash-row"><span>{t('export.sourceFiles')}</span><span className="mono">{preview.sourceFiles}</span></div>
-              <div className={`dash-row${preview.missingCount ? '' : ' muted'}`}>
-                <span>{t('export.missingFiles')}</span><span className="mono">{preview.missingCount}</span>
-              </div>
+              <table className="exp-table">
+                <thead>
+                  <tr>
+                    <th>{t('export.colGroup')}</th>
+                    <th>{t('export.colZip')}</th>
+                    <th className="num">{t('export.colRecords')}</th>
+                    <th className="num">{t('export.colFiles')}</th>
+                    <th className="num">{t('export.colMissing')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {split.groups.map((g) => (
+                    <tr key={g.zipName}>
+                      <td>{valueLabel(g.value)}</td>
+                      <td className="mono dim">{g.zipName}</td>
+                      <td className="num mono">{g.records}</td>
+                      <td className="num mono">{g.files}</td>
+                      <td className={`num mono${g.missing ? ' warn' : ' dim'}`}>{g.missing}</td>
+                    </tr>
+                  ))}
+                  {split.groups.length === 0 && (
+                    <tr><td colSpan={5} className="muted">{t('export.noGroups')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+              {/* 件数の読み方: 重複・未分類・欠落を言葉で説明する。 */}
+              <ul className="exp-notes">
+                <li>{t('export.sumLine', {
+                  records: split.recordCount, zips: zipCount, files: split.totalFiles,
+                })}</li>
+                {split.duplicateRecords > 0 && (
+                  <li>{t('export.dupLine', { n: split.duplicateRecords })}</li>
+                )}
+                {isMulti && prefs.splitMode === 'combo' && (
+                  <li>{t('export.comboLine')}</li>
+                )}
+                {split.unclassified > 0 && (
+                  <li className="warn">{t('export.unclassifiedLine', {
+                    n: split.unclassified, field: fieldLabel(prefs.splitField),
+                  })}</li>
+                )}
+                {missingSum > 0 && <li className="warn">{t('export.missingLine', { n: missingSum })}</li>}
+                <li className="dim">{t('export.dedupLine')}</li>
+              </ul>
             </>
           )}
+          {moreOptions(true)}
+          <div className="exp-actions">
+            <button className="btn primary" disabled={empty || !zipCount || splitJob.running}
+              onClick={() => void splitJob.start(() => startPhotosSplitExport(
+                filters, prefs.content, prefs.naming, prefs.splitField, dir, prefs.splitMode))}>
+              {splitJob.running ? t('export.exporting')
+                : split ? t('export.runSplit', { zips: zipCount, files: split.totalFiles }) : t('export.start')}
+            </button>
+          </div>
+          <JobStatus job={splitJob} />
+          {splitJob.job?.status === 'done' && splitJob.job.report?.zips && (
+            <table className="exp-table compact">
+              <tbody>
+                {splitJob.job.report.zips.map((z) => (
+                  <tr key={z.zipName}>
+                    <td className="mono">{z.zipName}</td>
+                    <td className="num mono">{t('export.zipRecords', { n: z.records })}</td>
+                    <td className="num mono">{t('export.zipFiles', { n: z.filesAdded })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </section>
+      )}
 
-        {/* 02 格式 */}
-        <section className="step">
-          <header><b>02</b><h2>{t('export.stepFormat')}</h2></header>
-          <div className="formats" role="radiogroup">
-            {FORMATS.map((f) => (
-              <button key={f} type="button" role="radio" aria-checked={format === f}
-                className={`format${format === f ? ' on' : ''}`} onClick={() => setFormat(f)}>
-                <i />{t(`export.format.${f}`)}
-              </button>
-            ))}
+      {/* ── 02 完全データ包 ── */}
+      {prefs.tab === 'package' && (
+        <section className="card exp-panel">
+          <p className="exp-hint">{t('export.packageDesc')}</p>
+          {moreOptions(false)}
+          <div className="exp-actions">
+            <button className="btn primary" disabled={empty || packageJob.running}
+              onClick={() => void packageJob.start(() => startPackageExport(filters, dir))}>
+              {packageJob.running ? t('export.exporting') : t('export.runPackage', { n: total ?? 0 })}
+            </button>
+          </div>
+          <JobStatus job={packageJob} />
+        </section>
+      )}
+
+      {/* ── 03 照片と CSV ── */}
+      {prefs.tab === 'photos' && (
+        <section className="card exp-panel">
+          <h3 className="exp-h">{t('export.photosZipTitle')}</h3>
+          <p className="exp-hint">{t('export.photosZipDesc')}</p>
+          {contentSeg}
+          {photosPv && (
+            <ul className="exp-notes">
+              <li>{t('export.photosPvLine', {
+                crop: photosPv.cropFiles, source: photosPv.sourceFiles, files: photosPv.totalFiles,
+              })}</li>
+              {photosPv.missingCount > 0 && (
+                <li className="warn">{t('export.missingLine', { n: photosPv.missingCount })}</li>
+              )}
+            </ul>
+          )}
+          {moreOptions(true)}
+          <div className="exp-actions">
+            <button className="btn primary" disabled={empty || photosJob.running}
+              onClick={() => void photosJob.start(() =>
+                startPhotosExport(filters, prefs.content, prefs.naming, dir))}>
+              {photosJob.running ? t('export.exporting')
+                : photosPv ? t('export.runPhotos', { n: photosPv.totalFiles }) : t('export.start')}
+            </button>
+          </div>
+          <JobStatus job={photosJob} />
+
+          <hr className="exp-sep" />
+          <h3 className="exp-h">CSV</h3>
+          <p className="exp-hint">{t('export.csvNote')}</p>
+          <div className="exp-actions">
+            <button className="btn" disabled={empty || syncBusy} onClick={() => void download('csv')}>
+              {t('export.runCsv', { n: total ?? 0 })}
+            </button>
           </div>
         </section>
+      )}
 
-        {/* 03 選項（形式ごと） */}
-        <section className="step">
-          <header><b>03</b><h2>{t('export.stepOptions')}</h2></header>
-          {format === 'photos' && (
-            <>
-              <Option label={t('export.contentLabel')} value={photosContent} options={[
-                { value: 'both', label: t('export.contentBoth') },
-                { value: 'crop', label: t('export.contentCrop') },
-                { value: 'source', label: t('export.contentSource') },
-              ]} onChange={(v) => setPhotosContent(v as typeof photosContent)} />
-              <Option label={t('export.namingLabel')} value={photosNaming} options={[
-                { value: 'original', label: t('export.namingOriginal') },
-                { value: 'signid', label: t('export.namingSignId') },
-                { value: 'displayid', label: t('export.namingDisplayId') },
-              ]} onChange={(v) => setPhotosNaming(v as typeof photosNaming)} />
-              <Option label={t('export.splitLabel')} value={photosSplitField}
-                options={splitOptions} onChange={setPhotosSplitField} />
-            </>
-          )}
-          {format === 'geojson' && (
-            <Option label={t('export.propsLabel')} value={geoProps} options={[
-              { value: 'minimal', label: t('export.propsMinimal') },
-              { value: 'full', label: t('export.propsFull') },
-            ]} onChange={(v) => setGeoProps(v as 'minimal' | 'full')} />
-          )}
-          {(format === 'csv' || format === 'package') && <div className="muted">—</div>}
+      {/* ── 04 地図データ ── */}
+      {prefs.tab === 'geo' && (
+        <section className="card exp-panel">
+          <p className="exp-hint">{t('export.geoDesc')}</p>
+          <div className="exp-row">
+            <span className="exp-k">{t('export.propsLabel')}</span>
+            <Seg<'minimal' | 'full'> label={t('export.propsLabel')} value={prefs.geoProps}
+              onChange={(v) => setPref('geoProps', v)} options={[
+                { value: 'minimal', label: t('export.propsMinimal') },
+                { value: 'full', label: t('export.propsFull') },
+              ]} />
+          </div>
+          <div className="exp-actions">
+            <button className="btn primary" disabled={empty || syncBusy} onClick={() => void download('geojson')}>
+              {t('export.runGeo')}
+            </button>
+          </div>
         </section>
+      )}
 
-        {/* 04 输出 */}
-        <section className="step">
-          <header><b>04</b><h2>{t('export.stepOutput')}</h2></header>
-          {(format === 'photos' || format === 'package') && (
-            <label className="opt">
-              <span>{t('export.outputDir')}</span>
-              <input type="text" value={outputDir} placeholder={cfg?.effectiveExportDir ?? ''}
-                onChange={(e) => setOutputDir(e.target.value)} />
-            </label>
-          )}
-          {format === 'photos' && preview && (
-            <div className="step-sum">
-              <span className="step-big">{preview.totalFiles}</span>
-              <span>{t('export.filesUnit')}</span>
-            </div>
-          )}
-          <span className="spacer-v" />
-          <button className="btn primary wide" disabled={running || syncBusy || !total} onClick={run}>
-            {running || syncBusy ? t('export.exporting') : t('export.start')}
-            <kbd>↵</kbd>
-          </button>
-
-          {job?.error && <div className="error-box"><div className="hint">{job.error}</div></div>}
-          {job?.job?.status === 'running' && (
-            <div className="job-row">
-              <span className="mono">{job.job.done} / {job.job.total}</span>
-              <button className="btn ghost" onClick={job.cancel}>{t('common.cancel')}</button>
-            </div>
-          )}
-          {job?.job?.status === 'done' && (
-            <div className="ok-box">
-              <span className="mono">{job.job.fileName}</span> · {fmtSize(job.job.sizeBytes)}
-              {job.job.kind === 'photos_split'
-                ? <> · {t('export.splitZips', { n: job.job.report?.zipCount ?? 0 })}</>
-                : <> · <a href={exportJobDownloadUrl(job.job.id)}>{t('export.download')}</a></>}
-              {job.job.path && <div className="mono path">{job.job.path}</div>}
-            </div>
-          )}
-          {job?.job?.status === 'cancelled' && <div className="muted">{t('export.jobCancelled')}</div>}
-          {job?.job?.status === 'error' && (
-            <div className="error-box">
-              <strong>{t('export.failed')}</strong>
-              <div className="hint">{job.job.error}</div>
-            </div>
-          )}
+      {(prefs.tab === 'photos' || prefs.tab === 'geo') && (
+        <>
           {syncDone && <div className="ok-box"><span className="mono">{syncDone}</span></div>}
           {syncError && (
             <div className="error-box">
@@ -331,8 +541,8 @@ export default function ExportPage() {
               <div className="hint">{syncError}</div>
             </div>
           )}
-        </section>
-      </div>
+        </>
+      )}
     </>
   );
 }

@@ -21,18 +21,31 @@ const META_FIELDS = [
   'CropRect', // 可視化 overlay は TODO（当面はテキスト表示）
 ];
 
-/** 審核工作区: 写真 / 字段編集 / 元情報＋アクション の3列。 */
+export interface ReviewNav {
+  position: number;
+  total: number;
+  canPrev: boolean;
+  canNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+/** 審核工作区: 中＝写真（裁切図が既定・原図へ切替・クリックで拡大ビューア）、
+    右＝研究字段（定義表の区分・順序）と、常に見える操作欄
+    （前/次・保存・審核動作。快捷键は従来どおり）。元情報は写真の下に畳む。 */
 export default function ReviewWorkspace({
   recordId,
   schema,
   onDirtyChange,
   onActioned,
+  nav,
 }: {
   recordId: number;
   schema: SchemaInfo | null;
   onDirtyChange: (dirty: boolean) => void;
   /** 保存/審核動作の成功後に呼ぶ（advance=true なら次の記録へ進む）。 */
   onActioned: (recordId: number, advance: boolean) => void;
+  nav: ReviewNav;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -90,6 +103,11 @@ export default function ReviewWorkspace({
   }, [draft, detail]);
   const dirty = Object.keys(changed).length > 0;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
+
+  // 字段の記入状況（人の審核状態とは別に示す）。「—」は「該当なし」として記入済み扱い。
+  const fieldGroups = useMemo(() => groupedResearchFields(schema), [schema]);
+  const allFields = fieldGroups.flatMap((g) => g.fields);
+  const filledCount = allFields.filter((f) => current(f).trim() !== '').length;
 
   /** 字段変更（＋任意の状態 payload）を保存する。審核動作は変更も一緒に保存。 */
   const patch = async (
@@ -161,17 +179,8 @@ export default function ReviewWorkspace({
   return (
     <>
       <div className="rv-viewer">
-        <div className="rv-id">{detail.DisplayID || detail.SignID}</div>
-        <div
-          className="rv-photo"
-          style={{ cursor: mainUrl ? 'zoom-in' : 'default' }}
-          onClick={() => mainUrl && setLightbox(effView)}
-        >
-          {mainUrl
-            ? <img src={mainUrl} alt={effView} />
-            : <div className="muted">{t('review.noPhoto')}</div>}
-        </div>
-        <div className="rv-photo-bar">
+        <div className="rv-viewer-head">
+          <div className="rv-id">{detail.DisplayID || detail.SignID}</div>
           <div className="seg">
             <button type="button" className={effView === 'crop' ? 'on' : ''}
               disabled={!detail.photoUrl} onClick={() => setView('crop')}>
@@ -182,8 +191,19 @@ export default function ReviewWorkspace({
               {t('record.source')}
             </button>
           </div>
-          <span className="spacer" />
-          <StatusBadge value={detail.data.DataStatus || detail.DataStatus} />
+          <button type="button" className="rv-open" disabled={busy != null}
+            title={t('review.openInDatabase')} aria-label={t('review.openInDatabase')}
+            onClick={() => navigate(`/database?record=${detail.id}`)}>↗</button>
+        </div>
+        <div
+          className="rv-photo"
+          style={{ cursor: mainUrl ? 'zoom-in' : 'default' }}
+          title={mainUrl ? t('review.zoomHint') : undefined}
+          onClick={() => mainUrl && setLightbox(effView)}
+        >
+          {mainUrl
+            ? <img src={mainUrl} alt={effView} />
+            : <div className="muted">{t('review.noPhoto')}</div>}
         </div>
         <details className="rv-meta">
           <summary>{t('record.metadata')}</summary>
@@ -199,9 +219,19 @@ export default function ReviewWorkspace({
       </div>
 
       <div className="rv-fields">
+        <div className="rv-fields-head">
+          {/* 人の審核状態と、字段の記入状況は別のもの — 並べて別々に示す。 */}
+          <span className="rv-k">{t('review.statusLabel')}</span>
+          <StatusBadge value={detail.data.DataStatus || detail.DataStatus} />
+          <span className="spacer" />
+          <span className="rv-k">{t('review.completeness')}</span>
+          <span className={`fill-meter${filledCount === allFields.length ? ' full' : ''}`}>
+            {filledCount} / {allFields.length}
+          </span>
+        </div>
         <div className="rv-fields-scroll">
           {/* v6 定義表と同じ区分・順序（schema から派生）。状態はアクションボタン経由でのみ変更する。 */}
-          {groupedResearchFields(schema).map((g) => (
+          {fieldGroups.map((g) => (
             <div key={g.key} className="rv-group">
               <h3>{t(`fields.group.${g.key}`)}</h3>
               <div className="edit-grid">
@@ -229,21 +259,29 @@ export default function ReviewWorkspace({
               <div className="hint">{actionError}</div>
             </div>
           )}
-          {actionBtn('reviewed', 'primary wide', '1', t('review.actions.reviewedNext'))}
+          <div className="rv-actions-row rv-nav">
+            <button className="btn ghost icon" disabled={!nav.canPrev || busy != null} onClick={nav.onPrev}
+              title={`${t('review.prev')} (K)`} aria-label={t('review.prev')}>
+              ‹<kbd>K</kbd>
+            </button>
+            <span className="mono rv-pos">{nav.position || '—'} / {nav.total}</span>
+            <button className="btn ghost icon" disabled={!nav.canNext || busy != null} onClick={nav.onNext}
+              title={`${t('review.next')} (J)`} aria-label={t('review.next')}>
+              ›<kbd>J</kbd>
+            </button>
+            <span className="spacer" />
+            {dirty && <span className="dirty-note">{t('review.unsavedNote')}</span>}
+            <button className="btn" disabled={!dirty || busy != null}
+              onClick={() => patch({}, 'save', false)} title={t('review.saveHint')}>
+              {busy === 'save' ? t('record.saving') : t('record.save')}
+              <kbd>Ctrl S</kbd>
+            </button>
+          </div>
+          {actionBtn('reviewed', 'primary rv-main-action', '1', t('review.actions.reviewedNext'))}
           <div className="rv-actions-row">
             {actionBtn('verified', '', '2')}
             {actionBtn('needs_review', 'accent', '3')}
             {actionBtn('rejected', 'danger', 'X')}
-            <span className="spacer" />
-            <button className="btn ghost" disabled={!dirty || busy != null}
-              onClick={() => patch({}, 'save', false)}>
-              {busy === 'save' ? t('record.saving') : t('record.save')}
-              {dirty && <span className="dirty-dot" aria-label={t('record.unsaved')} />}
-            </button>
-            <button className="btn ghost" disabled={busy != null}
-              onClick={() => navigate(`/database?record=${detail.id}`)}>
-              {t('review.openInDatabase')}
-            </button>
           </div>
         </div>
       </div>

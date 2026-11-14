@@ -5,12 +5,13 @@
   },
   "nav": {
     "dashboard": "仪表盘",
-    "database": "数据库",
+    "database": "资料库",
     "map": "地图",
     "review": "审核",
     "ai": "AI处理",
     "export": "导出",
-    "settings": "设置"
+    "settings": "设置",
+    "overview": "概览"
   },
   "topbar": {
     "checking": "正在检查 backend…",
@@ -29,8 +30,9 @@
     "cancel": "取消",
     "none": "无",
     "records": "{{n}} 条记录",
-    "openInDatabase": "在数据库中打开",
-    "comingSoon": "即将推出"
+    "openInDatabase": "在资料库中打开",
+    "comingSoon": "即将推出",
+    "close": "关闭"
   },
   "filters": {
     "search": "搜索 ID / 文本…",
@@ -223,7 +225,7 @@
     "unknownEntryMode": "EntryMode 未知",
     "unknownDataStatus": "DataStatus 未知",
     "shortcuts": "快捷入口",
-    "openDatabase": "打开数据库",
+    "openDatabase": "打开资料库",
     "openReview": "打开审核队列",
     "openMap": "打开地图",
     "exportData": "导出数据",
@@ -235,7 +237,7 @@
     "missingFiles": "缺失文件 {{n}}"
   },
   "database": {
-    "title": "数据库",
+    "title": "资料库",
     "subtitle": "管理已导入的语言景观记录。",
     "import": "导入数据包",
     "loading": "正在加载记录…",
@@ -261,7 +263,24 @@
     "zoomHint": "缩放：Ctrl/Alt + 滚轮",
     "viewAlbum": "相册",
     "exportFiltered": "导出当前筛选",
-    "copy": "复制"
+    "copy": "复制",
+    "view": "视图",
+    "openRecord": "查看记录详情",
+    "zoom": "放大查看照片",
+    "scopeMenu": "当前结果 · {{n}} 条",
+    "scopeReview": "审核当前筛选的 {{n}} 条",
+    "scopeAi": "AI 处理当前筛选的 {{n}} 条",
+    "scopeExport": "导出当前筛选的 {{n}} 条",
+    "albumNoPhotoNote": "照片视图只显示有照片的 {{shown}} 条，另有 {{missing}} 条没有照片。",
+    "showNoPhoto": "在表格中查看无照片的记录",
+    "selectPage": "选择本页全部",
+    "selectRecord": "选择 {{id}}",
+    "selectionBar": "批量操作",
+    "selectedCount": "已选 {{n}} 条",
+    "clearSelection": "清除选择",
+    "selReview": "审核选中的 {{n}} 条",
+    "selAi": "AI 处理选中的 {{n}} 条",
+    "selExport": "导出选中的 {{n}} 条"
   },
   "table": {
     "area": "地区",
@@ -283,7 +302,8 @@
     "save": "保存",
     "saving": "保存中…",
     "saveFailed": "保存失败。",
-    "updated": "更新于 {{time}}"
+    "updated": "更新于 {{time}}",
+    "detail": "记录详情"
   },
   "import": {
     "title": "导入 Dataset Package",
@@ -317,7 +337,10 @@
     "filledOk": "✓ 缺失照片补充完成",
     "restored": "已恢复照片",
     "stillMissing": "包内同样缺失",
-    "reused": "复用（内容去重）"
+    "reused": "复用（内容去重）",
+    "viewImported": "查看本次导入的 {{n}} 条",
+    "nextHint": "接下来可以直接审核；如需 AI，可在资料库右上角“当前结果”菜单中对这批资料运行（可选）。",
+    "nextHintNoAi": "接下来可以直接开始审核这批资料。"
   },
   "map": {
     "title": "地图",
@@ -367,12 +390,23 @@
       "rejected": "拒绝",
       "reviewedNext": "标记为已审核，下一条"
     },
-    "openInDatabase": "在数据库中打开"
+    "openInDatabase": "在资料库中打开",
+    "scopeCount": "其中「{{tab}}」{{n}} 条",
+    "scopeReset": "改为全部记录",
+    "hideQueue": "收起队列",
+    "showQueue": "展开队列",
+    "prev": "上一条",
+    "next": "下一条",
+    "unsavedNote": "有未保存的修改",
+    "saveHint": "只保存字段修改，不改变审核状态",
+    "statusLabel": "审核状态",
+    "completeness": "已填字段",
+    "zoomHint": "点击放大：可缩放、拖动、切换原图"
   },
   "export": {
     "title": "导出",
-    "subtitle": "导出筛选后的数据库记录，用于分析与存档。",
-    "csvNote": "CSV 导出使用当前数据库记录和所选筛选条件。包含 CaptureID、SignID、EntryMode、DataStatus、SchemaVersion、AppVersion 等系统字段。CSV 不包含照片——需要图片时请使用 Dataset Package 或照片 ZIP 导出。",
+    "subtitle": "导出筛选后的资料库记录，用于分析与存档。",
+    "csvNote": "CSV 导出使用当前资料库记录和所选筛选条件。包含 CaptureID、SignID、EntryMode、DataStatus、SchemaVersion、AppVersion 等系统字段。CSV 不包含照片——需要图片时请使用 Dataset Package 或照片 ZIP 导出。",
     "quickAll": "全部记录",
     "quickReviewed": "仅已审核",
     "quickVerified": "仅已确认",
@@ -437,7 +471,56 @@
       "package": "Dataset Package",
       "csv": "CSV",
       "geojson": "GeoJSON"
-    }
+    },
+    "adjustScope": "在资料库中调整范围",
+    "selectionAvailable": "资料库中还手动选中了 {{n}} 条。",
+    "useSelection": "改为只导出选中的记录",
+    "useFilter": "改为导出资料库当前筛选",
+    "tab": {
+      "split": "分类照片",
+      "package": "完整数据包",
+      "photos": "照片与 CSV",
+      "geo": "地图数据"
+    },
+    "tabDesc": {
+      "split": "按字段分别打包 ZIP",
+      "package": "可再次导入的完整备份",
+      "photos": "单个照片 ZIP / 表格",
+      "geo": "GeoJSON 点位"
+    },
+    "splitField": "分类字段",
+    "splitMode": "分类方式",
+    "modeSingle": "单种语言（每种一个 ZIP）",
+    "modeCombo": "语言组合（每种组合一个 ZIP）",
+    "modeSingleHint": "依据「{{field}}」字段的每个值分别归类。有多个值的记录（如“日语/英语”）会同时进入日语和英语两个 ZIP。",
+    "modeComboHint": "依据「{{field}}」字段的值组合归类，例如“日语 + 英语”单独成一个 ZIP。每条记录只进入一个 ZIP。",
+    "singleValueHint": "依据「{{field}}」字段的值归类，每个值一个 ZIP。",
+    "previewing": "正在统计…",
+    "colGroup": "分类",
+    "colZip": "ZIP 文件",
+    "colRecords": "记录",
+    "colFiles": "照片",
+    "colMissing": "缺失",
+    "noGroups": "当前范围内没有可分类的记录。",
+    "sumLine": "范围内 {{records}} 条记录 → {{zips}} 个 ZIP，合计 {{files}} 个照片文件。",
+    "dupLine": "其中 {{n}} 条记录属于多个分类，会在多个 ZIP 中重复出现（照片文件数已按重复计算）。",
+    "comboLine": "按组合分类时，每条记录只出现在一个 ZIP 中，没有跨包重复。",
+    "unclassifiedLine": "{{n}} 条记录未填写「{{field}}」，不会进入任何 ZIP。",
+    "missingLine": "{{n}} 个照片文件缺失，会记录在 ZIP 内的 MISSING.txt 中。",
+    "dedupLine": "同一 ZIP 内内容完全相同的照片只保留一份，所以实际文件数可能略少；每个 ZIP 都附带 photo_mapping.csv。",
+    "moreOptions": "更多选项（命名、保存位置）",
+    "runSplit": "导出 {{zips}} 个 ZIP（{{files}} 个文件）",
+    "zipRecords": "{{n}} 条",
+    "zipFiles": "{{n}} 个文件",
+    "packageDesc": "包含 data.csv、字段定义、清单和照片的完整数据包，可再次导入 LLMap，格式与之前完全相同。",
+    "runPackage": "导出数据包（{{n}} 条）",
+    "photosZipTitle": "照片 ZIP",
+    "photosZipDesc": "不分类，范围内的照片打包成一个 ZIP。",
+    "photosPvLine": "裁切图 {{crop}} 张 · 原图 {{source}} 张，合计 {{files}} 个文件。",
+    "runPhotos": "导出照片 ZIP（{{n}} 个文件）",
+    "runCsv": "下载 CSV（{{n}} 条）",
+    "geoDesc": "把有坐标的记录导出为 GeoJSON 点位，可用于 QGIS 等地图软件。",
+    "runGeo": "下载 GeoJSON"
   },
   "ai": {
     "title": "AI 处理",
@@ -480,7 +563,11 @@
       "abort": "已中止: {{message}}",
       "cancelled": "已取消（已处理部分已保存）",
       "done": "完成: 更新 {{changed}} 条 · 无变化 {{unchanged}} 条 · 跳过 {{skipped}} 条 · 错误 {{errors}} 条"
-    }
+    },
+    "scopeReset": "改为默认范围（未整理）",
+    "offTitle": "AI 功能已关闭",
+    "offBody": "在设置中关闭了 AI，相关入口已隐藏。已有的 AI 结果和 API 密钥都会保留，已在运行的任务也不受影响。",
+    "offGoSettings": "前往设置"
   },
   "settings": {
     "title": "设置",
@@ -516,7 +603,10 @@
       "claude-opus-4-8": "Opus 4.8 · 最高质量（较贵）",
       "gemini-2.5-flash": "Flash · 快速低价（默认）",
       "gemini-2.5-pro": "Pro · 高质量"
-    }
+    },
+    "aiEnable": "启用 AI 辅助",
+    "aiEnableOn": "已启用：可在资料库对当前范围发起 AI 处理。",
+    "aiEnableOff": "已关闭：隐藏所有 AI 入口；已有结果和密钥保留，人工研究流程完整可用。"
   },
   "storage": {
     "title": "存储",
@@ -547,5 +637,13 @@
     "fit": "适应窗口",
     "rotate": "旋转",
     "copy": "复制图片"
+  },
+  "scope": {
+    "label": "范围",
+    "all": "全部记录",
+    "fromDatabase": "资料库当前筛选",
+    "count": "{{n}} 条",
+    "reset": "改为全部记录",
+    "selectedN": "手动选中的 {{n}} 条"
   }
 }

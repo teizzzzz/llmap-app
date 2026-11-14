@@ -760,6 +760,66 @@ def test_export_photos_split_by_field():
     assert not (custom2 / "sub_jp.zip").exists()  # 補助言語に日本語は無い
 
 
+def test_record_ids_filter_and_with_other_filters():
+    """ids（手動選択）: 指定 id だけ。他の条件とは AND。導出の事前集計にも効く。"""
+    items = client.get("/records", params={"pageSize": 500}).json()["items"]
+    by_sign = {it["SignID"]: it["id"] for it in items}
+    a, b = by_sign[f"{CAPTURE}-a"], by_sign[f"{CAPTURE}-b"]
+    r = client.get("/records", params={"ids": f"{a},{b}"}).json()
+    assert r["total"] == 2
+    # AND: b は quick なので standard の条件と合わせると a だけ
+    r = client.get("/records", params={"ids": f"{a},{b}", "entryMode": "standard"}).json()
+    assert [it["id"] for it in r["items"]] == [a]
+    pv = client.post("/export/photos/preview",
+                     json={"ids": [b], "content": "crop"}).json()
+    assert pv["recordCount"] == 1 and pv["cropFiles"] == 1
+
+
+def test_split_preview_single_vs_combo():
+    """言語の分包: single は単一言語ごと（複数言語の記録は複数 zip に重複）、
+    combo は組合せごと（1 記録 = 1 zip）。事前集計と実際の zip が一致する。
+    （共有 DB は先行テストで変わるため、記録 a の言語をここで決めて最後に戻す）"""
+    from pathlib import Path
+
+    items = client.get("/records", params={"pageSize": 500}).json()["items"]
+    a = next(it for it in items if it["SignID"] == f"{CAPTURE}-a")
+    before = client.get(f"/records/{a['id']}").json()["data"].get("主要言語", "")
+    client.patch(f"/records/{a['id']}", json={"主要言語": "韓国語/日本語"})
+    try:
+        scope = {"ids": [a["id"]], "content": "crop", "field": "主要言語"}
+        single = client.post("/export/photos/split/preview",
+                             json={**scope, "mode": "single"}).json()
+        assert sorted(g["value"] for g in single["groups"]) == ["日本語", "韓国語"]
+        assert single["duplicateRecords"] == 1  # 同じ記録が 2 つの zip に入る
+        assert single["totalFiles"] == 2       # 写真 1 枚 × 2 zip
+
+        combo = client.post("/export/photos/split/preview",
+                            json={**scope, "mode": "combo"}).json()
+        assert [g["value"] for g in combo["groups"]] == ["日本語+韓国語"]
+        assert combo["duplicateRecords"] == 0 and combo["totalFiles"] == 1
+
+        # 全体でも: combo は各記録がちょうど 1 つの桶（重複なし）
+        whole = client.post("/export/photos/split/preview", json={
+            "field": "主要言語", "mode": "combo", "content": "crop"}).json()
+        assert whole["duplicateRecords"] == 0
+        assert sum(g["records"] for g in whole["groups"]) == whole["groupedRecords"]
+        assert whole["groupedRecords"] + whole["unclassified"] == whole["recordCount"]
+
+        # 実際の導出: zip 名と件数が事前集計と一致する
+        out = Path(os.environ["LLMAP_DATA_DIR"]) / "split_combo"
+        r = client.post("/export/photos/split", json={
+            **scope, "mode": "combo", "naming": "original", "outputDir": str(out)})
+        job = _wait_job(r.json()["jobId"])
+        assert job["status"] == "done", job
+        assert [(z["zipName"], z["records"]) for z in job["report"]["zips"]] ==             [(g["zipName"], g["records"]) for g in combo["groups"]]
+        assert (out / combo["groups"][0]["zipName"]).is_file()
+        # 不正な mode は 400
+        assert client.post("/export/photos/split/preview", json={
+            "field": "主要言語", "mode": "bogus"}).status_code == 400
+    finally:
+        client.patch(f"/records/{a['id']}", json={"主要言語": before})
+
+
 def test_export_job_not_found_and_cancel():
     assert client.get("/export/jobs/nonexistent").status_code == 404
     r = client.post("/export/photos", json={"content": "crop",

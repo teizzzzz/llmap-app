@@ -5,12 +5,13 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "database": "Database",
+    "database": "Library",
     "map": "Map",
     "review": "Review",
     "ai": "AI Processing",
     "export": "Export",
-    "settings": "Settings"
+    "settings": "Settings",
+    "overview": "Overview"
   },
   "topbar": {
     "checking": "checking backend…",
@@ -30,7 +31,8 @@
     "none": "none",
     "records": "{{n}} records",
     "openInDatabase": "Open in Database",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "close": "Close"
   },
   "filters": {
     "search": "Search ID / text…",
@@ -235,7 +237,7 @@
     "missingFiles": "Missing files {{n}}"
   },
   "database": {
-    "title": "Database",
+    "title": "Library",
     "subtitle": "Manage imported linguistic landscape records.",
     "import": "Import package",
     "loading": "Loading records…",
@@ -261,7 +263,24 @@
     "zoomHint": "Zoom: Ctrl/Alt + wheel",
     "viewAlbum": "Album",
     "exportFiltered": "Export filtered",
-    "copy": "Copy"
+    "copy": "Copy",
+    "view": "View",
+    "openRecord": "Open record details",
+    "zoom": "View photo larger",
+    "scopeMenu": "Current results · {{n}}",
+    "scopeReview": "Review the {{n}} filtered records",
+    "scopeAi": "Run AI on the {{n}} filtered records",
+    "scopeExport": "Export the {{n}} filtered records",
+    "albumNoPhotoNote": "The photo view shows the {{shown}} records with photos; {{missing}} more have no photo.",
+    "showNoPhoto": "Show records without photos in the table",
+    "selectPage": "Select all on this page",
+    "selectRecord": "Select {{id}}",
+    "selectionBar": "Batch actions",
+    "selectedCount": "{{n}} selected",
+    "clearSelection": "Clear selection",
+    "selReview": "Review {{n}} selected",
+    "selAi": "Run AI on {{n}} selected",
+    "selExport": "Export {{n}} selected"
   },
   "table": {
     "area": "Area",
@@ -283,7 +302,8 @@
     "save": "Save",
     "saving": "Saving…",
     "saveFailed": "Save failed.",
-    "updated": "updated {{time}}"
+    "updated": "updated {{time}}",
+    "detail": "Record details"
   },
   "import": {
     "title": "Import Dataset Package",
@@ -317,7 +337,10 @@
     "filledOk": "✓ Missing photos restored",
     "restored": "Restored photos",
     "stillMissing": "Still missing in package",
-    "reused": "Reused (deduplicated)"
+    "reused": "Reused (deduplicated)",
+    "viewImported": "View the {{n}} records from this import",
+    "nextHint": "You can start reviewing right away. To use AI (optional), run it on this batch from the “Current results” menu in the Library.",
+    "nextHintNoAi": "You can start reviewing this batch right away."
   },
   "map": {
     "title": "Map",
@@ -367,7 +390,18 @@
       "rejected": "Reject",
       "reviewedNext": "Mark reviewed, next"
     },
-    "openInDatabase": "Open in database"
+    "openInDatabase": "Open in database",
+    "scopeCount": "{{n}} in “{{tab}}”",
+    "scopeReset": "Use all records",
+    "hideQueue": "Hide queue",
+    "showQueue": "Show queue",
+    "prev": "Previous",
+    "next": "Next",
+    "unsavedNote": "Unsaved changes",
+    "saveHint": "Save field edits only (review status unchanged)",
+    "statusLabel": "Review status",
+    "completeness": "Fields filled",
+    "zoomHint": "Click to enlarge (zoom, pan, switch to original)"
   },
   "export": {
     "title": "Export",
@@ -437,7 +471,56 @@
       "package": "Dataset Package",
       "csv": "CSV",
       "geojson": "GeoJSON"
-    }
+    },
+    "adjustScope": "Adjust scope in Library",
+    "selectionAvailable": "You also have {{n}} records selected in the Library.",
+    "useSelection": "Export only the selected records",
+    "useFilter": "Export the current Library filter instead",
+    "tab": {
+      "split": "Classified photos",
+      "package": "Full data package",
+      "photos": "Photos & CSV",
+      "geo": "Map data"
+    },
+    "tabDesc": {
+      "split": "One ZIP per field value",
+      "package": "Re-importable full backup",
+      "photos": "Single photo ZIP / table",
+      "geo": "GeoJSON points"
+    },
+    "splitField": "Classify by",
+    "splitMode": "Grouping",
+    "modeSingle": "By single language (one ZIP each)",
+    "modeCombo": "By language combination (one ZIP each)",
+    "modeSingleHint": "Groups by each value of “{{field}}”. Records with several values (e.g. “Japanese/English”) go into both the Japanese and the English ZIP.",
+    "modeComboHint": "Groups by the combination of “{{field}}” values, e.g. “Japanese + English” gets its own ZIP. Each record goes into exactly one ZIP.",
+    "singleValueHint": "One ZIP per value of “{{field}}”.",
+    "previewing": "Counting…",
+    "colGroup": "Group",
+    "colZip": "ZIP file",
+    "colRecords": "Records",
+    "colFiles": "Photos",
+    "colMissing": "Missing",
+    "noGroups": "No records in this scope can be classified.",
+    "sumLine": "{{records}} records → {{zips}} ZIPs, {{files}} photo files in total.",
+    "dupLine": "{{n}} of them belong to several groups and appear in more than one ZIP (photo counts include these duplicates).",
+    "comboLine": "With combinations, each record appears in only one ZIP; there are no duplicates across ZIPs.",
+    "unclassifiedLine": "{{n}} records have no “{{field}}” and are not included in any ZIP.",
+    "missingLine": "{{n}} photo files are missing; they are listed in MISSING.txt inside the ZIP.",
+    "dedupLine": "Identical photos within one ZIP are stored once, so the actual file count can be slightly lower. Each ZIP includes photo_mapping.csv.",
+    "moreOptions": "More options (naming, location)",
+    "runSplit": "Export {{zips}} ZIPs ({{files}} files)",
+    "zipRecords": "{{n}} records",
+    "zipFiles": "{{n}} files",
+    "packageDesc": "A full package with data.csv, field definitions, manifest and photos. It can be re-imported into LLMap; the format is unchanged.",
+    "runPackage": "Export package ({{n}} records)",
+    "photosZipTitle": "Photo ZIP",
+    "photosZipDesc": "All photos in scope in a single ZIP, without classification.",
+    "photosPvLine": "{{crop}} crops · {{source}} originals, {{files}} files in total.",
+    "runPhotos": "Export photo ZIP ({{n}} files)",
+    "runCsv": "Download CSV ({{n}} records)",
+    "geoDesc": "Exports records with coordinates as GeoJSON points (for QGIS and other GIS tools).",
+    "runGeo": "Download GeoJSON"
   },
   "ai": {
     "title": "AI Processing",
@@ -480,7 +563,11 @@
       "abort": "Aborted: {{message}}",
       "cancelled": "Cancelled (processed records are kept)",
       "done": "Done: {{changed}} updated · {{unchanged}} unchanged · {{skipped}} skipped · {{errors}} errors"
-    }
+    },
+    "scopeReset": "Back to default scope (raw)",
+    "offTitle": "AI features are turned off",
+    "offBody": "AI is turned off in Settings, so its entry points are hidden. Existing AI results and API keys are kept, and running jobs are not affected.",
+    "offGoSettings": "Open Settings"
   },
   "settings": {
     "title": "Settings",
@@ -516,7 +603,10 @@
       "claude-opus-4-8": "Opus 4.8 · highest quality (pricier)",
       "gemini-2.5-flash": "Flash · fast & low cost (default)",
       "gemini-2.5-pro": "Pro · higher quality"
-    }
+    },
+    "aiEnable": "Enable AI assistance",
+    "aiEnableOn": "On: you can run AI on the current scope from the Library.",
+    "aiEnableOff": "Off: all AI entry points are hidden. Existing results and keys are kept; the manual workflow stays fully available."
   },
   "storage": {
     "title": "Storage",
@@ -547,5 +637,13 @@
     "fit": "Fit",
     "rotate": "Rotate",
     "copy": "Copy image"
+  },
+  "scope": {
+    "label": "Scope",
+    "all": "All records",
+    "fromDatabase": "Current Library filter",
+    "count": "{{n}} records",
+    "reset": "Use all records",
+    "selectedN": "{{n}} selected records"
   }
 }
